@@ -80,7 +80,9 @@ input{font:inherit;font-size:16px;letter-spacing:inherit}
 @keyframes drift1{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(9vw,7vh,0)}}
 @keyframes drift2{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(-11vw,10vh,0)}}
 @keyframes drift3{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(8vw,-8vh,0)}}
-.grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+/* ⚠️ mix-blend-mode 금지 — 전체화면 블렌드는 스크롤마다 화면 전체를 재합성시켜 끊긴다.
+   그레인은 낮은 opacity만으로 충분하다. */
+.grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.035;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
 
 #app{max-width:520px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;position:relative}
@@ -88,14 +90,21 @@ input{font:inherit;font-size:16px;letter-spacing:inherit}
 /* ══════════════════════════════════════════════════════════
    헤더
 ══════════════════════════════════════════════════════════ */
+/* ⚠️ 모바일에서 sticky 헤더 backdrop-filter는 스크롤 중 매 프레임 블러를 다시 계산해
+   가장 큰 끊김 원인이 된다. 좁은 화면은 불투명 배경, 넓은 화면(데스크탑)에서만 블러. */
 header{
   position:sticky;top:0;z-index:60;
   display:flex;align-items:center;gap:10px;
   padding:calc(11px + var(--st)) 16px 11px;
-  background:linear-gradient(180deg,rgba(11,10,18,.94),rgba(11,10,18,.72));
-  backdrop-filter:blur(18px) saturate(1.6);
-  -webkit-backdrop-filter:blur(18px) saturate(1.6);
+  background:#0E0C18;
   border-bottom:1px solid var(--line);
+}
+@media (min-width:700px) and (pointer:fine){
+  header{
+    background:linear-gradient(180deg,rgba(11,10,18,.94),rgba(11,10,18,.74));
+    backdrop-filter:blur(16px) saturate(1.5);
+    -webkit-backdrop-filter:blur(16px) saturate(1.5);
+  }
 }
 .hd-back{
   width:36px;height:36px;border-radius:12px;display:grid;place-items:center;
@@ -121,8 +130,12 @@ header{
 .hd-code:active{transform:scale(.93)}
 .hd-code svg{width:12px;height:12px;opacity:.65;margin-left:1px}
 
-main{flex:1;padding:18px 16px calc(40px + var(--sb));animation:viewIn .34s var(--ease)}
+main{flex:1;padding:18px 16px calc(40px + var(--sb))}
+/* 화면 전환일 때만 재생. 데이터 갱신(하트비트 등)으로 재렌더될 땐 재생하지 않는다 = 깜빡임 방지 */
+main.enter{animation:viewIn .34s var(--ease)}
 @keyframes viewIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* 제자리 갱신 시 목록 진입 애니메이션 억제 */
+main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim .pod{animation:none}
 
 /* ══════════════════════════════════════════════════════════
    기본 요소
@@ -373,7 +386,7 @@ main{flex:1;padding:18px 16px calc(40px + var(--sb));animation:viewIn .34s var(-
 /* 뽑기 오버레이 */
 .roll-ov{
   position:fixed;inset:0;z-index:180;display:grid;place-items:center;padding:24px;
-  background:rgba(6,5,12,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:rgba(6,5,12,.93);
   animation:fadeIn .22s ease;
 }
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -475,10 +488,12 @@ main{flex:1;padding:18px 16px calc(40px + var(--sb));animation:viewIn .34s var(-
   background:rgba(43,39,66,.97);border:1px solid var(--line2);color:var(--tx);
   padding:13px 20px;border-radius:15px;font-weight:700;font-size:14px;
   box-shadow:var(--sh3);opacity:0;pointer-events:none;z-index:220;max-width:86vw;text-align:center;
-  backdrop-filter:blur(14px);transition:.32s var(--spring);
+  visibility:hidden;transition:.32s var(--spring),visibility 0s linear .32s;
 }
+#toast.on{visibility:visible;transition:.32s var(--spring)}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
-#fx{position:fixed;inset:0;pointer-events:none;z-index:210}
+/* 평소엔 display:none — 항상 떠 있으면 전체화면 합성 레이어를 하나 더 유지하게 된다 */
+#fx{position:fixed;inset:0;pointer-events:none;z-index:210;display:none}
 .banner{
   display:flex;align-items:center;gap:9px;padding:11px 14px;border-radius:var(--r-s);
   font-size:13px;font-weight:700;margin-bottom:13px;word-break:keep-all;line-height:1.5;
@@ -491,6 +506,8 @@ main{flex:1;padding:18px 16px calc(40px + var(--sb));animation:viewIn .34s var(-
 @media (max-width:359px){
   .hero-t{font-size:34px} .rc-v{font-size:44px} .roll-n{font-size:42px}
 }
+/* 좁은 화면(=대부분 폰)에서는 오로라 레이어를 2겹으로 줄여 합성 비용을 낮춘다 */
+@media (max-width:600px){ .aur.c{display:none} }
 </style>
 </head>
 <body>
@@ -519,7 +536,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.2.0';
+const APP_VERSION = 'v0.2.1';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -730,12 +747,16 @@ function gcVars(hex){
 
 /* ── 컨페티 ── */
 const fx = $('#fx'); const fxc = fx.getContext('2d');
-function sizeFx(){ fx.width = innerWidth * devicePixelRatio; fx.height = innerHeight * devicePixelRatio;
-  fx.style.width = innerWidth+'px'; fx.style.height = innerHeight+'px'; fxc.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
-sizeFx(); addEventListener('resize', sizeFx);
+function sizeFx(){
+  const dpr = Math.min(devicePixelRatio || 1, 2);   // DPR 3 기기에서 캔버스 픽셀 낭비 방지
+  fx.width = innerWidth * dpr; fx.height = innerHeight * dpr;
+  fx.style.width = innerWidth+'px'; fx.style.height = innerHeight+'px';
+  fxc.setTransform(dpr,0,0,dpr,0,0);
+}
 
 function confetti(n = 90){
   if (matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  fx.style.display = 'block'; sizeFx();   // 쓸 때만 켠다
   const cols = ['#FF6B4A','#FFB84D','#7C6BFF','#3DE0A8','#4DB8FF','#FFD75E'];
   const ps = Array.from({length:n}, () => ({
     x: innerWidth/2 + (Math.random()-.5)*innerWidth*.5,
@@ -760,7 +781,7 @@ function confetti(n = 90){
       }
     }
     if (alive) raf = requestAnimationFrame(loop);
-    else fxc.clearRect(0,0,innerWidth,innerHeight);
+    else { fxc.clearRect(0,0,innerWidth,innerHeight); fx.style.display = 'none'; }
   })(t0);
 }
 
@@ -946,7 +967,42 @@ function go(view){ S.view = view; render(); scrollTo(0,0); }
 const av = (pid, name, cls='') =>
   `<div class="av ${cls}" style="background:${avColor(pid)}">${h(String(name||'?')[0])}</div>`;
 
-function render(){
+/* ── 렌더 게이팅 ────────────────────────────────────────────
+   render()는 Firebase 스냅샷마다 호출된다. 각 기기가 20초마다 하트비트(seen)를 쓰므로
+   그대로 두면 아무도 아무것도 안 해도 수 초마다 화면 전체가 다시 그려져 깜빡인다.
+   → 화면에 실제로 보이는 값만 뽑아 서명(signature)을 만들고, 같으면 렌더를 건너뛴다.
+   ⚠️ seen(타임스탬프)이 아니라 isOn(불리언)을 넣는 게 핵심. 안 그러면 매번 서명이 바뀐다. */
+let _lastView = null, _lastSig = null;
+
+function renderSig(){
+  const r = S.room;
+  return JSON.stringify([
+    S.view, S.gameId, S.online, S.isHost, S.code,
+    r ? Object.entries(r.players).map(([k,p]) => [k, p.name, isOn(p)?1:0, (p.host||k===r.host)?1:0]) : 0,
+    r?.teams || 0, r?.scores || 0, r?.rotation || 0,
+    S.draft?.order || 0, S._lastPick || 0,
+  ]);
+}
+
+/* 재렌더로 입력 포커스·커서를 잃지 않게 보존 (이름 바꾸는 중 남이 입장해도 안 날아감) */
+function grabFocus(){
+  const el = document.activeElement;
+  if (!el || !el.id || !$('#view').contains(el)) return null;
+  return { id:el.id, val:el.value, s:el.selectionStart, e:el.selectionEnd };
+}
+function restoreFocus(f){
+  if (!f) return;
+  const el = document.getElementById(f.id); if (!el) return;
+  el.value = f.val; el.focus();
+  try{ el.setSelectionRange(f.s, f.e); }catch{}
+}
+
+function render(force){
+  const sig = renderSig();
+  if (!force && sig === _lastSig) return;     // 바뀐 게 없으면 손대지 않는다
+  const viewChanged = S.view !== _lastView;
+  _lastSig = sig; _lastView = S.view;
+
   const back = $('#hd-back'), title = $('#hd-t'), code = $('#hd-code'), dot = $('#hd-dot');
   const inRoom = !!S.code;
   dot.style.display = inRoom ? '' : 'none';
@@ -959,10 +1015,23 @@ function render(){
     game:G(S.gameId)?.name || '게임', score:'순위 입력', board:'종합 순위', settings:'설정' })[S.view] || '숙소 게임';
 
   const v = $('#view');
+  const keep = grabFocus();
   v.innerHTML = ({ home:vHome, lobby:vLobby, games:vGames, game:vGame, score:vScore, board:vBoard, settings:vSettings })[S.view]();
-  v.style.animation = 'none'; void v.offsetHeight; v.style.animation = '';
+
+  // 화면 전환일 때만 진입 애니메이션. 제자리 갱신은 애니메이션 없이 조용히 교체한다.
+  if (viewChanged){
+    v.classList.remove('noanim','enter'); void v.offsetWidth; v.classList.add('enter');
+  }else{
+    v.classList.remove('enter'); v.classList.add('noanim');
+  }
+
   bind(v);
+  restoreFocus(keep);
 }
+
+/* 접속 끊김 표시는 시간이 흘러야 바뀌므로(서명에 seen을 안 넣음) 주기적으로 확인만 한다.
+   서명이 그대로면 render()가 알아서 아무것도 안 한다. */
+setInterval(() => { if (S.code) render(); }, 15000);
 
 $('#hd-back').onclick = () => {
   vib();
@@ -1371,7 +1440,7 @@ async function act(a, d){
   }
   case 'rejoin': {
     const sess = JSON.parse(localStorage.getItem(LS) || 'null'); if (!sess) return;
-    if (!(await rejoin(sess))){ clearSession(); toast('예전 방을 찾을 수 없어요'); render(); }
+    if (!(await rejoin(sess))){ clearSession(); toast('예전 방을 찾을 수 없어요'); render(true); }
     break;
   }
   case 'share': shareRoom(); break;
