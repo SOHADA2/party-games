@@ -481,6 +481,75 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .empty-t{font-weight:800;font-size:15px;color:var(--dim);margin-bottom:6px}
 
 /* ══════════════════════════════════════════════════════════
+   진행 도구 (제시어 덱) — 설명자가 폰을 들고 본다. 크고 단순하게.
+══════════════════════════════════════════════════════════ */
+.seg{display:flex;gap:8px;margin-bottom:10px}
+.seg button{flex:1;padding:13px 8px;border-radius:13px;background:var(--surf);
+  border:1.5px solid var(--line);font-weight:800;font-size:14px;box-shadow:var(--lift);
+  transition:transform .14s var(--spring),border-color .16s,background .16s}
+.seg button:active{transform:scale(.96)}
+.seg button.on{border-color:var(--hot);background:rgba(255,107,74,.13);color:#FFB59B}
+.catgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.cat{display:flex;align-items:center;gap:9px;padding:13px 12px;border-radius:14px;
+  background:var(--surf);border:1.5px solid var(--line);font-weight:700;font-size:14px;
+  text-align:left;box-shadow:var(--lift);transition:transform .14s var(--spring),border-color .16s,background .16s}
+.cat:active{transform:scale(.97)}
+.cat.on{border-color:var(--mint);background:rgba(61,224,168,.11)}
+.cat .e{font-size:18px;flex:none}
+.cat .c{margin-left:auto;font-size:11px;color:var(--dim2);font-weight:800}
+
+/* 턴 진행 */
+.turnhd{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.turnhd .sw{width:12px;height:12px;border-radius:4px;background:var(--tc);box-shadow:0 0 10px var(--tc);flex:none}
+.turnhd .t{font-weight:900;font-size:17px;letter-spacing:-.03em}
+.turnhd .r{margin-left:auto;font-size:12px;color:var(--dim2);font-weight:700}
+
+.tbar{height:9px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;margin-bottom:8px}
+.tbar i{display:block;height:100%;width:100%;background:var(--hero);border-radius:99px;
+  transition:width .22s linear}
+.tbar.warn i{background:linear-gradient(135deg,#FF5C7C,#FF8F5C)}
+.trow{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.tsec{font-size:34px;font-weight:900;letter-spacing:-.04em;line-height:1}
+.tsec.warn{color:var(--rose)}
+.thit{font-size:14px;font-weight:800;color:var(--mint)}
+
+.wcard{
+  display:grid;place-items:center;text-align:center;padding:44px 18px;min-height:210px;
+  border-radius:var(--r-xl);margin-bottom:14px;
+  background:linear-gradient(150deg,var(--surf2),var(--surf));
+  border:1px solid var(--line2);box-shadow:var(--sh2),var(--lift);
+}
+.wtxt{font-size:38px;font-weight:900;letter-spacing:-.05em;line-height:1.24;word-break:keep-all}
+.wtxt.long{font-size:27px}
+.wtxt.xlong{font-size:21px;line-height:1.4}   /* 긴 속담(최대 20자)까지 안 넘치게 */
+.wcat{font-size:11.5px;font-weight:800;color:var(--dim2);letter-spacing:.1em;margin-bottom:14px}
+.wletter{display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;
+  padding:5px 12px;border-radius:99px;background:rgba(124,107,255,.16);color:#B8AEFF;
+  font-size:12.5px;font-weight:800}
+
+.wbtns{display:grid;grid-template-columns:1fr 1.7fr;gap:10px}
+.bigbtn{padding:24px 10px;border-radius:20px;font-weight:900;font-size:18px;
+  box-shadow:var(--sh1),var(--lift);transition:transform .12s var(--spring),filter .15s}
+.bigbtn:active{transform:scale(.96)}
+.bigbtn.ok{background:linear-gradient(135deg,#3DE0A8,#25B584);color:#04231A;border:0;
+  box-shadow:0 8px 26px rgba(61,224,168,.26),inset 0 1px 0 rgba(255,255,255,.3)}
+.bigbtn.pass{background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--dim)}
+
+.sumrow{display:flex;align-items:center;gap:9px;padding:10px 13px;border-radius:12px;
+  background:var(--surf);border:1px solid var(--line);margin-bottom:6px;font-weight:700;font-size:14px}
+.sumrow .m{flex:none;font-size:14px}
+.sumrow.no{opacity:.45}
+.sumrow.no .w{text-decoration:line-through}
+
+.tscore{display:flex;align-items:center;gap:12px;padding:14px;border-radius:var(--r-m);
+  margin-bottom:9px;background:var(--surf);border:1px solid var(--line);box-shadow:var(--lift);
+  position:relative;overflow:hidden}
+.tscore::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tc)}
+.tscore .n{font-weight:900;font-size:15px;padding-left:7px;flex:1}
+.tscore .v{font-weight:900;font-size:24px;color:var(--amber)}
+.tscore .v small{font-size:11px;color:var(--dim2);margin-left:2px}
+
+/* ══════════════════════════════════════════════════════════
    피드백
 ══════════════════════════════════════════════════════════ */
 #toast{
@@ -536,7 +605,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.2.1';
+const APP_VERSION = 'v0.3.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -559,6 +628,72 @@ const TEAM_COLORS = ['#FF6B4A','#7C6BFF','#3DE0A8','#FFB84D','#4DB8FF','#FF5C7C'
 const AV_COLORS = ['#FFB84D','#FF6B4A','#7C6BFF','#3DE0A8','#4DB8FF','#FF5C7C',
                    '#5EE7D0','#FFA8A8','#B8E066','#C89BFF','#7FD4FF','#FFD08F'];
 const MEDAL = ['🥇','🥈','🥉'];
+
+/* ══════════════════════════════════════════════
+   제시어 덱 — 「몸으로 말해요 / 한글자로 말해요」용.
+   멕썸노이즈·연기대결 등 다른 카드 게임도 이 구조를 재사용한다.
+══════════════════════════════════════════════ */
+const WORD_DECKS = {
+  animal:{ name:'동물', emoji:'🐘', words:[
+    '사자','호랑이','코끼리','기린','원숭이','캥거루','펭귄','악어','하마','코뿔소','낙타','다람쥐',
+    '고슴도치','두더지','박쥐','부엉이','독수리','참새','비둘기','오리','거위','닭','돼지','소','말',
+    '양','염소','토끼','개구리','뱀','거북이','도마뱀','상어','고래','돌고래','문어','오징어','게',
+    '새우','해파리','불가사리','나비','벌','개미','거미','지렁이','달팽이','사슴','여우','늑대','곰',
+    '판다','코알라','나무늘보','미어캣','타조','공작','플라밍고','하이에나','치타']},
+  job:{ name:'직업', emoji:'💼', words:[
+    '의사','간호사','경찰','소방관','선생님','요리사','미용사','가수','배우','화가','사진작가',
+    '축구선수','야구선수','발레리나','마술사','광대','판사','변호사','군인','파일럿','승무원',
+    '버스기사','택시기사','집배원','농부','어부','목수','프로그래머','유튜버','아나운서','기자',
+    '지휘자','피아니스트','바리스타','제빵사','수의사','치과의사','약사','사서','경비원','스님',
+    '점쟁이','심판','통역사','조련사','소믈리에','플로리스트','건축가','디자이너','과학자']},
+  action:{ name:'행동', emoji:'🏃', words:[
+    '하품하다','재채기하다','딸꾹질하다','코골다','이 닦다','세수하다','머리 감다','화장하다',
+    '면도하다','손톱 깎다','신발끈 묶다','우산 쓰다','계단 오르다','줄넘기','훌라후프',
+    '팔굽혀펴기','윗몸일으키기','수영하다','스키 타다','스케이트','자전거 타다','운전하다',
+    '낚시하다','등산하다','캠핑하다','바비큐','설거지','빨래 널다','다림질','청소기 돌리다',
+    '못 박다','라면 끓이다','김밥 말다','셀카 찍다','전화 받다','문자 보내다','게임하다',
+    '노래방','춤추다','박수치다','손 흔들다','절하다','악수하다','안아주다','업어주다',
+    '목마 태우다','기지개 켜다','졸다','뛰어가다','넘어지다']},
+  thing:{ name:'사물', emoji:'📦', words:[
+    '우산','안경','손목시계','지갑','열쇠','자물쇠','가위','숟가락','젓가락','컵','접시','냄비',
+    '프라이팬','주전자','냉장고','세탁기','청소기','선풍기','에어컨','텔레비전','리모컨','노트북',
+    '마우스','키보드','휴대폰','이어폰','스피커','카메라','책','연필','지우개','자','풀','테이프',
+    '망치','드라이버','사다리','빗자루','쓰레기통','화분','거울','베개','이불','소파','의자',
+    '책상','옷걸이','신발장','칫솔','치약','비누','수건','드라이기','다리미','전자레인지']},
+  food:{ name:'음식', emoji:'🍜', words:[
+    '김치','된장찌개','김치찌개','불고기','삼겹살','갈비','냉면','비빔밥','김밥','떡볶이','순대',
+    '튀김','어묵','라면','짜장면','짬뽕','탕수육','만두','치킨','피자','햄버거','스파게티',
+    '스테이크','초밥','회','우동','돈까스','카레','볶음밥','삼계탕','곱창','족발','보쌈','파전',
+    '막걸리','아이스크림','케이크','도넛','와플','팥빙수','호떡','붕어빵','군고구마','옥수수',
+    '수박','딸기','바나나','포도','사과','귤','계란찜','순두부','비빔국수','칼국수']},
+  movie:{ name:'영화·드라마', emoji:'🎬', words:[
+    '기생충','부산행','올드보이','극한직업','명량','신과함께','겨울왕국','타이타닉','어벤져스',
+    '스파이더맨','아이언맨','배트맨','슈퍼맨','해리포터','반지의 제왕','쥬라기 공원','터미네이터',
+    '조커','인터스텔라','인셉션','매트릭스','라이온킹','토이스토리','니모를 찾아서','슈렉',
+    '미니언즈','쿵푸팬더','알라딘','인어공주','오징어 게임','도깨비','태양의 후예',
+    '별에서 온 그대','이태원 클라쓰','슬기로운 의사생활','응답하라 1988','무한도전','런닝맨',
+    '나 혼자 산다','미션 임파서블','트랜스포머','캐리비안의 해적','겟아웃','살인의 추억']},
+  music:{ name:'노래·가수', emoji:'🎵', words:[
+    '방탄소년단','블랙핑크','아이유','싸이','강남스타일','뉴진스','세븐틴','트와이스','에스파',
+    '임영웅','나훈아','조용필','이문세','김건모','소녀시대','빅뱅','엑소','아이브','르세라핌',
+    '벚꽃엔딩','밤편지','좋은 날','거짓말','산다는 건','트로트','랩','발라드','오페라','국악',
+    '아이돌','버스킹','노래방','기타','드럼','피아노','바이올린','하모니카','탬버린','마이크']},
+  char:{ name:'캐릭터', emoji:'🐥', words:[
+    '뽀로로','짱구','도라에몽','피카츄','미키마우스','곰돌이 푸','헬로키티','스폰지밥','엘사',
+    '슈퍼마리오','소닉','라이언','어피치','무지','코난','루피','나루토','손오공','헐크','토르',
+    '캡틴 아메리카','올라프','스티치','토토로','둘리','아기공룡','텔레토비','뿡뿡이','타요',
+    '폴리','옥토넛','핑크퐁','아기상어','미니언','우디','버즈','심슨','케빈','슈렉']},
+  proverb:{ name:'속담', emoji:'🗣', words:[
+    '가는 말이 고와야 오는 말이 곱다','등잔 밑이 어둡다','원숭이도 나무에서 떨어진다',
+    '소 잃고 외양간 고친다','티끌 모아 태산','발 없는 말이 천리 간다',
+    '낮말은 새가 듣고 밤말은 쥐가 듣는다','백지장도 맞들면 낫다','우물 안 개구리',
+    '고래 싸움에 새우 등 터진다','배보다 배꼽이 크다','그림의 떡','식은 죽 먹기',
+    '누워서 떡 먹기','하늘의 별 따기','도둑이 제 발 저리다','서당 개 삼 년이면 풍월을 읊는다',
+    '개구리 올챙이 적 생각 못 한다','호랑이도 제 말 하면 온다','김칫국부터 마신다',
+    '아니 땐 굴뚝에 연기 나랴','세 살 버릇 여든까지 간다','바늘 도둑이 소 도둑 된다',
+    '사공이 많으면 배가 산으로 간다','원수는 외나무다리에서 만난다']},
+};
+const DECK_KEYS = Object.keys(WORD_DECKS);
 
 /* ══════════════════════════════════════════════
    게임 레지스트리 — 여기에 한 줄 추가하면 앱 전체에 반영됨
@@ -608,7 +743,7 @@ const GAMES = [
   },
   {
     id:'body', name:'몸으로 말해요 / 한글자로 말해요', emoji:'🕺', color:'#3DE0A8', mode:'team', weight:1.5,
-    role:'사회자', tag:'팀전 · 사회자 필요',
+    role:'사회자', tag:'팀전 · 사회자 필요', tool:'deck',
     rules:
 `<b>① 몸으로 말해요</b>
 · 사회자가 제시어를 낸다 (노래 제목, 영화 제목 등).
@@ -717,6 +852,7 @@ const LS = 'partygames_session';
 const S = {
   view:'home', code:null, pid:null, isHost:false, online:true,
   room:null, gameId:null, draft:null, unsub:null, hb:null, _lastPick:{},
+  play:null,   // 진행 도구 상태 (호스트 기기 로컬 전용 — 제시어가 남의 폰에 새면 안 됨)
 };
 
 const $ = s => document.querySelector(s);
@@ -735,6 +871,28 @@ function avColor(pid){
 }
 function vib(ms=10){ try{ navigator.vibrate?.(ms); }catch{} }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* 짧은 효과음 (WebAudio) — 시끄러운 숙소에서 타이머 종료를 귀로 알 수 있게 */
+let _ac = null;
+function beep(freq=880, dur=.12, type='sine', vol=.16){
+  try{
+    _ac = _ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (_ac.state === 'suspended') _ac.resume();
+    const o = _ac.createOscillator(), g = _ac.createGain();
+    o.type = type; o.frequency.value = freq;
+    o.connect(g); g.connect(_ac.destination);
+    g.gain.setValueAtTime(vol, _ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, _ac.currentTime + dur);
+    o.start(); o.stop(_ac.currentTime + dur);
+  }catch{}
+}
+const SFX = {
+  ok:   () => { beep(1046,.09,'triangle',.18); setTimeout(()=>beep(1568,.11,'triangle',.15),70); },
+  pass: () => beep(220,.11,'sine',.13),
+  tick: () => beep(1200,.04,'square',.07),
+  end:  () => { beep(392,.2,'sawtooth',.14); setTimeout(()=>beep(294,.34,'sawtooth',.14),190); },
+  go:   () => { beep(660,.09,'triangle',.14); setTimeout(()=>beep(990,.14,'triangle',.14),90); },
+};
 
 /* 게임 액센트 색 → CSS 변수 묶음 (color-mix 미지원 브라우저 대응) */
 function gcVars(hex){
@@ -960,9 +1118,113 @@ function makeTeams(count){
 }
 
 /* ══════════════════════════════════════════════
+   진행 도구 — 제시어 덱 (몸으로 말해요 / 한글자로 말해요)
+   ⚠️ 전부 이 기기 로컬 상태. Firebase에 올리지 않는다 —
+      제시어가 다른 사람 폰에 뜨면 게임이 성립하지 않기 때문.
+      최종 순위만 기존 scores 흐름으로 저장한다.
+══════════════════════════════════════════════ */
+const DEFAULT_CATS = ['animal','job','thing','food'];
+const shuffle = a => { for (let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; };
+
+function startDeckTool(){
+  const teams = S.room.teams || {count:0};
+  S.play = {
+    gameId:S.gameId, kind:'deck', phase:'setup',
+    mode:'body',                 // 'body' | 'oneword'
+    cats:[...DEFAULT_CATS], sec:60,
+    order:Array.from({length:teams.count}, (_,i) => i),
+    turn:0, letters:{}, results:{},
+    deck:[], di:0, cur:'', hits:[], left:0, _t:null,
+  };
+  go('play');
+}
+
+function buildDeck(){
+  const p = S.play;
+  const seen = new Set();
+  const all = [];
+  for (const k of p.cats)
+    for (const w of (WORD_DECKS[k]?.words || []))
+      if (!seen.has(w)){ seen.add(w); all.push({ w, c:k }); }   // 카테고리 교차 중복 제거
+  p.deck = shuffle(all); p.di = 0;
+}
+
+function nextWord(){
+  const p = S.play;
+  if (p.di >= p.deck.length){ buildDeck(); }   // 다 쓰면 다시 섞는다
+  p.cur = p.deck[p.di++] || { w:'—', c:null };
+}
+
+function stopPlayTimer(){ if (S.play?._t){ clearInterval(S.play._t); S.play._t = null; } }
+
+function renderTimer(){
+  const p = S.play; if (!p || p.phase !== 'run') return;
+  const bar = document.getElementById('t-bar'), sec = document.getElementById('t-sec');
+  if (!bar || !sec) return;
+  const pct = Math.max(0, p.left / p.sec) * 100;
+  bar.style.width = pct + '%';
+  const s = Math.max(0, Math.ceil(p.left));
+  if (sec.textContent !== s + '초') sec.textContent = s + '초';
+  const warn = p.left <= 10;
+  bar.parentElement.classList.toggle('warn', warn);
+  sec.classList.toggle('warn', warn);
+}
+
+function beginTurn(){
+  const p = S.play;
+  p.hits = []; p.left = p.sec; p.phase = 'run';
+  buildDeck(); nextWord();
+  SFX.go(); vib(20);
+  render();
+  stopPlayTimer();
+  let lastTick = Math.ceil(p.left);
+  p._t = setInterval(() => {
+    p.left -= 0.2;
+    const s = Math.ceil(p.left);
+    if (s !== lastTick){ lastTick = s; if (s > 0 && s <= 5) SFX.tick(); }
+    if (p.left <= 0){ endTurn(); return; }
+    renderTimer();
+  }, 200);
+}
+
+function endTurn(){
+  const p = S.play;
+  stopPlayTimer();
+  p.left = 0;
+  p.results[p.order[p.turn]] = p.hits.slice();
+  p.phase = 'turnEnd';
+  SFX.end(); vib([40,60,40]);
+  render();
+}
+
+function markWord(ok){
+  const p = S.play; if (p.phase !== 'run') return;
+  p.hits.push({ w:p.cur.w, ok });
+  ok ? SFX.ok() : SFX.pass();
+  vib(ok ? 16 : 8);
+  nextWord();
+  render();
+}
+
+/* 결과 → 기존 순위 입력 화면으로 넘긴다(동점·이견은 거기서 손으로 조정) */
+function deckToScore(){
+  const p = S.play;
+  const cnt = t => (p.results[t] || []).filter(x => x.ok).length;
+  const ranked = [...p.order].sort((a,b) => cnt(b) - cnt(a));
+  const teams = S.room.teams || {count:0,assign:{}};
+  S.draft = { gameId:p.gameId, mode:'team', order:ranked,
+    weight:G(p.gameId)?.weight ?? 1, assign:JSON.parse(JSON.stringify(teams.assign || {})) };
+  stopPlayTimer(); S.play = null;
+  go('score');
+}
+
+/* ══════════════════════════════════════════════
    렌더
 ══════════════════════════════════════════════ */
-function go(view){ S.view = view; render(); scrollTo(0,0); }
+function go(view){
+  if (view !== 'play') stopPlayTimer();
+  S.view = view; render(); scrollTo(0,0);
+}
 
 const av = (pid, name, cls='') =>
   `<div class="av ${cls}" style="background:${avColor(pid)}">${h(String(name||'?')[0])}</div>`;
@@ -981,6 +1243,10 @@ function renderSig(){
     r ? Object.entries(r.players).map(([k,p]) => [k, p.name, isOn(p)?1:0, (p.host||k===r.host)?1:0]) : 0,
     r?.teams || 0, r?.scores || 0, r?.rotation || 0,
     S.draft?.order || 0, S._lastPick || 0,
+    // ⚠️ play의 `left`(남은 초)는 넣지 않는다 — 매 틱 바뀌어 재렌더 폭주가 된다.
+    //    타이머 표시는 renderTimer()가 DOM을 직접 갱신한다.
+    S.play ? [S.play.phase, S.play.turn, S.play.di, S.play.hits.length,
+              S.play.mode, S.play.cats.join(''), S.play.sec, S.play.letters] : 0,
   ]);
 }
 
@@ -1010,13 +1276,14 @@ function render(force){
   code.style.display = inRoom ? '' : 'none';
   code.innerHTML = inRoom
     ? `${h(S.code)}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></svg>` : '';
-  back.style.display = ['games','game','score','board','settings'].includes(S.view) ? '' : 'none';
+  back.style.display = ['games','game','play','score','board','settings'].includes(S.view) ? '' : 'none';
   title.textContent = ({ home:'숙소 게임', lobby:'대기실', games:'게임 고르기',
-    game:G(S.gameId)?.name || '게임', score:'순위 입력', board:'종합 순위', settings:'설정' })[S.view] || '숙소 게임';
+    game:G(S.gameId)?.name || '게임', play:G(S.gameId)?.name || '진행 중',
+    score:'순위 입력', board:'종합 순위', settings:'설정' })[S.view] || '숙소 게임';
 
   const v = $('#view');
   const keep = grabFocus();
-  v.innerHTML = ({ home:vHome, lobby:vLobby, games:vGames, game:vGame, score:vScore, board:vBoard, settings:vSettings })[S.view]();
+  v.innerHTML = ({ home:vHome, lobby:vLobby, games:vGames, game:vGame, play:vPlay, score:vScore, board:vBoard, settings:vSettings })[S.view]();
 
   // 화면 전환일 때만 진입 애니메이션. 제자리 갱신은 애니메이션 없이 조용히 교체한다.
   if (viewChanged){
@@ -1035,6 +1302,7 @@ setInterval(() => { if (S.code) render(); }, 15000);
 
 $('#hd-back').onclick = () => {
   vib();
+  if (S.view === 'play'){ act('pl-quit', {}); return; }
   if (S.view === 'score'){ S.draft = null; go('game'); }
   else if (S.view === 'game') go('games');
   else go('lobby');
@@ -1214,7 +1482,172 @@ function vGame(){
       <div class="rules">${g.rules}</div>
     </div>
 
-    <button class="btn pri" data-act="score-start">✅ 게임 끝 — 순위 입력</button>`;
+    ${g.tool && S.isHost ? `
+      <div class="stack">
+        <button class="btn pri" data-act="tool-start">▶ 진행 도구로 시작하기</button>
+        <button class="btn gh" data-act="score-start">순위만 직접 입력</button>
+      </div>`
+    : `<button class="btn pri" data-act="score-start">✅ 게임 끝 — 순위 입력</button>`}`;
+}
+
+/* ── 진행 도구: 제시어 덱 ── */
+function vPlay(){
+  const p = S.play; if (!p) return '';
+  const g = G(p.gameId);
+  const teams = S.room.teams || {count:0,assign:{}};
+  const tc = i => TEAM_COLORS[i % TEAM_COLORS.length];
+  const members = i => Object.entries(teams.assign||{}).filter(([,t])=>Number(t)===i)
+    .map(([pid])=>pname(pid)).join(', ');
+  const wordCount = p.cats.reduce((n,k) => n + (WORD_DECKS[k]?.words.length || 0), 0);
+
+  /* 1) 설정 */
+  if (p.phase === 'setup') return `
+    <div class="gh" style="${gcVars(g.color)};padding:17px">
+      <div class="gh-n" style="font-size:18px;padding-right:0">${g.emoji} ${h(g.name)}</div>
+      <p class="note" style="margin-top:7px;position:relative">팀마다 한 번씩 돌아가며 진행합니다</p>
+    </div>
+
+    <div class="sec">방식</div>
+    <div class="seg">
+      <button data-act="pl-mode" data-v="body" class="${p.mode==='body'?'on':''}">🕺 몸으로 말해요</button>
+      <button data-act="pl-mode" data-v="oneword" class="${p.mode==='oneword'?'on':''}">🗣 한글자로 말해요</button>
+    </div>
+    <p class="note" style="margin:-2px 4px 0">${p.mode==='body'
+      ? '말 없이 몸동작만으로 설명합니다.'
+      : '팀이 정한 <b style="color:var(--elec)">한 글자</b>만 써서 설명합니다. 억양·연기는 자유.'}</p>
+
+    <div class="sec">제한 시간</div>
+    <div class="seg">
+      ${[45,60,90].map(s => `<button data-act="pl-sec" data-v="${s}" class="${p.sec===s?'on':''}">${s}초</button>`).join('')}
+    </div>
+
+    <div class="sec">제시어 <span class="n">${wordCount}개</span></div>
+    <div class="catgrid">
+      ${DECK_KEYS.map(k => `
+        <button class="cat ${p.cats.includes(k)?'on':''}" data-act="pl-cat" data-v="${k}">
+          <span class="e">${WORD_DECKS[k].emoji}</span>
+          <span>${h(WORD_DECKS[k].name)}</span>
+          <span class="c">${WORD_DECKS[k].words.length}</span>
+        </button>`).join('')}
+    </div>
+
+    <div style="height:20px"></div>
+    <div class="stack">
+      <button class="btn pri" data-act="pl-start" ${!p.cats.length ? 'disabled' : ''}>
+        ${p.cats.length ? '▶ 시작하기' : '카테고리를 하나 이상 골라주세요'}</button>
+      <button class="btn gh" data-act="pl-quit">그만두기</button>
+    </div>`;
+
+  /* 2) 턴 대기 */
+  if (p.phase === 'ready'){
+    const t = p.order[p.turn];
+    return `
+      <div class="turnhd">
+        <span class="sw" style="--tc:${tc(t)}"></span>
+        <span class="t">${t+1}팀 차례</span>
+        <span class="r">${p.turn+1} / ${p.order.length}</span>
+      </div>
+      <div class="card">
+        <p class="note" style="font-size:14px;color:var(--dim)">${h(members(t)) || '팀원 없음'}</p>
+      </div>
+
+      ${p.mode==='oneword' ? `
+        <div class="sec">이 팀의 한 글자</div>
+        <div class="card">
+          <input class="inp" id="in-letter" maxlength="1" placeholder="예: 짜" value="${h(p.letters[t]||'')}"
+            style="text-align:center;font-size:30px;font-weight:900;padding:14px">
+          <p class="note" style="margin-top:9px">이 글자만 써서 설명해야 합니다</p>
+        </div>` : ''}
+
+      <div style="text-align:center;padding:26px 18px;border-radius:var(--r-l);
+        background:linear-gradient(150deg,rgba(255,107,74,.14),rgba(255,184,77,.05));
+        border:1px solid rgba(255,184,77,.3);margin-bottom:14px">
+        <div style="font-size:34px;margin-bottom:10px">📱</div>
+        <div style="font-weight:800;font-size:15px;line-height:1.6;word-break:keep-all">
+          설명할 사람이 폰을 받으세요<br>
+          <span style="color:var(--dim);font-weight:600;font-size:13.5px">나머지는 화면을 보면 안 됩니다</span>
+        </div>
+      </div>
+
+      <div class="stack">
+        <button class="btn pri" data-act="pl-begin">${p.sec}초 시작</button>
+        <button class="btn gh" data-act="pl-quit">그만두기</button>
+      </div>`;
+  }
+
+  /* 3) 진행 중 */
+  if (p.phase === 'run'){
+    const t = p.order[p.turn];
+    const hit = p.hits.filter(x => x.ok).length;
+    const wl = (p.cur.w || '').length;
+    const long = wl > 14 ? 'xlong' : wl > 8 ? 'long' : '';
+    return `
+      <div class="turnhd">
+        <span class="sw" style="--tc:${tc(t)}"></span>
+        <span class="t">${t+1}팀</span>
+        <span class="r">${p.turn+1} / ${p.order.length}</span>
+      </div>
+      <div class="tbar"><i id="t-bar" style="width:100%"></i></div>
+      <div class="trow">
+        <div class="tsec" id="t-sec">${p.sec}초</div>
+        <div class="thit">맞춘 개수 ${hit}</div>
+      </div>
+
+      <div class="wcard">
+        <div>
+          ${p.mode==='oneword' && p.letters[t]
+            ? `<div class="wletter">🗣 우리 글자 「${h(p.letters[t])}」</div>`
+            : `<div class="wcat">${h(WORD_DECKS[p.cur.c]?.name || '')}</div>`}
+          <div class="wtxt ${long}">${h(p.cur.w)}</div>
+        </div>
+      </div>
+
+      <div class="wbtns">
+        <button class="bigbtn pass" data-act="pl-mark" data-v="0">패스</button>
+        <button class="bigbtn ok" data-act="pl-mark" data-v="1">정답!</button>
+      </div>
+      <div style="height:10px"></div>
+      <button class="btn gh sm" data-act="pl-stop" style="width:100%">시간 전에 끝내기</button>`;
+  }
+
+  /* 4) 턴 종료 */
+  if (p.phase === 'turnEnd'){
+    const t = p.order[p.turn];
+    const list = p.results[t] || [];
+    const hit = list.filter(x => x.ok).length;
+    const isLast = p.turn >= p.order.length - 1;
+    return `
+      <div class="pickres">
+        <div class="pickres-l">${t+1}팀 결과</div>
+        <div class="pickres-v">${hit}개</div>
+      </div>
+      ${list.length ? `<div class="sec">제시어</div>
+        ${list.map(x => `<div class="sumrow ${x.ok?'':'no'}">
+            <span class="m">${x.ok?'✅':'⛔'}</span><span class="w">${h(x.w)}</span></div>`).join('')}`
+        : '<div class="empty"><div class="empty-e">😶</div><div class="empty-t">한 개도 못 넘겼어요</div></div>'}
+      <div style="height:18px"></div>
+      <button class="btn pri" data-act="pl-next">
+        ${isLast ? '🏁 전체 결과 보기' : `다음 — ${p.order[p.turn+1]+1}팀 차례`}</button>`;
+  }
+
+  /* 5) 전체 종료 */
+  const cnt = t => (p.results[t] || []).filter(x => x.ok).length;
+  const ranked = [...p.order].sort((a,b) => cnt(b) - cnt(a));
+  return `
+    <div class="sec">최종 결과</div>
+    ${ranked.map((t,i) => `
+      <div class="tscore" style="--tc:${tc(t)}">
+        <div class="rno ${i<3?'m'+(i+1):''}">${i+1}</div>
+        <div class="n">${t+1}팀 <span class="note" style="font-weight:600">${h(members(t))}</span></div>
+        <div class="v">${cnt(t)}<small>개</small></div>
+      </div>`).join('')}
+    <div style="height:18px"></div>
+    <div class="stack">
+      <button class="btn pri" data-act="pl-save">이 순위로 반영하기</button>
+      <button class="btn gh" data-act="pl-quit">점수 반영 없이 나가기</button>
+    </div>
+    <p class="note" style="text-align:center;margin-top:12px">
+      동점이거나 순서를 바꾸고 싶으면 다음 화면에서 조정할 수 있어요</p>`;
 }
 
 /* ── 순위 입력 ── */
@@ -1482,6 +1915,52 @@ async function act(a, d){
     if (S.room.rotation) delete S.room.rotation[S.gameId];
     delete S._lastPick[S.gameId];
     pushHostState(); render(); toast('순번을 초기화했어요'); break;
+  }
+
+  /* ── 진행 도구 ── */
+  case 'tool-start': {
+    if (!S.isHost) return toast('진행 도구는 진행자 기기에서 열어주세요');
+    const g = G(S.gameId);
+    if (g.mode === 'team' && (S.room.teams?.count || 0) < 2)
+      return toast('팀전이에요 — 대기실에서 팀을 먼저 나눠주세요');
+    startDeckTool(); break;
+  }
+  case 'pl-mode': S.play.mode = d.v; render(); break;
+  case 'pl-sec':  S.play.sec = Number(d.v); render(); break;
+  case 'pl-cat': {
+    const c = S.play.cats;
+    const i = c.indexOf(d.v);
+    i < 0 ? c.push(d.v) : c.splice(i, 1);
+    render(); break;
+  }
+  case 'pl-start': {
+    if (!S.play.cats.length) return toast('카테고리를 하나 이상 골라주세요');
+    Object.assign(S.play, { phase:'ready', turn:0, results:{} });
+    render(); break;
+  }
+  case 'pl-begin': {
+    const p = S.play, t = p.order[p.turn];
+    if (p.mode === 'oneword'){
+      const v = ($('#in-letter')?.value || '').trim();
+      if (!v) return toast('이 팀이 쓸 한 글자를 정해주세요');
+      p.letters[t] = v[0];
+    }
+    beginTurn(); break;
+  }
+  case 'pl-mark': markWord(d.v === '1'); break;
+  case 'pl-stop': endTurn(); break;
+  case 'pl-next': {
+    const p = S.play;
+    if (p.turn >= p.order.length - 1){ p.phase = 'done'; confetti(70); }
+    else { p.turn++; p.phase = 'ready'; }
+    render(); break;
+  }
+  case 'pl-save': deckToScore(); break;
+  case 'pl-quit': {
+    const p = S.play;
+    const mid = p && (p.phase === 'run' || p.turn > 0 || Object.keys(p.results || {}).length > 0);
+    if (mid && !confirm('진행 중인 게임을 그만둘까요? 지금까지 결과는 사라져요.')) return;
+    stopPlayTimer(); S.play = null; go('game'); break;
   }
 
   case 'score-start': {
