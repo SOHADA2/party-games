@@ -11,9 +11,26 @@
 
 ## ⚠️ 새 세션 / 다른 컴퓨터에서 시작할 때
 
-1. **`git pull` 먼저.** 여러 기기에서 `main`에 직접 푸시하는 방식이라, 안 하면 충돌한다.
-2. 이 문서 아래 **「세션 이력」** 을 읽고 현재 상태·미해결 항목을 파악한다.
-3. 작업 후 **버전 올리고**(`APP_VERSION`) **세션 이력 갱신**하고 푸시한다.
+```bash
+git pull                 # ① 항상 먼저. 여러 기기에서 main 에 직접 푸시한다
+node -v                  # ② Node 18+ 만 있으면 된다 (npm install 없음, 의존성 0)
+node tools/check.mjs     # ③ 받은 코드가 멀쩡한지 30초 확인
+node serve.mjs 8080      # ④ 작업 시작 (같은 와이파이의 폰에서도 열린다)
+```
+
+⑤ 이 문서 아래 **「세션 이력」** 을 읽고 현재 상태·미해결 항목을 파악한다.
+⑥ 작업 후 **버전 올리고**(`APP_VERSION`) **세션 이력 갱신**하고 **바로 푸시**한다.
+
+### 다른 기기로 이어서 작업하기 ★
+- **필요한 건 저장소 전부다.** 빌드도, 설치도, 비밀키도 없다. Firebase 설정은 `index.html`
+  안에 그대로 있고(공개 RTDB · 친구끼리 전제), 검증 도구는 `tools/`에 들어 있다.
+  → `git clone` 하고 Node만 있으면 이 문서의 모든 명령이 그대로 돈다.
+- **끝내면 바로 푸시할 것.** 커밋만 하고 두면 다른 기기에서 그 작업이 안 보이고,
+  같은 파일(`index.html` 단일 파일이라 거의 항상 겹친다)을 고쳐 충돌한다.
+- **충돌이 났다면** `git pull --rebase` 로 풀고, `index.html`은 한 파일에 전부 들어 있어
+  자동 병합이 위험하다 → 충돌 구간은 손으로 고른 뒤 **반드시 `node tools/check.mjs`** 로
+  끊어진 참조를 확인하고 푸시한다.
+- `_*.html`(검증 사본)·`node_modules/`는 gitignore 대상이다. 커밋되면 안 된다.
 
 ---
 
@@ -29,6 +46,7 @@
 | `manifest.json` / `icon.svg` / `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | PWA — 홈 화면 추가 시 앱처럼 실행 |
 | `sw.js` | 앱 셸 network-first + **폰트 CDN 캐시-우선**. Firebase 요청은 절대 가로채지 않음 |
 | `serve.mjs` | 로컬 테스트 서버 (배포물 아님) |
+| `tools/` | 검증 도구 — 문법·끊어진 참조 검사, 검증 사본 생성, 헤드리스 스샷 (배포물 아님) |
 
 폰트는 **Pretendard Variable 동적 서브셋**(jsdelivr CDN). 숙소 와이파이가 끊겨도
 `sw.js`의 `ASSET_CACHE`에 한 번 받아두면 유지된다. ⚠️ `sw.js`의 캐시 이름(`party-shell-v3`
@@ -85,36 +103,59 @@ node serve.mjs 8123   # 포트 지정
 
 ## 검증 레시피 (커밋 전 필수)
 
-1. **문법**: 인라인 `<script type="module">` 추출 → `node --check`
+1. **문법 + 끊어진 참조**
    ```bash
-   python -c "
-   import re,os
-   s=open('index.html',encoding='utf-8').read()
-   for i,b in enumerate(re.findall(r'<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)</script>', s)):
-       p=os.path.join(os.environ['TEMP'],'pg_%d.mjs'%i); open(p,'w',encoding='utf-8').write(b); print(p)
-   "
-   node --check "%TEMP%\pg_0.mjs"
+   node tools/check.mjs          # 실패하면 exit 1
    ```
-   ⚠️ `node --check`는 **미선언 식별자(런타임 ReferenceError)를 못 잡는다.** 반드시 브라우저로도 띄울 것.
+   단일 HTML이라 `node --check index.html` 은 안 된다(`ERR_UNKNOWN_FILE_EXTENSION`).
+   이 도구가 `<script type="module">` 을 뽑아 검사하고 **원본 줄번호로 되돌려** 알려준다.
+   ⚠️ 문법 검사만으로는 **지운 함수를 아직 호출하는 것**을 못 잡는다(화면을 갈아엎을 때
+   가장 자주 나는 사고). 그래서 선언 없이 호출되는 이름도 같이 훑는다.
 
-2. **시각 검증 (이 PC = Edge 헤드리스)**
-   - 출력 png는 **Temp**에 (스크래치패드는 쓰기 거부 0x5)
-   - `serve.mjs` 띄우고 `http://localhost:PORT` 로 접속 (file:// 아님)
+2. **검증용 사본 만들기 — 진짜 DB를 건드리지 않는다**
    ```bash
-   msedge --headless=new --disable-gpu --no-sandbox --user-data-dir=<tmp> \
-     --virtual-time-budget=5000 --screenshot=<Temp>/x.png --window-size=420,1500 \
-     "http://localhost:8123/"
+   node tools/demo.mjs tools/scenarios/crime.js      _demo.html   # 화면 스냅샷용
+   node tools/demo.mjs tools/scenarios/crime-e2e.js  _t.html      # 전 구간 자동 점검
    ```
-   ⚠️ 모바일 폭 스샷의 **우측 잘림은 헤드리스 캡처 아티팩트**(실제 오버플로 아님).
+   `firebase-database` **import 한 줄**을 가로채 `set/update/remove/get/onValue`를 스텁으로
+   바꾼다. 그래서 사본에서는 무슨 짓을 해도 RTDB에 못 쓴다.
+   ⚠️ 예전엔 호출부 7군데를 문자열로 패치했는데, 화면을 고칠 때마다 그 문자열이 사라져
+   **조용히 무력화**됐다(= 진짜 DB에 씀. 유령 방 4821 사고). 호출부는 절대 패치하지 말 것.
 
-3. **화면별 검증용 데모 주입**: 방을 실제로 만들지 않고 각 화면을 찍으려면,
-   `index.html` 사본(`_demo.html`, gitignore됨)을 만들어 `watchConnection(); render();` 뒤에
-   `S.room`/`S.view`를 채우는 블록을 끼워 넣고 `?demo=1&v=lobby` 식으로 연다.
-   **검증 후 사본은 삭제**.
-   ⚠️ **데모에서 `addBots()`·`createRoom()` 같은 쓰기 함수를 부르면 실제 RTDB가 오염된다**
-   (실제로 봇 6명짜리 유령 방이 생긴 적 있음). 데모 사본에서는 `pushHostState`/`update`를
-   `_DEMO` 플래그로 막고, 그래도 방이 생겼으면 `party/rooms/{코드}` 를 DELETE 할 것.
+3. **자동 점검 / 스크린샷** (`serve.mjs` 를 먼저 띄운다)
+   ```bash
+   node serve.mjs 8080 &
+   node tools/shot.mjs --dom "/_t.html?demo=1"                     # E2E 결과, 실패 시 exit 1
+   node tools/shot.mjs "/_demo.html?demo=1&v=grill" -w 440 -h 1500 # 한 화면
+   node tools/shot.mjs --grid brief,search,vote -w 400 -h 1300     # 여러 화면 한 장에
+   ```
+   `crime.js` 의 `v=` 단계: `setup brief intro search read grill vote ended` (진행자 화면),
+   `role`(무고) · `culprit`(범인) · `myturn`(내 차례) (참가자 폰). `&show=1` 은 홀드 박스 펼침.
+
+   **★ 헤드리스 함정 — 플래그를 지우지 말 것 (`tools/shot.mjs`가 이미 처리한다)**
+   - `--no-sandbox --user-data-dir=<새 폴더>` 를 빼면 **그냥 멈춘다**(프로필 잠금).
+     "이 PC에서 스크린샷이 안 된다"의 정체는 거의 항상 이것이었다.
+   - 출력 png는 **Temp**에 쓴다(스크래치패드는 쓰기 거부 0x5).
+   - `file://` 로 열지 말 것. 하네스와 대상이 **다른 출처면 가상시간이 전파되지 않아**
+     애니메이션 도중에 찍힌다 → 항상 `localhost` 로.
+   - 모바일 폭 단일 스샷의 **우측 잘림은 캡처 아티팩트**다(실제 오버플로 아님).
+     정확히 보려면 `--grid` 를 쓴다 — iframe마다 폭을 주므로 잘리지 않는다.
+
+4. **검증이 끝나면 사본을 지운다**: `rm -f _*.html` (gitignore 대상이지만 남겨두지 말 것)
    ⚠️ **더미 데이터에 사람 이름을 쓰지 말 것**(아래 원칙 참조).
+
+### 도구 (`tools/` · 의존성 0)
+
+| 파일 | 역할 |
+|---|---|
+| `tools/check.mjs` | 문법 + 끊어진 참조 + 죽은 코드. 실패 시 exit 1 |
+| `tools/demo.mjs` | Firebase 쓰기를 막은 검증 사본 생성 (import 가로채기) |
+| `tools/shot.mjs` | Edge 헤드리스 스크린샷 / DOM 덤프. Edge 경로 자동 탐색 |
+| `tools/scenarios/crime.js` | 크라임씬 화면을 원하는 단계까지 진행시킨 상태로 띄움 |
+| `tools/scenarios/crime-e2e.js` | 크라임씬 전 구간 자동 점검(과거에 터진 것들만 모아둠) |
+
+⚠️ 도구는 **음성 테스트를 통과한 상태다**(일부러 버그를 심으면 exit 1). 고칠 때도 그 성질을
+유지할 것 — 절대 실패하지 않는 검사기는 없느니만 못하다.
 
 ### ⚠️ 이름 원칙 (사장님 지시)
 **실존 인물로 읽힐 수 있는 사람 이름을 예시·더미·주석 어디에도 쓰지 않는다.**
@@ -345,6 +386,39 @@ PWA(홈 화면 추가·앱 셸 캐시), 화면 꺼짐 방지(Wake Lock).
 ## 세션 작업 이력
 
 > 새 세션은 이 섹션을 읽어 최근 맥락 파악. 작업 완료 후 갱신할 것.
+
+### 도구 정비 (2026-08-13) — 🧰 다른 기기에서 그대로 이어지도록 ★
+
+사장님: "다른 컴퓨터 또는 핸드폰에서 이어해도 문제 없게 해줘" (= 개발 작업 이어하기)
+
+리포 위생은 이미 깨끗했다(추적 누락 0, 빌드 0, 비밀키 0). 진짜 마찰은 **검증 도구가
+리포에 없다는 것**이었다 — 매 세션 임시 폴더에 파이썬 스크립트를 새로 써서 쓰고 버렸다.
+다른 기기에는 그게 통째로 없다. 게다가 이 문서의 스크린샷 레시피는 **틀려 있었다**
+(`--no-sandbox --user-data-dir` 누락 → 헤드리스가 그냥 멈춘다. 오늘도 2분 타임아웃을 맞았다).
+
+- `tools/check.mjs` — 문법 + **끊어진 참조**(지운 함수를 아직 호출하는 것) + 죽은 코드.
+  단일 HTML이라 `node --check` 가 안 되는 문제를 흡수하고, **원본 줄번호로 되돌려** 준다.
+- `tools/demo.mjs` — Firebase 쓰기를 막은 검증 사본 생성.
+  ⚠️ 예전 방식(호출부 7군데를 문자열로 패치)은 화면을 고칠 때마다 그 문자열이 사라져
+  **조용히 무력화**됐다. 지금은 `firebase-database` **import 한 줄**을 가로채 스텁으로
+  바꾼다 — 호출부가 어떻게 바뀌어도 막힌다. 호출부는 다시는 패치하지 말 것.
+- `tools/shot.mjs` — 헤드리스 스샷/DOM 덤프. Edge 경로 자동 탐색, 필수 플래그 내장,
+  `--grid` 로 여러 화면을 한 장에(우측 잘림 아티팩트가 없다).
+- `tools/scenarios/crime.js` · `crime-e2e.js` — 화면 스냅샷 / 전 구간 자동 점검.
+  E2E는 **과거에 실제로 터진 것들**만 모아 두었다(order 누수·정체 누수·참가자 폰 조작버튼 등).
+
+**검증**
+① 도구 음성 테스트 — 일부러 `const order = pool` 버그를 심으니 E2E가 `order[0]≠범인: false`
+  로 잡고 exit 1. 문법을 깨니 `index.html:2411` 로 짚음(실제 파손 위치 2410).
+② **새 기기 흉내** — 추적 파일만 빈 폴더에 복사하고 이 문서의 명령을 그대로 실행 →
+  설치 없이 check / 사본 / E2E / 스샷 전부 통과.
+③ 라이브 RTDB 방 목록 확인 → **유령 방 0건**(사본이 실제로 쓰기를 못 한다).
+
+⚠️ `index.html` 은 건드리지 않았다. `APP_VERSION` 은 v0.11.0 그대로.
+
+⚠️ **이 문서를 스크립트로 고칠 때**: bash `python -c "..."` 안에 백틱을 넣으면 셸이
+명령 치환으로 먹어 **코드 스팬이 통째로 사라진다**(이 항목도 그렇게 한 번 깨졌다).
+반드시 `.py` 파일로 저장해서 `python 파일.py` 로 돌릴 것.
 
 ### v0.11.0 (2026-08-13) — 🍽 크라임씬을 **테이블 게임**으로 ★★★
 
