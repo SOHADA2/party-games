@@ -25,8 +25,15 @@ if (!scenarioPath){
 let html = await readFile(srcPath, 'utf8');
 const scenario = await readFile(scenarioPath, 'utf8');
 
-/* ── 1) firebase-database import 를 가로채 스텁으로 갈아끼운다 ── */
+/* ── 1) firebase import 를 가로채 스텁으로 갈아끼운다 ──
+   ⚠️ 쓰기 함수뿐 아니라 **연결 자체**(initializeApp/getDatabase/ref)도 막는다.
+      CDN이 막힌 환경(원격 컨테이너·기내 와이파이)에서는 import 가 실패하면
+      `<script type="module">` 이 통째로 안 돌아 시나리오가 조용히 건너뛰어진다.
+      "검사가 다 통과한 줄 알았는데 애초에 실행이 안 된 것"이 제일 나쁜 실패다. */
 const STUBS = {
+  initializeApp: '() => ({})',
+  getDatabase:   '() => ({})',
+  ref:           '(...a) => ({ _p:a.slice(1).join("/") })',
   set:      '() => Promise.resolve()',
   update:   '() => Promise.resolve()',
   remove:   '() => Promise.resolve()',
@@ -36,19 +43,27 @@ const STUBS = {
   onDisconnect: '() => ({ set:() => Promise.resolve(), remove:() => Promise.resolve() })',
 };
 
-const impRe = /import\s*\{([^}]*)\}\s*(?:\r?\n\s*)?from\s*(["'])([^"']*firebase-database\.js)\2\s*;/;
-const imp = html.match(impRe);
-if (!imp){ console.error('✕ firebase-database import 를 못 찾았습니다 — tools/demo.mjs 를 고쳐야 합니다'); process.exit(1); }
+const impRe = /import\s*\{([^}]*)\}\s*(?:\r?\n\s*)?from\s*(["'])([^"']*\/firebase-[\w-]+\.js)\2\s*;/g;
+const imps = [...html.matchAll(impRe)];
+if (!imps.length){ console.error('✕ firebase import 를 못 찾았습니다 — tools/demo.mjs 를 고쳐야 합니다'); process.exit(1); }
 
-const names = imp[1].split(',').map(s => s.trim()).filter(Boolean);
-const keep    = names.filter(n => !(n in STUBS));
-const stubbed = names.filter(n => n in STUBS);
-if (!stubbed.length){ console.error('✕ 막을 쓰기 함수가 하나도 없습니다 — import 목록을 확인하세요'); process.exit(1); }
-
-html = html.replace(impRe,
-  `import { ${keep.join(', ')} } from ${imp[2]}${imp[3]}${imp[2]};\n` +
-  `/* ⚠️ 검증 사본: 아래 이름들은 진짜 Firebase 대신 스텁이다. 절대 커밋하지 말 것(_*.html 은 gitignore) */\n` +
-  stubbed.map(n => `const ${n} = ${STUBS[n]};`).join('\n'));
+const stubbed = [];
+html = html.replace(impRe, (_, list, q, url) => {
+  const names = list.split(',').map(s => s.trim()).filter(Boolean);
+  const keep = names.filter(n => !(n in STUBS));
+  names.filter(n => n in STUBS).forEach(n => stubbed.push(n));
+  /* keep 이 남으면 import 를 살려야 하는데, 그러면 CDN 의존이 되살아난다 → 그때만 남긴다 */
+  return (keep.length ? `import { ${keep.join(', ')} } from ${q}${url}${q};\n` : '')
+    + `/* ⚠️ 검증 사본: 아래 이름들은 진짜 Firebase 대신 스텁이다. 절대 커밋하지 말 것(_*.html 은 gitignore) */\n`
+    + names.filter(n => n in STUBS).map(n => `const ${n} = ${STUBS[n]};`).join('\n');
+});
+if (!stubbed.length){ console.error('✕ 막을 함수가 하나도 없습니다 — import 목록을 확인하세요'); process.exit(1); }
+for (const must of ['set','update','remove','initializeApp']){
+  if (!stubbed.includes(must)){
+    console.error(`✕ ${must} 를 못 막았습니다 — 진짜 DB에 쓰거나 CDN에 붙습니다. 중단합니다.`);
+    process.exit(1);
+  }
+}
 
 /* ── 2) 시나리오를 모듈 끝에 붙인다(부팅이 끝난 뒤 실행되도록) ── */
 const tail = html.lastIndexOf('</script>');

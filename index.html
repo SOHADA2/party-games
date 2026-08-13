@@ -775,7 +775,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.11.0';
+const APP_VERSION = 'v0.12.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -921,6 +921,210 @@ const ACT_LINES = [
   { l:'잠깐만, 나 이 노래 알아', e:['흥분하며','아련하게','잘난 척','졸린 듯'] },
   { l:'너한테만 말하는 건데...', e:['속삭이며','다급하게','의미심장하게','신나서'] },
 ];
+
+/* ── 안 봤어도 들키지마: 작품 + 「본 사람만 아는」 문제 ──
+   ⚠️ 출제자가 문제를 직접 만들면 게임이 시작을 못 한다(가장 큰 마찰이었다).
+      그래서 앱이 작품·문제·정답을 전부 갖고 있고, 출제자는 그 작품을 안 봤어도 진행할 수 있다.
+   · a(정답)는 출제자만 홀드로 본다. 표현이 달라도 뜻이 맞으면 정답 — 판정은 출제자 몫.
+   · 너무 유명해서 안 봐도 아는 문제가 걸리면 「다른 문제」로 넘긴다.
+   ⚠️ 배우·실존 인물 이름은 쓰지 않는다(이름 원칙). 등장인물은 역할로 부른다. */
+const WATCH_DECKS = {
+  '한국 영화': [
+    { t:'기생충', q:[
+      { q:'반지하 가족의 아들은 어떤 방법으로 저택에 처음 들어갔나?', a:'친구를 대신해 딸의 과외 선생으로 위장해서 들어갔다.' },
+      { q:'저택 지하에 숨어 살던 남자는 누구와 관계있는 사람이었나?', a:'그 집에서 일하던 이전 가정부의 남편이었다.' }] },
+    { t:'극한직업', q:[
+      { q:'형사들이 잠복하려고 인수한 가게는 무엇이었나?', a:'치킨집. 간판은 「수원왕갈비통닭」.' },
+      { q:'잠복용으로 차린 가게는 결국 어떻게 됐나?', a:'맛집으로 대박이 나서 장사에 정신이 팔린다.' }] },
+    { t:'부산행', q:[
+      { q:'주인공 일행이 타고 있던 것은?', a:'서울에서 부산으로 가는 KTX 열차.' },
+      { q:'마지막에 부산까지 살아서 도착한 사람은 몇 명인가?', a:'두 명 — 임신한 여자와 어린 딸.' }] },
+    { t:'명량', q:[
+      { q:'주인공이 전투에 나설 때 남아 있던 배는 몇 척인가?', a:'열두 척.' }] },
+    { t:'베테랑', q:[
+      { q:'"어이가 없네"라는 대사를 하는 사람은 어느 쪽인가?', a:'악역인 재벌 3세.' }] },
+    { t:'도둑들', q:[
+      { q:'일당이 훔치려는 목표물의 이름은?', a:'다이아몬드 「태양의 눈물」.' }] },
+    { t:'암살', q:[
+      { q:'이야기의 배경이 되는 시대는?', a:'1930년대 일제강점기.' }] },
+    { t:'국제시장', q:[
+      { q:'주인공이 어린 시절 아버지와 헤어지게 된 사건은?', a:'6·25 때의 흥남 철수. 배에 오르다 동생을 놓치고 아버지가 찾으러 간다.' }] },
+    { t:'왕의 남자', q:[
+      { q:'두 광대는 한양에서 어쩌다 궁으로 들어가게 되나?', a:'왕을 조롱하는 놀이판을 벌이다 붙잡혔고, 왕 앞에서 다시 해 보이게 된다.' }] },
+    { t:'살인의 추억', q:[
+      { q:'영화의 마지막 장면에서 형사는 무엇을 하나?', a:'카메라(관객)를 정면으로 오래 바라본다.' }] },
+    { t:'올드보이', q:[
+      { q:'주인공이 영문도 모른 채 갇혀 있던 기간은?', a:'15년.' }] },
+    { t:'타짜', q:[
+      { q:'주인공이 뛰어드는 도박의 종목은?', a:'화투(섰다).' }] },
+    { t:'광해, 왕이 된 남자', q:[
+      { q:'왕을 대신해 왕 노릇을 하게 된 사람의 원래 직업은?', a:'저잣거리의 광대(만담꾼).' }] },
+    { t:'곡성', q:[
+      { q:'마을에 나타나 소문의 중심이 되는 외지인은 어느 나라 사람인가?', a:'일본인.' }] },
+    { t:'7번방의 선물', q:[
+      { q:'주인공이 갇힌 감방은 몇 번 방인가?', a:'7번 방.' }] },
+    { t:'수상한 그녀', q:[
+      { q:'할머니는 사진관에서 사진을 찍고 나온 뒤 어떻게 되나?', a:'스무 살 무렵의 모습으로 젊어진다.' }] },
+    { t:'늑대소년', q:[
+      { q:'소녀가 늑대소년에게 가장 먼저 가르친 말은?', a:'"기다려".' }] },
+    { t:'관상', q:[
+      { q:'주인공이 가진 능력은?', a:'얼굴(관상)을 보고 그 사람의 됨됨이와 앞날을 읽는다.' }] },
+    { t:'국가대표', q:[
+      { q:'이 영화의 종목은?', a:'스키점프.' }] },
+    { t:'써니', q:[
+      { q:'중년이 된 주인공이 다시 찾아 나서는 사람들은?', a:'고등학교 시절 어울리던 친구 무리 「써니」의 멤버들.' }] },
+    { t:'신세계', q:[
+      { q:'조직의 간부로 신임받는 주인공의 진짜 정체는?', a:'조직에 잠입한 경찰(언더커버).' }] },
+    { t:'범죄도시', q:[
+      { q:'주인공 형사가 상대하는 조직은 어디서 건너온 자들인가?', a:'중국 하얼빈에서 넘어온 조직.' }] },
+  ],
+  '외국 영화': [
+    { t:'타이타닉', q:[
+      { q:'두 주인공은 어떻게 처음 만나나?', a:'여자가 배 난간 밖에서 뛰어내리려 할 때 남자가 말리면서 만난다.' },
+      { q:'할머니가 된 여주인공이 마지막에 바다로 던진 것은?', a:'그 목걸이(푸른 다이아몬드).' }] },
+    { t:'인터스텔라', q:[
+      { q:'주인공은 결국 딸에게 어떻게 메시지를 전하나?', a:'책장 뒤의 다차원 공간에서 시계 초침을 움직여 모스부호로 전한다.' }] },
+    { t:'인셉션', q:[
+      { q:'주인공이 꿈인지 현실인지 확인할 때 쓰는 물건은?', a:'팽이(토템).' },
+      { q:'마지막 장면에서 그 물건은 어떻게 되나?', a:'돌다가 흔들리는 순간 화면이 끊긴다 — 멈추는지 안 보여준다.' }] },
+    { t:'어벤져스: 엔드게임', q:[
+      { q:'마지막 전투에서 스톤을 끼고 손가락을 튕긴 사람은 어떻게 되나?', a:'적을 전부 지우고 그 대가로 목숨을 잃는다.' }] },
+    { t:'겨울왕국', q:[
+      { q:'언니가 가진 힘은?', a:'얼음과 눈을 만들어내는 힘.' },
+      { q:'저주를 푼 「진정한 사랑의 행동」은 무엇이었나?', a:'동생이 언니 앞을 막아서서 대신 칼을 맞은 것.' }] },
+    { t:'아바타', q:[
+      { q:'인간들이 그 행성에서 캐내려는 자원의 이름은?', a:'언옵타늄.' }] },
+    { t:'조커', q:[
+      { q:'주인공이 처음에 하고 있던 일은?', a:'광대 대행업체 소속 광대. 코미디언을 꿈꾼다.' }] },
+    { t:'라라랜드', q:[
+      { q:'두 주인공은 결말에서 함께하게 되나?', a:'아니다. 각자 꿈을 이루고 다른 삶을 산다.' }] },
+    { t:'어바웃 타임', q:[
+      { q:'주인공 집안의 남자들이 가진 능력은?', a:'자기가 겪었던 과거로 돌아갈 수 있는 시간여행.' }] },
+    { t:'해리 포터와 마법사의 돌', q:[
+      { q:'주인공 이마의 흉터는 무슨 모양인가?', a:'번개 모양.' },
+      { q:'주인공이 배정받은 기숙사는?', a:'그리핀도르.' }] },
+    { t:'반지의 제왕', q:[
+      { q:'반지를 없애려면 어디까지 가야 하나?', a:'모르도르에 있는 운명의 산 불길 속.' }] },
+    { t:'매트릭스', q:[
+      { q:'주인공은 두 개의 알약 중 어느 쪽을 골랐나?', a:'빨간 약.' }] },
+    { t:'인사이드 아웃', q:[
+      { q:'머릿속 감정 캐릭터는 모두 몇 명인가?', a:'다섯 — 기쁨·슬픔·버럭·까칠·소심.' }] },
+    { t:'토이 스토리', q:[
+      { q:'장난감들은 사람이 나타나면 어떻게 하나?', a:'그 자리에서 움직임을 멈추고 그냥 인형인 척한다.' }] },
+    { t:'쇼생크 탈출', q:[
+      { q:'주인공은 어떤 길로 감옥을 빠져나가나?', a:'벽에 붙인 포스터 뒤로 수십 년에 걸쳐 파둔 구멍.' }] },
+    { t:'포레스트 검프', q:[
+      { q:'주인공이 어느 날 갑자기 시작해 몇 년이나 계속한 일은?', a:'그냥 달리기. 미국을 몇 번이나 가로지르며 3년 넘게 뛴다.' }] },
+    { t:'알라딘', q:[
+      { q:'램프의 요정이 들어주지 못하는 소원 세 가지는?', a:'사람을 죽이는 것, 죽은 사람을 살리는 것, 누군가를 사랑에 빠지게 하는 것.' }] },
+    { t:'아이언맨', q:[
+      { q:'주인공은 첫 슈트를 어디서 만들었나?', a:'납치되어 갇힌 동굴 속.' }] },
+    { t:'주토피아', q:[
+      { q:'주인공 토끼의 직업은?', a:'경찰관.' }] },
+    { t:'코코', q:[
+      { q:'주인공이 흘러들어간 세계는?', a:'죽은 자들의 세상.' }] },
+    { t:'스파이더맨: 노 웨이 홈', q:[
+      { q:'주인공이 마법사에게 부탁한 것은?', a:'자기 정체를 세상 사람들이 모두 잊게 해달라는 것.' }] },
+    { t:'미션 임파서블', q:[
+      { q:'주인공이 임무 지령을 다 듣고 나면 그 메시지는 어떻게 되나?', a:'스스로 소멸한다.' }] },
+  ],
+  '드라마': [
+    { t:'오징어 게임', q:[
+      { q:'참가자들이 가장 먼저 하게 되는 게임은?', a:'무궁화 꽃이 피었습니다.' },
+      { q:'최종 우승 상금은 얼마인가?', a:'456억 원.' }] },
+    { t:'도깨비', q:[
+      { q:'도깨비의 가슴에 꽂혀 있는 것은?', a:'검.' },
+      { q:'그 검을 뽑을 수 있는 사람은 누구인가?', a:'도깨비 신부.' }] },
+    { t:'응답하라 1988', q:[
+      { q:'이야기의 무대가 되는 동네는?', a:'서울 쌍문동의 골목.' }] },
+    { t:'태양의 후예', q:[
+      { q:'두 주인공의 직업은 각각 무엇인가?', a:'특전사 군인과 의사.' }] },
+    { t:'이태원 클라쓰', q:[
+      { q:'주인공이 이태원에 차린 가게 이름은?', a:'단밤.' }] },
+    { t:'슬기로운 의사생활', q:[
+      { q:'다섯 명의 주인공이 모여서 함께 하는 것은?', a:'밴드 합주.' }] },
+    { t:'사랑의 불시착', q:[
+      { q:'여주인공은 사고로 어디에 떨어지나?', a:'휴전선 너머 북한 땅.' }] },
+    { t:'SKY 캐슬', q:[
+      { q:'부모들이 그렇게까지 매달리는 목표는?', a:'자녀를 명문대(의대)에 보내는 것.' }] },
+    { t:'시그널', q:[
+      { q:'과거와 현재를 이어주는 물건은?', a:'낡은 무전기.' }] },
+    { t:'미생', q:[
+      { q:'주인공이 회사에 들어오기 전까지 해온 것은?', a:'프로 기사를 목표로 한 바둑.' }] },
+    { t:'지금 우리 학교는', q:[
+      { q:'좀비 사태가 처음 시작된 곳은?', a:'고등학교 과학실.' }] },
+    { t:'더 글로리', q:[
+      { q:'주인공이 복수를 위해 오랫동안 준비한 직업은?', a:'초등학교 담임 교사.' }] },
+    { t:'무빙', q:[
+      { q:'등장인물들이 숨기고 있는 것은?', a:'대를 이어 물려받은 초능력.' }] },
+    { t:'재벌집 막내아들', q:[
+      { q:'주인공은 죽은 뒤 어떻게 되나?', a:'자기가 모시던 재벌가의 막내 손자로 과거에 다시 태어난다.' }] },
+    { t:'비밀의 숲', q:[
+      { q:'주인공 검사의 남다른 점은?', a:'어릴 때 받은 뇌 수술 때문에 감정을 거의 느끼지 못한다.' }] },
+    { t:'스토브리그', q:[
+      { q:'주인공이 새로 맡게 된 자리는?', a:'만년 꼴찌 프로야구단의 단장.' }] },
+    { t:'킹덤', q:[
+      { q:'조선을 뒤덮는 것은?', a:'죽은 사람이 되살아나 사람을 무는 역병.' }] },
+    { t:'스물다섯 스물하나', q:[
+      { q:'여주인공이 하는 운동 종목은?', a:'펜싱.' }] },
+    { t:'별에서 온 그대', q:[
+      { q:'남주인공의 정체는?', a:'400년 전 지구에 떨어진 외계인.' }] },
+    { t:'이상한 변호사 우영우', q:[
+      { q:'주인공이 유난히 좋아하는 동물은?', a:'고래.' }] },
+    { t:'김비서가 왜 그럴까', q:[
+      { q:'여주인공이 회사를 그만두겠다고 한 이유는?', a:'9년을 비서로 살았으니 이제 자기 인생을 살겠다는 것.' }] },
+    { t:'눈물의 여왕', q:[
+      { q:'두 주인공은 어떤 사이인가?', a:'이혼 직전까지 간 부부.' }] },
+  ],
+  '애니': [
+    { t:'센과 치히로의 행방불명', q:[
+      { q:'주인공의 부모는 무엇으로 변하나?', a:'돼지.' },
+      { q:'주인공이 그곳에서 빼앗긴 것은?', a:'이름.' }] },
+    { t:'하울의 움직이는 성', q:[
+      { q:'주인공 소녀는 마녀의 저주로 어떻게 되나?', a:'아흔 살 노인의 모습이 된다.' }] },
+    { t:'이웃집 토토로', q:[
+      { q:'자매가 비 오는 정류장에서 기다리다 만나게 되는 것은?', a:'토토로, 그리고 뒤이어 오는 고양이버스.' }] },
+    { t:'너의 이름은', q:[
+      { q:'두 주인공에게 일어나는 일은?', a:'자고 일어나면 서로의 몸이 바뀌어 있다.' }] },
+    { t:'귀멸의 칼날', q:[
+      { q:'주인공의 여동생은 어떻게 되었나?', a:'혈귀(도깨비)가 되어버렸다.' },
+      { q:'주인공이 처음 익힌 검술 호흡은?', a:'물의 호흡.' }] },
+    { t:'원피스', q:[
+      { q:'주인공의 몸은 어떤 성질을 갖게 되었나?', a:'열매를 먹어 몸이 고무처럼 늘어난다.' }] },
+    { t:'나루토', q:[
+      { q:'주인공의 몸 안에 봉인되어 있는 것은?', a:'꼬리 아홉 달린 여우(구미).' }] },
+    { t:'진격의 거인', q:[
+      { q:'인류가 거인을 막으려고 만든 것은?', a:'세 겹으로 둘러친 거대한 성벽.' }] },
+    { t:'짱구는 못말려', q:[
+      { q:'주인공 집 강아지의 이름은?', a:'흰둥이.' }] },
+    { t:'명탐정 코난', q:[
+      { q:'주인공은 왜 어린아이가 되었나?', a:'검은 조직에게 약을 먹고 몸이 줄어들었다.' }] },
+    { t:'슬램덩크', q:[
+      { q:'주인공이 농구를 시작한 이유는?', a:'좋아하게 된 여자아이가 농구를 좋아해서.' }] },
+    { t:'주술회전', q:[
+      { q:'주인공이 몸속에 받아들인 것은?', a:'특급 저주의 손가락.' }] },
+    { t:'도라에몽', q:[
+      { q:'도구를 꺼내는 곳은?', a:'배에 달린 4차원 주머니.' }] },
+    { t:'스파이 패밀리', q:[
+      { q:'세 가족의 정체는 각각 무엇인가?', a:'아빠는 스파이, 엄마는 암살자, 딸은 남의 마음을 읽는 초능력자. 서로 모르고 산다.' }] },
+    { t:'포켓몬스터', q:[
+      { q:'주인공이 처음 받은 파트너는?', a:'피카츄.' }] },
+    { t:'마당을 나온 암탉', q:[
+      { q:'암탉이 품어서 부화시킨 알에서 나온 것은?', a:'청둥오리 새끼.' }] },
+    { t:'하이큐!!', q:[
+      { q:'이 작품의 종목은?', a:'배구.' }] },
+    { t:'스즈메의 문단속', q:[
+      { q:'주인공이 하는 일은?', a:'재난을 불러오는 문을 찾아다니며 닫는 일.' }] },
+    { t:'라이온 킹', q:[
+      { q:'주인공의 아버지는 어떻게 죽나?', a:'삼촌의 계략으로 협곡에 몰린 짐승 떼에 밟혀 죽는다.' }] },
+    { t:'쿵푸팬더', q:[
+      { q:'주인공은 무엇으로 뽑히나?', a:'전설의 「용의 전사」.' }] },
+    { t:'소울', q:[
+      { q:'주인공이 평생 이루고 싶어 한 것은?', a:'무대에 서는 재즈 피아니스트가 되는 것.' }] },
+    { t:'미녀와 야수', q:[
+      { q:'야수의 저주가 풀리는 조건은?', a:'마지막 장미 꽃잎이 지기 전에 누군가를 사랑하고 그 사랑을 돌려받는 것.' }] },
+  ],
+};
 
 /* ── 상황극 마피아: 배경 + 캐릭터 풀 ── */
 /* ⚠️ 상황극이 성립하려면 이름표만으로는 안 된다. 배경마다
@@ -1739,36 +1943,39 @@ const GAMES = [
   },
   {
     id:'watch', name:'안 봤어도 들키지마', emoji:'🎬', color:'#FFB84D', mode:'solo', weight:1.5,
-    role:'출제자', tag:'개인전 · 코인제 · 출제자 로테이션', tool:'watch', toolLabel:'⏱ 토론 타이머 · 코인판',
+    role:'출제자', tag:'개인전 · 앱이 출제 · 자동 정산', tool:'watch', toolLabel:'▶ 문제 뽑고 시작하기',
     rules:
-`<b>흐름</b>
-· 시계방향으로 한 명씩 돌아가며 출제자가 된다.
-· 출제자는 영화 / 드라마 / 애니 중 하나를 골라, <b>본 사람만 아는 문제</b>를 하나 만들고 작품 이름을 공개한다.
-· 작품 이름이 공개된 순간부터 <b>10분 토론</b> 시작.
-· 아는 척, 모르는 척 하며 서로를 혼란스럽게 만든다.
+`<b>한 줄 요약</b>
+· 안 본 작품을 본 척한다. 몰리면 문제를 풀어야 한다. <b>못 풀면 들킨 것.</b>
 
-<b>지목</b>
-· 토론이 끝나면 다 같이 <b>"너 이거 안 봤지!"</b>를 외치며 손가락으로 가리킨다.
-· 1명당 <b>2지목</b> 가능 (한 사람에게 몰아주기 가능), 출제자는 <b>1지목</b>.
-· 가장 많이 지목받은 사람이 문제를 푼다.
-· 동점이면 그 사람들끼리 재지목.
+<b>준비할 것 — 없다</b>
+· 작품도 문제도 정답도 <b>앱이 갖고 있다.</b> 출제자가 그 작품을 안 봤어도 진행할 수 있다.
 
-<b>코인</b>
-· 맞추면 → 지목받은 수만큼 코인 획득.
-· 틀리면 → 지목한 사람들과 출제자가 각각 코인 1개.
+<b>한 라운드</b>
+1. 앱이 <b>출제자</b>를 정한다. 전원이 한 번씩 돌아가며 맡는다.
+2. 출제자만 폰을 본다 — 화면에 <b>작품 · 문제 · 정답</b>이 있다.
+   안 봐도 다 아는 문제가 걸리면 「다른 문제」로 넘긴다.
+3. 출제자가 <b>작품 이름만</b> 소리 내어 말한다. 문제는 아직 말하지 않는다.
+4. <b>토론</b> (기본 3분). 본 척, 안 본 척 하며 서로를 흔든다.
+5. <b>"하나, 둘, 셋!"</b> 다 같이 손가락으로 <b>한 명</b>을 가리킨다.
+   · 1인 1지목. 출제자도 지목한다. 자기 자신은 안 된다.
+   · 출제자는 지목받지 않는다.
+6. 가장 많이 지목받은 사람이 <b>그제서야 문제를 듣고 답한다.</b>
+   동점이면 그 사람들이 각자 답한다.
 
-<b>팁</b>
-· 출제자: 모두 아는 문제를 내면 코인을 못 받는다. 난이도 조절이 핵심.
-· 참가자: 맞출 자신이 있으면 일부러 의심을 사서 코인을 벌 수 있다.
-· 확신하면 한 사람에게 2지목 몰아주기.
-· 진짜 모르면 오히려 대놓고 "몰라" 하기 — 코인 노리고 연기하는 걸로 보이게.
+<b>점수 — 이게 전부다</b>
+· 맞히면 → <b>답한 사람 +2점</b> (누명을 벗었다)
+· 틀리면 → <b>그 사람을 지목한 사람들이 각각 +1점</b> (제대로 골라냈다)
+
+<b>그래서 이렇게 하게 된다</b>
+· 안 봤으면 → 눈에 띄지 마라. 몰리는 순간 답을 못 한다.
+· 봤으면 → <b>일부러 의심을 사라.</b> 몰려도 맞히면 +2점, 이 게임 최고 점수다.
+· 지목할 때 → 확실히 안 본 것 같은 사람 하나를 골라라. 틀리면 아무것도 못 얻는다.
+· 진짜 모를 땐 대놓고 "몰라" 하는 것도 방법 — 점수 노리고 연기하는 걸로 보인다.
 
 <b>순위</b>
-· 전원이 출제자를 한 번씩 하면 종료. 코인이 많은 순.
-
-<b>문제 예시</b>
-· 태극기 휘날리며 — 주인공 두 명의 관계는?`,
-    todo:'출제자 규칙 미완: "마지막 문제를 아무도 못 맞추면 출제자의 ___" 부분이 비어 있음 (페널티인지 보너스인지 확정 필요)'
+· 전원이 출제자를 한 번씩 하면 종료. 총점이 높은 순.
+· 정답 판정이 애매하면(표현만 다르고 뜻은 맞음) 출제자가 정한다.`
   },
   {
     id:'act', name:'연기 대결', emoji:'🎤', color:'#4DB8FF', mode:'solo', weight:1,
@@ -2344,12 +2551,61 @@ function startSmileTool(){
   go('play');
 }
 
-/* ══ 안 봤어도 들키지마 — 토론 타이머 + 코인판 ══ */
+/* ══ 안 봤어도 들키지마 — 앱이 출제하고 앱이 정산한다 ══
+   진행자 폰 하나로 돈다. 출제자 차례에만 폰을 넘겨 문제·정답을 혼자 보고,
+   나머지 구간은 전원이 같은 화면을 본다.
+   phase: setup → ready → card → talk → vote → answer → result → (다음 라운드) → done
+   ⚠️ 점수 규칙은 딱 두 줄이다(맞히면 답한 사람 +2 / 틀리면 그를 지목한 사람들 +1).
+      규칙을 늘리면 술 마시면서 못 따라온다. 늘리지 말 것. */
+const WATCH_CATS = Object.keys(WATCH_DECKS);
+
 function startWatchTool(){
-  S.play = { gameId:S.gameId, kind:'watch', phase:'run',
-    sec:600, left:600, running:false, over:false, coins:{}, _t:null };
+  S.play = { gameId:S.gameId, kind:'watch', phase:'setup',
+    cats:[...WATCH_CATS], sec:180, left:180, running:false, over:false,
+    order:[], turn:0, deck:[], used:[], cur:null,
+    votes:{}, vi:0, picked:[], judged:{}, pts:{}, log:[], _t:null };
   go('play');
 }
+
+/* 선택한 카테고리의 문제를 전부 펼쳐 섞는다. 같은 작품이 두 번 나오지 않게 used로 거른다. */
+function watchBuildDeck(){
+  const p = S.play, out = [];
+  p.cats.forEach(c => (WATCH_DECKS[c] || []).forEach(w =>
+    w.q.forEach(q => out.push({ cat:c, t:w.t, q:q.q, a:q.a }))));
+  p.deck = shuffle(out);
+}
+function watchDraw(){
+  const p = S.play;
+  if (!p.deck.length) watchBuildDeck();
+  let i = p.deck.findIndex(c => !p.used.includes(c.t));
+  if (i < 0){ p.used = []; i = 0; }              // 작품을 다 썼으면 처음부터 다시
+  p.cur = p.deck.splice(i, 1)[0];
+}
+/* 지목 집계 — 표를 가장 많이 받은 사람들(동점이면 전원). 출제자는 지목 대상이 아니다. */
+const watchTally = () => {
+  const p = S.play, t = {};
+  Object.values(p.votes).forEach(x => { if (x) t[x] = (t[x] || 0) + 1; });
+  return t;
+};
+function watchTop(){
+  const t = watchTally(), max = Math.max(0, ...Object.values(t));
+  return max ? Object.keys(t).filter(k => t[k] === max) : [];
+}
+/* 정산: 맞히면 답한 사람 +2 / 틀리면 그 사람을 지목한 사람들이 각각 +1 */
+function watchSettle(){
+  const p = S.play, gain = {};
+  p.picked.forEach(target => {
+    if (p.judged[target]) gain[target] = (gain[target] || 0) + 2;
+    else Object.entries(p.votes).forEach(([voter, v]) => {
+      if (v === target) gain[voter] = (gain[voter] || 0) + 1;
+    });
+  });
+  Object.entries(gain).forEach(([pid, g]) => p.pts[pid] = (p.pts[pid] || 0) + g);
+  p.log.push({ sul:p.order[p.turn], t:p.cur?.t || '', picked:[...p.picked],
+    judged:{...p.judged}, gain });
+  p.gain = gain;
+}
+
 function watchTimerStart(){
   const p = S.play; if (p.running || p.left <= 0) return;
   p.running = true; p.over = false;
@@ -2508,7 +2764,9 @@ function renderSig(){
     S.play ? [S.play.kind, S.play.phase, S.play.turn ?? 0, S.play.di ?? 0,
       (S.play.hits || []).length, S.play.mode ?? 0, (S.play.cats || []).join(''),
       S.play.sec ?? 0, S.play.letters || 0, S.play.shots ?? 0, S.play.round ?? 0,
-      (S.play.sel || []).join(''), S.play.coins || 0, S.play.rec || 0,
+      (S.play.sel || []).join(''), S.play.rec || 0,
+      S.play.pts || 0, S.play.votes || 0, S.play.vi ?? -1,
+      (S.play.picked || []).join(''), S.play.judged || 0, S.play.cur?.t || 0,
       S.play.sen || 0, S.play.card || 0, S.play.cnt ?? 0, S.play.sit || 0,
       S.play.reading ?? -1,
       !!S.play.show, !!S.play.pol, !!S.play.doc, !!S.play.incHost,
@@ -3175,41 +3433,241 @@ function vSmile(){
     </div>`;
 }
 
-/* ── 안 봤어도 들키지마: 토론 타이머 + 코인판 ── */
+/* ── 안 봤어도 들키지마 (진행자 폰 하나로 돈다) ── */
 function vWatch(){
   const p = S.play;
-  return `
-    <div class="card">
-      <div class="sec" style="margin:0 0 12px">토론 타이머</div>
-      ${p.over ? `<div class="banner" style="background:rgba(255,184,77,.1);border:1px solid rgba(255,184,77,.32);color:#FFD9A3">
-        🗣 토론 종료! 다 같이 "너 이거 안 봤지!" 지목하세요</div>` : ''}
-      <div class="tbar ${p.left<=30&&p.running?'warn':''}" style="margin-bottom:10px">
-        <i id="wt-bar" style="width:${(p.left/p.sec*100)}%"></i></div>
-      <div class="bignum" id="wt-sec" style="margin-bottom:14px">${fmtClock(p.left)}</div>
-      <div class="seg" style="margin-bottom:10px">
-        ${[600,300,180].map(s => `<button data-act="wa-sec" data-v="${s}" class="${p.sec===s?'on':''}">${s/60}분</button>`).join('')}
-      </div>
-      <div class="row">
-        <button class="btn sm ${p.running?'':'pri'}" data-act="wa-toggle" style="flex:2">${p.running?'⏸ 일시정지':'▶ 토론 시작'}</button>
-        <button class="btn sm gh" data-act="wa-reset">↺</button>
-      </div>
-    </div>
-
-    <div class="sec">코인</div>
-    <p class="note" style="margin:-4px 4px 10px">맞추면 지목받은 수만큼 · 틀리면 지목한 사람들과 출제자가 1개씩</p>
-    ${players().map(([pid,pl]) => `
-      <div class="tscore" style="--tc:${avColor(pid)}">
+  const sul = p.order[p.turn];                              // 이번 라운드 출제자
+  const nRound = p.order.length;
+  const board = () => {
+    const rows = players().slice().sort((a,b) => (p.pts[b[0]]||0) - (p.pts[a[0]]||0));
+    return rows.map(([pid,pl]) => `
+      <div class="tscore" style="--tc:${avColor(pid)};margin-bottom:6px">
         <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pl.name, 'sm')} ${h(pl.name)}</div>
-        <button class="stepbtn" data-act="wa-coin" data-pid="${pid}" data-v="-1">−</button>
-        <div class="v" style="min-width:34px;text-align:center">${p.coins[pid]||0}</div>
-        <button class="stepbtn" data-act="wa-coin" data-pid="${pid}" data-v="1">＋</button>
-      </div>`).join('')}
+        ${p.gain?.[pid] ? `<span class="chip mint">+${p.gain[pid]}</span>` : ''}
+        <div class="v">${p.pts[pid]||0}<small>점</small></div>
+      </div>`).join('');
+  };
+
+  /* 1) 설정 — 카테고리 · 토론 시간 */
+  if (p.phase === 'setup'){
+    const cnt = p.cats.reduce((n,c) => n + (WATCH_DECKS[c]||[]).length, 0);
+    const few = players().length < 3;
+    return `
+      <div class="howto">
+        <b>앱이 문제를 내고, 앱이 점수를 매깁니다</b>
+        <div>출제자는 아무 준비도 필요 없습니다. <b>그 작품을 안 봤어도</b> 진행할 수 있어요.</div>
+        <div>가장 많이 지목받은 사람이 문제를 풉니다 —
+          <b>맞히면 그 사람 +2점</b>, <b>틀리면 그를 지목한 사람들이 +1점씩</b>.</div>
+      </div>
+      <div class="sec">어디서 낼까요</div>
+      <div class="pgrid" style="margin-bottom:6px">
+        ${WATCH_CATS.map(c => `
+          <button class="pbtn ${p.cats.includes(c)?'on':''}" data-act="wa-cat" data-v="${h(c)}">
+            <span>${h(c)}</span><span class="ck">${p.cats.includes(c)?'✓':''}</span>
+          </button>`).join('')}
+      </div>
+      <p class="note" style="margin:0 4px 14px">작품 ${cnt}편</p>
+      <div class="sec">토론 시간</div>
+      <div class="seg">
+        ${[120,180,300].map(s => `<button data-act="wa-sec" data-v="${s}" class="${p.sec===s?'on':''}">${s/60}분</button>`).join('')}
+      </div>
+      <div style="height:8px"></div>
+      <div class="stack">
+        <button class="btn pri" data-act="wa-start" ${(!cnt||few)?'disabled':''}>
+          ${few ? '3명 이상이어야 합니다' : (cnt ? '▶ 시작하기' : '카테고리를 하나 이상 고르세요')}</button>
+        <button class="btn gh" data-act="pl-quit">나가기</button>
+      </div>`;
+  }
+
+  /* 2) 폰 넘기기 */
+  if (p.phase === 'ready'){
+    return `
+      <div class="turnbig">
+        <div class="tb-l">${p.turn+1} / ${nRound} 라운드 · 출제자</div>
+        <div class="tb-n">${h(pname(sul))}</div>
+        <div class="tb-s">이 폰을 ${h(pname(sul))} 님에게 넘겨주세요</div>
+      </div>
+      <div class="putdown">🙈 다른 분들은 화면을 보지 마세요 — 작품과 정답이 함께 뜹니다</div>
+      <div style="height:12px"></div>
+      <div class="stack">
+        <button class="btn pri" data-act="wa-see">👀 저 ${h(pname(sul))}입니다 — 혼자 볼게요</button>
+        ${p.turn ? `<button class="btn gh" data-act="wa-board">📊 지금까지 점수</button>` : ''}
+        <button class="btn gh" data-act="pl-quit">그만두기</button>
+      </div>`;
+  }
+
+  /* 3) 출제자만 보는 카드 */
+  if (p.phase === 'card'){
+    const c = p.cur || {};
+    return `
+      <div class="grillbox">
+        <div class="gb-l">${h(c.cat||'')}</div>
+        <div class="gb-n">${h(c.t||'')}</div>
+        <div class="gb-q">${h(c.q||'')}</div>
+        <div class="gb-s">이 작품 이름<b>만</b> 소리 내어 말하세요. 문제는 지목이 끝난 뒤에 읽습니다.</div>
+      </div>
+      <div class="holdbox" id="role-hold">
+        <div class="hint">🔒 꾹 누르고 있으면 정답이 보입니다</div>
+        <div class="secret">
+          <div class="note" style="letter-spacing:.14em;font-size:11px">정답</div>
+          <div style="font-size:17px;font-weight:800;line-height:1.6;margin-top:8px;word-break:keep-all">${h(c.a||'')}</div>
+        </div>
+      </div>
+      <div class="stack">
+        <button class="btn pri" data-act="wa-talk">📢 작품 공개하고 토론 시작</button>
+        <button class="btn gh" data-act="wa-reroll">🔀 다른 문제 (안 봐도 알겠는데요)</button>
+      </div>`;
+  }
+
+  /* 4) 토론 */
+  if (p.phase === 'talk'){
+    return `
+      <div class="turnbig">
+        <div class="tb-l">오늘의 작품</div>
+        <div class="tb-n">${h(p.cur?.t||'')}</div>
+        <div class="tb-s">봤나요? 안 봤나요? — 본 척, 안 본 척 하며 서로를 흔드세요</div>
+      </div>
+      ${p.over ? `<div class="banner" style="background:rgba(255,184,77,.1);border:1px solid rgba(255,184,77,.32);color:#FFD9A3">
+        🗣 토론 끝! 다 같이 <b>"너 이거 안 봤지!"</b> 하고 지목하세요</div>` : ''}
+      <div class="card">
+        <div class="tbar ${p.left<=30&&p.running?'warn':''}" style="margin-bottom:10px">
+          <i id="wt-bar" style="width:${(p.left/p.sec*100)}%"></i></div>
+        <div class="bignum" id="wt-sec" style="margin-bottom:14px">${fmtClock(p.left)}</div>
+        <div class="row">
+          <button class="btn sm ${p.running?'':'pri'}" data-act="wa-toggle" style="flex:2">${p.running?'⏸ 일시정지':(p.left<p.sec?'▶ 이어서':'▶ 토론 시작')}</button>
+          <button class="btn sm gh" data-act="wa-reset">↺</button>
+        </div>
+      </div>
+      <p class="note" style="margin:0 4px 12px">출제자(${h(pname(sul))} 님)도 토론에 참여하되, 정답을 흘리면 안 됩니다.</p>
+      <div class="stack">
+        <button class="btn ${p.over?'pri':'gh'}" data-act="wa-vote">👉 지목하기</button>
+      </div>`;
+  }
+
+  /* 5) 지목 — 한 명씩 누구를 가리켰는지 받는다(정산을 앱이 하려면 필요하다) */
+  if (p.phase === 'vote'){
+    const voter = p.order[p.vi];
+    const done = p.vi >= p.order.length;
+    if (!done){
+      const targets = p.order.filter(x => x !== voter && x !== sul);
+      return `
+        <div class="howto">
+          <b>"하나, 둘, 셋!" 하고 다 같이 손가락으로 가리켰나요?</b>
+          <div>이제 한 명씩 <b>누구를 가리켰는지</b> 눌러주세요. 출제자(${h(pname(sul))})는 지목 대상이 아닙니다.</div>
+        </div>
+        <div class="turnbig">
+          <div class="tb-l">${p.vi+1} / ${p.order.length}</div>
+          <div class="tb-n">${h(pname(voter))}</div>
+          <div class="tb-s">님이 가리킨 사람은?</div>
+        </div>
+        <div class="pgrid">
+          ${targets.map(pid => `
+            <button class="pbtn" data-act="wa-pick" data-pid="${pid}">
+              ${av(pid, pname(pid), 'sm')}<span>${h(pname(pid))}</span></button>`).join('')}
+        </div>
+        <div style="height:12px"></div>
+        <div class="stack">
+          ${p.vi ? `<button class="btn gh" data-act="wa-vback">← 앞사람 다시</button>` : ''}
+          <button class="btn gh" data-act="wa-talk">← 토론으로 돌아가기</button>
+        </div>`;
+    }
+    const t = watchTally(), top = watchTop();
+    return `
+      <div class="sec">지목 집계</div>
+      ${p.order.filter(x => x !== sul).sort((a,b)=>(t[b]||0)-(t[a]||0)).map(pid => `
+        <div class="tscore" style="--tc:${top.includes(pid)?'var(--rose)':avColor(pid)};margin-bottom:6px">
+          <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pname(pid), 'sm')} ${h(pname(pid))}</div>
+          ${top.includes(pid) ? '<span class="chip rose">최다</span>' : ''}
+          <div class="v">${t[pid]||0}<small>표</small></div>
+        </div>`).join('')}
+      <div style="height:14px"></div>
+      <div class="stack">
+        <button class="btn pri" data-act="wa-answer">🎤 ${top.map(x=>h(pname(x))).join(' · ')} — 문제 풀기</button>
+        <button class="btn gh" data-act="wa-vback">← 지목 다시 입력</button>
+      </div>`;
+  }
+
+  /* 6) 답변 판정 */
+  if (p.phase === 'answer'){
+    const c = p.cur || {};
+    const allJudged = p.picked.every(pid => pid in p.judged);
+    return `
+      <div class="grillbox">
+        <div class="gb-l">${h(c.t||'')}</div>
+        <div class="gb-n">${p.picked.map(x=>h(pname(x))).join(' · ')} 님, 답해주세요</div>
+        <div class="gb-q">${h(c.q||'')}</div>
+        <div class="gb-s">${p.picked.length>1
+          ? '동점입니다. 한 사람씩 따로 답합니다 — 앞사람 답을 듣고 베끼지 않게 순서대로.'
+          : '표현이 달라도 뜻이 맞으면 정답입니다. 판정은 출제자가 합니다.'}</div>
+      </div>
+      <div class="holdbox" id="role-hold">
+        <div class="hint">🔒 출제자만 꾹 눌러 정답 확인</div>
+        <div class="secret">
+          <div class="note" style="letter-spacing:.14em;font-size:11px">정답</div>
+          <div style="font-size:17px;font-weight:800;line-height:1.6;margin-top:8px;word-break:keep-all">${h(c.a||'')}</div>
+        </div>
+      </div>
+      ${p.picked.map(pid => `
+        <div class="tscore" style="--tc:${avColor(pid)};margin-bottom:6px">
+          <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pname(pid), 'sm')} ${h(pname(pid))}</div>
+          <button class="btn sm ${p.judged[pid]===true?'pri':'gh'}" data-act="wa-judge" data-pid="${pid}" data-v="1"
+            style="flex:none;padding:9px 14px">⭕</button>
+          <button class="btn sm ${p.judged[pid]===false?'pri':'gh'}" data-act="wa-judge" data-pid="${pid}" data-v="0"
+            style="flex:none;padding:9px 14px">❌</button>
+        </div>`).join('')}
+      <div style="height:14px"></div>
+      <div class="stack">
+        <button class="btn pri" data-act="wa-settle" ${allJudged?'':'disabled'}>
+          ${allJudged ? '📊 점수 정산' : '⭕ / ❌ 를 눌러주세요'}</button>
+      </div>`;
+  }
+
+  /* 7) 라운드 결과 */
+  if (p.phase === 'result'){
+    const last = p.log[p.log.length-1] || {};
+    const hit = p.picked.filter(x => p.judged[x]);
+    const miss = p.picked.filter(x => !p.judged[x]);
+    const isLast = p.turn >= p.order.length - 1;
+    return `
+      <div class="pickres">
+        <div class="pickres-l">${h(last.t||'')}</div>
+        <div class="pickres-v">${hit.length && !miss.length ? '🛡 누명 벗음'
+          : (!hit.length && miss.length ? '🎯 들켰다!' : '반반')}</div>
+      </div>
+      ${hit.map(pid => `<div class="sumrow"><span class="m">⭕</span>
+        <span><b>${h(pname(pid))}</b> 정답 — <b style="color:var(--amber)">+2점</b></span></div>`).join('')}
+      ${miss.map(pid => `<div class="sumrow"><span class="m">❌</span>
+        <span><b>${h(pname(pid))}</b> 오답 — 지목한
+        ${Object.entries(p.votes).filter(([,v])=>v===pid).map(([k])=>h(pname(k))).join(', ') || '사람'}
+        <b style="color:var(--amber)">+1점씩</b></span></div>`).join('')}
+      <div style="height:14px"></div>
+      <div class="sec">누적 점수</div>
+      ${board()}
+      <div style="height:14px"></div>
+      <div class="stack">
+        <button class="btn pri" data-act="wa-next">${isLast ? '🏁 마지막 라운드 — 결과 보기' : `▶ 다음 출제자 (${h(pname(p.order[p.turn+1]))})`}</button>
+      </div>`;
+  }
+
+  /* 8) 종료 */
+  const win = players().slice().sort((a,b)=>(p.pts[b[0]]||0)-(p.pts[a[0]]||0))[0];
+  return `
+    <div class="pickres">
+      <div class="pickres-l">최종 1위</div>
+      <div class="pickres-v">${h(win ? win[1].name : '-')}</div>
+    </div>
+    ${board()}
+    <div style="height:14px"></div>
+    <div class="sec">라운드 기록</div>
+    ${p.log.length ? p.log.map((L,i) => `
+      <div class="sumrow"><span class="m">🎬</span>
+        <span>R${i+1} · ${h(L.t)} — ${L.picked.map(x=>`${h(pname(x))} ${L.judged[x]?'⭕':'❌'}`).join(', ')}</span>
+      </div>`).join('') : '<p class="note" style="margin:0 4px 10px">기록 없음</p>'}
     <div style="height:14px"></div>
     <div class="stack">
-      <button class="btn pri" data-act="wa-save">🏁 코인 순위로 반영하기</button>
+      <button class="btn pri" data-act="wa-save">🏆 순위로 반영하기</button>
       <button class="btn gh" data-act="pl-quit">나가기</button>
-    </div>
-    <p class="note" style="text-align:center;margin-top:10px">출제자 뽑기는 게임 화면의 「출제자 뽑기」를 쓰세요</p>`;
+    </div>`;
 }
 
 /* ── 상황극 마피아 (사회자 도구) ── */
@@ -4077,11 +4535,48 @@ async function act(a, d){
   case 'sm-score': { stopPlayTimer(); S.play = null; act('score-start', {}); break; }
 
   /* ── 안 봤어도 들키지마 ── */
+  case 'wa-cat': {
+    const p = S.play, c = d.v;
+    p.cats = p.cats.includes(c) ? p.cats.filter(x => x !== c) : [...p.cats, c];
+    render(true); break;
+  }
   case 'wa-sec': {
     const p = S.play;
     if (p.running) return toast('타이머를 멈추고 바꿔주세요');
     p.sec = Number(d.v); p.left = p.sec; p.over = false;
     render(true); break;
+  }
+  case 'wa-start': {
+    const p = S.play;
+    p.order = players().map(([pid]) => pid);
+    if (p.order.length < 3) return toast('3명 이상이어야 합니다');
+    watchBuildDeck();
+    p.turn = 0; p.pts = {}; p.log = []; p.used = []; p.gain = null;
+    p.phase = 'ready';
+    render(true); break;
+  }
+  case 'wa-see': {
+    const p = S.play;
+    watchDraw();
+    p.phase = 'card';
+    render(true); break;
+  }
+  case 'wa-reroll': {
+    const p = S.play;
+    watchDraw(); SFX.pass();
+    render(true); break;
+  }
+  /* 카드 → 토론(타이머 새로 시작) / 지목 → 토론(남은 시간 이어서) 둘 다 여기로 온다 */
+  case 'wa-talk': {
+    const p = S.play, fresh = p.phase === 'card';
+    if (fresh){
+      if (p.cur && !p.used.includes(p.cur.t)) p.used.push(p.cur.t);
+      stopPlayTimer(); p.running = false; p.over = false; p.left = p.sec;
+    }
+    p.phase = 'talk';
+    if (p.left > 0) watchTimerStart();           // watchTimerStart가 render(true)를 한다
+    else render(true);
+    break;
   }
   case 'wa-toggle': {
     const p = S.play;
@@ -4094,15 +4589,63 @@ async function act(a, d){
     stopPlayTimer(); p.running = false; p.over = false; p.left = p.sec;
     render(true); break;
   }
-  case 'wa-coin': {
-    const p = S.play, dv = Number(d.v);
-    p.coins[d.pid] = Math.max(0, (p.coins[d.pid] || 0) + dv);
-    if (dv > 0) SFX.ok(); vib(8);
+  case 'wa-vote': {
+    const p = S.play;
+    stopPlayTimer(); p.running = false;
+    p.votes = {}; p.vi = 0; p.phase = 'vote';
     render(true); break;
+  }
+  case 'wa-pick': {
+    const p = S.play, voter = p.order[p.vi];
+    if (!voter) break;
+    p.votes[voter] = d.pid; p.vi++;
+    SFX.ok(); vib(10);
+    render(true); break;
+  }
+  case 'wa-vback': {
+    const p = S.play;
+    p.vi = Math.max(0, Math.min(p.vi, p.order.length) - 1);
+    delete p.votes[p.order[p.vi]];
+    p.phase = 'vote';
+    render(true); break;
+  }
+  case 'wa-answer': {
+    const p = S.play;
+    p.picked = watchTop();
+    if (!p.picked.length) return toast('지목이 없습니다');
+    p.judged = {}; p.phase = 'answer';
+    render(true); break;
+  }
+  case 'wa-judge': {
+    const p = S.play, ok = d.v === '1';
+    p.judged[d.pid] = ok;
+    ok ? SFX.ok() : SFX.pass(); vib(ok ? 16 : 8);
+    render(true); break;
+  }
+  case 'wa-settle': {
+    const p = S.play;
+    if (!p.picked.every(pid => pid in p.judged)) return toast('판정을 다 눌러주세요');
+    watchSettle();
+    p.phase = 'result';
+    SFX.end(); confetti(60);
+    render(true); break;
+  }
+  case 'wa-next': {
+    const p = S.play;
+    p.gain = null;
+    if (p.turn >= p.order.length - 1){ p.phase = 'done'; confetti(120); }
+    else { p.turn++; p.cur = null; p.picked = []; p.judged = {}; p.votes = {}; p.phase = 'ready'; }
+    render(true); break;
+  }
+  case 'wa-board': {
+    const p = S.play;
+    toast(players().slice().sort((a,b)=>(p.pts[b[0]]||0)-(p.pts[a[0]]||0))
+      .map(([pid,pl]) => `${pl.name} ${p.pts[pid]||0}`).join(' · '), 3600);
+    break;
   }
   case 'wa-save': {
     const p = S.play;
-    toScore(players().map(([pid]) => pid).sort((a,b) => (p.coins[b]||0) - (p.coins[a]||0)), 'solo');
+    toScore(players().map(([pid]) => pid).sort((a,b) => (p.pts[b]||0) - (p.pts[a]||0)), 'solo');
     break;
   }
 
@@ -4225,10 +4768,10 @@ async function act(a, d){
   case 'pl-quit': {
     const p = S.play;
     if (p?.kind === 'mafia'){ stopPlayTimer(); S.play = null; go('game'); break; }   // 역할은 방에 유지
-    const prog = p && ((p.phase === 'run' && p.kind !== 'watch') || (p.turn || 0) > 0
+    const prog = p && (p.phase === 'run' || (p.turn || 0) > 0
       || Object.keys(p.results || {}).length > 0 || Object.keys(p.rec || {}).length > 0
-      || Object.values(p.coins || {}).some(v => v > 0) || (p.log || []).length > 0
-      || (p.kind === 'watch' && p.left < p.sec));
+      || Object.values(p.pts || {}).some(v => v > 0) || (p.log || []).length > 0
+      || (p.kind === 'watch' && p.phase !== 'setup'));
     if (prog && !confirm('진행 중인 게임을 그만둘까요? 지금까지 결과는 사라져요.')) return;
     stopPlayTimer(); S.play = null; go('game'); break;
   }

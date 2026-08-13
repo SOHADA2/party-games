@@ -28,15 +28,32 @@ const PORT = flag('-p', '8080');
 const W = flag('-w', '420'), H = flag('-h', '1600');
 const TMP = tmpdir();
 
-/* Edge 위치는 기기마다 다르다 — 둘 다 본다 */
+/* 브라우저 위치는 기기마다 다르다 — 윈도우 Edge / 맥·리눅스 크롬 계열을 순서대로 본다.
+   ⚠️ 플래그는 크로미움 공통이라 어느 것이 잡혀도 아래 실행부는 그대로 돈다. */
 const CANDIDATES = [
+  process.env.EDGE, process.env.CHROME,
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
   'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-  process.env.EDGE,
+  '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/usr/bin/microsoft-edge', '/usr/bin/google-chrome', '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
 ].filter(Boolean);
+/* 리눅스 컨테이너(원격 세션)에는 Playwright 크로미움만 있는 경우가 많다 */
+try{
+  const { readdir } = await import('node:fs/promises');
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
+  for (const d of await readdir(root))
+    if (/^chromium-/.test(d)) CANDIDATES.push(join(root, d, 'chrome-linux', 'chrome'));
+}catch{}
+
 let EDGE = null;
 for (const c of CANDIDATES){ try{ await access(c); EDGE = c; break; }catch{} }
-if (!EDGE){ console.error('✕ msedge.exe 를 못 찾았습니다. EDGE 환경변수로 경로를 주세요.'); process.exit(1); }
+if (!EDGE){
+  console.error('✕ 브라우저를 못 찾았습니다. EDGE 또는 CHROME 환경변수로 경로를 주세요.');
+  console.error('  찾아본 곳: ' + CANDIDATES.join(', '));
+  process.exit(1);
+}
 
 /* 서버가 떠 있는지 먼저 본다 — 안 떠 있으면 헤드리스가 빈 화면을 찍는다 */
 try{ await fetch(`http://localhost:${PORT}/`); }

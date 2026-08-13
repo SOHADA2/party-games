@@ -19,16 +19,28 @@ if (new URLSearchParams(location.search).has('demo')){
     addBots(6);
     S.gameId = 'mafia'; act('tool-start', {});
     S.play.sit = '왕궁 연회';
-    act('mf-deal', {});
 
+    /* ★ 발언 순서가 범인을 흘리지 않는지 — 한 판만 봐서는 알 수 없다.
+       예전 버그는 `order = pool` 이라 **항상** order[0]이 범인이었다. 지금은 shuffle 이라
+       7명이면 1/7 확률로 범인이 맨 앞에 오는 게 정상이다. 그래서 "이번 판에 맨 앞이 아니다"로
+       검사하면 1/7 확률로 헛되이 실패한다 — 실제로 그랬고, 그건 검사기 쪽 버그였다.
+       여러 번 배정해 **범인 자리가 흩어지는지**를 본다(옛 버그면 40판 전부 0이 나온다).
+       ⚠️ 재배정은 반드시 아래 M 을 잡기 전에 끝낼 것 — mf-deal 은 room.mafia 를 새 객체로 갈아끼운다. */
+    const pos = [];
+    for (let i = 0; i < 40; i++){ act('mf-deal', {});
+      const m = S.room.mafia; pos.push(m.order.indexOf(m.culprit)); }
+    say('★범인 자리 분포(40판): 맨앞', pos.filter(x => x === 0).length + '회',
+        '| 서로 다른 자리', new Set(pos).size + '가지',
+        '| 순서가 범인을 흘리지 않음:', new Set(pos).size >= 4 && pos.filter(x => x === 0).length < 20);
+
+    act('mf-deal', {});                                   // 아래 검사들이 쓸 판을 새로 깐다
     const M = S.room.mafia, hp = S.pid, P = Object.keys(M.roles);
     say('배정', P.length + '명 | 피해자=' + M.victim, '| 범인 1명:', P.filter(x => x === M.culprit).length === 1);
     const chars = P.map(x => M.roles[x].char);
     say('배역중복:', chars.length !== new Set(chars).size ? '있음(문제)' : '없음',
         '| 피해자 배역 제외:', !chars.includes(M.victim));
     say('전원 관계/동기/알리바이:', P.every(x => M.roles[x].rel && M.roles[x].mot && M.roles[x].alibi));
-    say('★order[0]≠범인:', M.order[0] !== M.culprit,
-        '| order=참가자집합:', M.order.slice().sort().join() === P.slice().sort().join());
+    say('order=참가자집합:', M.order.slice().sort().join() === P.slice().sort().join());
     say('★범인 흔적 배치:', M.places.some(pl => pl.ev.includes(M.roles[M.culprit].trace)),
         '| 무고한 사람 흔적 미배치:',
         !P.filter(x => x !== M.culprit).some(x => M.places.some(pl => pl.ev.includes(M.roles[x].trace))));
