@@ -132,7 +132,84 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('gcVars 기본색 폴백', gcVars(undefined).startsWith('--gc:#8B87A6'));
     delete S.room.scores.zz_old;
 
-    /* ── 8) 정리 ── */
+    /* ── 8) ★ 사회자(관전) 기기 — 태블릿을 공용 화면으로 세워둘 때 ──
+       가장 위험한 부분이다: 관전 기기가 「선수」로 새면 팀·술래·순위가 통째로 어긋난다. */
+    S.gameId='noise'; go('game');
+    const before = playing().length;
+    S.pid = P[0];                                        // 나(호스트) 기기를 사회자로
+    act('spec-toggle', {});
+    ck('★관전 켜면 선수에서 빠진다', playing().length === before - 1);
+    ck('방 목록에는 남아 있다', players().length === before);
+    ck('★사회자는 점수 계산에서 빠진다', !(P[0] in calcPoints()));
+    /* ⚠️ calcPoints 만 보면 부족하다 — vBoard 는 players() 로 행을 만들 수도 있어서
+       0점짜리 사회자 줄이 순위표에 남는다. 렌더 결과의 줄 수로 직접 센다. */
+    const lbRows = () => { S.view='board'; render(true);
+      return document.querySelectorAll('#view .lb-r, #view .pod').length; };
+    ck('★사회자는 순위표에 줄이 안 생긴다 (' + lbRows() + '/' + (before-1) + ')', lbRows() === before - 1);
+
+    S.room.teams = { count:2, assign:{} }; act('teams', { n:'2' });
+    ck('★팀 편성에서 제외', S.room.teams.assign[P[0]] == null
+      && Object.keys(S.room.teams.assign).length === before - 1);
+
+    /* ⚠️ 호스트가 아닌 사람이 관전으로 바꾸면 teams.assign 을 스스로 못 지운다(권위 필드).
+       그래서 「보여줄 때」도 걸러야 한다 — 안 그러면 팀 박스에 유령 팀원이 남는다. */
+    S.room.teams.assign[P[0]] = 0;                       // 옛 배정이 남아 있는 상황을 만든다
+    S.view='lobby'; render(true);
+    const tm = [...document.querySelectorAll('#view .tm')].map(e=>e.textContent).join(' ');
+    ck('★팀 박스에 관전 기기가 안 보인다', !tm.includes(pname(P[0])));
+    ck('  팀 인원 합계가 선수 수와 같다',
+      [...document.querySelectorAll('#view .tm .chip')].reduce((n,e)=>n+(parseInt(e.textContent)||0),0) === before - 1);
+    delete S.room.teams.assign[P[0]];
+
+    /* ⚠️ 사회자를 뺀 **선수 수(before-1)** 만큼만 뽑는다. 한 번 더 뽑으면 풀이 비어
+       rotation 이 리셋되어(= [pick] 한 개) 검사가 헛돈다. */
+    if (S.room.rotation) delete S.room.rotation.noise;
+    for (let i = 0; i < before - 1; i++) act('pick', {});
+    const rot2 = S.room.rotation.noise || [];
+    ck('★술래 뽑기에서 제외', !rot2.includes(P[0]));
+    ck('★선수 전원만 한 바퀴 (' + rot2.length + '/' + (before-1) + ')', rot2.length === before - 1);
+
+    act('tool-start', {});
+    ck('★도구 순번에서 제외', !S.play.order.includes(P[0]) && S.play.order.length === before - 1);
+    act('pl-quit', {});
+
+    S.gameId='smile'; go('game'); act('tool-start', {});
+    act('sm-sul', { pid:P[1] });
+    ck('★스마일 대상 풀에서 제외', !S.play.pool.includes(P[0]));
+    act('pl-quit', {});
+
+    S.gameId='act'; go('game'); act('tool-start', {});
+    for (let i = 0; i < before; i++) act('ac-next', {});
+    act('ac-score', {});
+    S.view='score'; render(true);
+    ck('★순위 입력 후보에서 제외', !document.getElementById('view').innerHTML.includes('data-pid="'+P[0]+'"'));
+    act('score-cancel', {});
+
+    /* ★ 사회자 기기가 있으면 body 의 「사회자 뽑기」가 사라져야 한다 —
+       안 그러면 선수 중 한 명이 또 사회자로 빠져 이 기능의 의미가 없어진다. */
+    S.gameId='body'; S.view='game'; render(true);
+    const gv = document.getElementById('view').innerHTML;
+    ck('★사회자 기기가 있으면 사회자 뽑기 숨김', !gv.includes('사회자 뽑기'));
+    ck('  대신 사회자 기기를 안내한다', gv.includes('기기가 사회자예요'));
+    S.room.players[P[0]].spec = false;
+    S.view='game'; render(true);
+    ck('사회자 기기가 없으면 뽑기가 다시 뜬다',
+      document.getElementById('view').innerHTML.includes('사회자 뽑기'));
+    S.room.players[P[0]].spec = true;
+
+    S.gameId='noise'; go('game');
+    act('spec-toggle', {});                              // 되돌리기
+    ck('관전 해제하면 선수로 복귀', playing().length === before);
+    ck('해제하면 리더보드에 다시 뜬다', P[0] in calcPoints());
+
+    /* 마지막 한 명은 관전으로 못 바꾼다(선수가 0명이 되면 아무 게임도 못 한다) */
+    const others = P.slice(1);
+    others.forEach(pid => { S.room.players[pid].spec = true; });
+    ck('★선수가 1명 남으면 관전 전환 차단',
+      (act('spec-toggle', {}), !isSpec(S.room.players[P[0]])));
+    others.forEach(pid => { delete S.room.players[pid].spec; });
+
+    /* ── 9) 정리 ── */
     ck('타이머 정리', S.play === null || !S.play._t);
     ck('봇 정리', (clearBots() > 0) && players().length === 1);
 

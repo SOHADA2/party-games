@@ -609,6 +609,35 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 @media (max-width:359px){
   .hero-t{font-size:34px} .rc-v{font-size:44px} .roll-n{font-size:42px}
 }
+/* 게임 상세 — 「누가 폰을 맡는가」 안내 */
+.mcbox{display:flex;gap:11px;align-items:flex-start;padding:13px 15px;border-radius:var(--r-m);
+  margin-bottom:12px;background:var(--surf);border:1px solid var(--line2)}
+.mcbox.need{background:linear-gradient(150deg,rgba(77,184,255,.13),var(--surf));border-color:rgba(77,184,255,.34)}
+.mcbox .i{font-size:17px;flex:none;line-height:1.3}
+.mcbox b{display:block;font-size:13.5px;font-weight:800;letter-spacing:-.02em;word-break:keep-all}
+.mcbox.need b{color:#A8D8FF}
+.mcbox .s{display:block;font-size:12.5px;color:var(--dim2);margin-top:4px;line-height:1.55;word-break:keep-all}
+
+/* 사회자(관전) 기기 — 겨루지 않는 화면용 기기 */
+.pl.spec{opacity:.9;border-style:dashed}
+.pl-pt.spec{font-size:11.5px;font-weight:700;color:var(--sky);white-space:nowrap}
+.chip.sky{background:rgba(77,184,255,.16);color:#A8D8FF}
+.specbtn{
+  position:relative;display:flex;align-items:center;gap:13px;width:100%;padding:14px;
+  border-radius:var(--r-l);text-align:left;margin-top:10px;
+  background:var(--surf);border:1px dashed var(--line2);box-shadow:var(--lift);
+  transition:transform .14s var(--spring),border-color .15s,background .15s;
+}
+.specbtn:active{transform:scale(.985)}
+.specbtn.on{background:linear-gradient(150deg,rgba(77,184,255,.16),var(--surf));
+  border:1px solid rgba(77,184,255,.42)}
+.specbtn .i{font-size:22px;flex:none}
+.specbtn .b{flex:1;min-width:0;display:block}
+.specbtn .b b{display:block;font-weight:800;font-size:14.5px;letter-spacing:-.025em;word-break:keep-all}
+.specbtn .b span{display:block;font-size:12px;color:var(--dim2);margin-top:3px;
+  word-break:keep-all;line-height:1.45}
+.specbtn.on .b b{color:#A8D8FF}
+
 /* 좁은 화면(=대부분 폰)에서는 오로라 레이어를 2겹으로 줄여 합성 비용을 낮춘다 */
 @media (max-width:600px){ .aur.c{display:none} }
 
@@ -731,7 +760,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.14.0';
+const APP_VERSION = 'v0.15.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -885,7 +914,8 @@ const ACT_LINES = [
 const GAMES = [
   {
     id:'noise', name:'멕썸노이즈', emoji:'🔊', color:'#FF6B4A', mode:'solo', weight:1,
-    role:'술래', tag:'술래 1명', tool:'noise', toolLabel:'▶ 미션 문장 뽑고 시작',
+    role:'술래', mc:'help', mcWhy:'술래는 미션 문장을 보면 안 되고 스톱워치도 못 누른다',
+    tag:'술래 1명 · 전원 한 번씩', tool:'noise', toolLabel:'▶ 미션 문장 뽑고 시작',
     rules:
 `정답에 가까운 행동을 하면 나머지가 소리를 질러 알려주는 게임.
 
@@ -905,7 +935,8 @@ const GAMES = [
   },
   {
     id:'smile', name:'스마일~!', emoji:'📸', color:'#7C6BFF', mode:'solo', weight:1,
-    role:'술래', tag:'술래 1명 · 사진 10장', tool:'smile', toolLabel:'▶ 사진 카운터로 시작',
+    role:'술래', mc:'help', mcWhy:'술래가 카메라를 들고 있어 카운터를 대신 눌러주면 편하다',
+    tag:'술래 1명 · 사진 10장', tool:'smile', toolLabel:'▶ 사진 카운터로 시작',
     rules:
 `술래가 찍은 사진에 걸리면 다음 술래가 되는 게임.
 
@@ -927,7 +958,8 @@ const GAMES = [
   },
   {
     id:'body', name:'몸으로 말해요 / 한글자로 말해요', emoji:'🕺', color:'#3DE0A8', mode:'team', weight:1.5,
-    role:'사회자', tag:'팀전 · 사회자 필요', tool:'deck',
+    role:'사회자', mc:'need', mcWhy:'설명자는 두 손으로 몸짓을 해야 하고, 맞히는 팀은 화면을 보면 안 된다 — 제3자가 화면을 들고 설명자에게만 보여줘야 한다',
+    tag:'팀전 · 사회자 전담', tool:'deck',
     rules:
 `<b>① 몸으로 말해요</b>
 · 사회자가 제시어를 낸다 (노래 제목, 영화 제목 등).
@@ -943,7 +975,8 @@ const GAMES = [
   },
   {
     id:'act', name:'연기 대결', emoji:'🎤', color:'#4DB8FF', mode:'solo', weight:1,
-    role:null, tag:'개인전 · 탈락식', tool:'act', toolLabel:'▶ 대사 뽑고 시작',
+    role:null, mc:'help', mcWhy:'순위가 심사라 진행자가 카드를 넘기고 결과를 입력한다',
+    tag:'개인전 · 탈락식 · 심사', tool:'act', toolLabel:'▶ 대사 뽑고 시작',
     rules:
 `각자 같은 대사를 서로 다른 감정으로 연기한다.
 
@@ -961,7 +994,8 @@ const GAMES = [
   },
   {
     id:'cup', name:'물에 담긴 컵 — 휴지 레이스', emoji:'🥤', color:'#A8E063', mode:'solo', weight:0.5,
-    role:null, tag:'물리 게임', tool:'cup', toolLabel:'▶ 스톱워치로 시작',
+    role:null, mc:'help', mcWhy:'주자는 두 손으로 휴지를 당기고 있어 기록은 반드시 남이 잰다',
+    tag:'개인전 · 기록 경쟁', tool:'cup', toolLabel:'▶ 스톱워치로 시작',
     rules:
 `물이 담긴 컵을 휴지로 당겨 옮기는 레이스.
 
@@ -1256,6 +1290,12 @@ function leaveRoom(){
 ══════════════════════════════════════════════ */
 const players = () => Object.entries(S.room?.players || {}).sort((a,b) => (a[1].joinedAt||0) - (b[1].joinedAt||0));
 const pname = pid => S.room?.players?.[pid]?.name || '?';
+/* ★ 관전(사회자) 기기는 「선수」가 아니다 — 태블릿을 공용 화면으로 세워둘 때 쓴다.
+   players() = 방에 있는 전부(대기실 목록·하트비트용)
+   playing()  = 실제로 겨루는 사람만. 팀 편성·역할 뽑기·순번·순위·리더보드는 전부 이쪽을 쓴다.
+   ⚠️ 새로 「참가자 수」를 세는 코드를 쓸 때 players() 를 쓰면 태블릿이 선수로 끼어든다. */
+const isSpec = p => !!p?.spec;
+const playing = () => players().filter(([,p]) => !isSpec(p));
 const myName = () => pname(S.pid);
 const isOn = p => !!p.bot || (now() - (p.seen || 0)) < 70000;   // 봇은 항상 접속중 취급
 
@@ -1301,7 +1341,7 @@ function clearBots(){
 
 function calcPoints(){
   const pts = {};
-  for (const [pid] of players()) pts[pid] = 0;
+  for (const [pid] of playing()) pts[pid] = 0;
   for (const sc of Object.values(S.room?.scores || {})){
     const w = sc.weight ?? (G(sc.gameId)?.weight ?? 1);
     (sc.order || []).forEach((entry, i) => {
@@ -1325,8 +1365,8 @@ function playedGames(){
 
 /* 아직 그 역할을 안 맡은 사람 중에서 뽑기 (전원 소진 시 리셋) */
 function pickRole(gameId){
-  const done = (S.room.rotation?.[gameId] || []).filter(p => S.room.players[p]);
-  const all = players().map(([pid]) => pid);
+  const done = (S.room.rotation?.[gameId] || []).filter(p => S.room.players[p] && !isSpec(S.room.players[p]));
+  const all = playing().map(([pid]) => pid);
   let pool = all.filter(p => !done.includes(p));
   let reset = false;
   if (!pool.length){ pool = all; reset = true; }
@@ -1338,7 +1378,7 @@ function pickRole(gameId){
 }
 
 function makeTeams(count){
-  const all = players().map(([pid]) => pid);
+  const all = playing().map(([pid]) => pid);
   for (let i = all.length-1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [all[i],all[j]]=[all[j],all[i]]; }
   const assign = {};
   all.forEach((pid, i) => { assign[pid] = i % count; });
@@ -1468,12 +1508,12 @@ function swBegin(){
 /* ══ 멕썸노이즈 / 컵 레이스 — 시간 기록형 (race-* 핸들러 공유) ══ */
 function startNoiseTool(){
   S.play = { gameId:S.gameId, kind:'noise', phase:'ready',
-    order:players().map(([pid]) => pid), turn:0, sen:'', rec:{}, elapsed:0, _t:null };
+    order:playing().map(([pid]) => pid), turn:0, sen:'', rec:{}, elapsed:0, _t:null };
   go('play');
 }
 function startCupTool(){
   S.play = { gameId:S.gameId, kind:'cup', phase:'ready',
-    order:players().map(([pid]) => pid), turn:0, rec:{}, elapsed:0, _t:null };
+    order:playing().map(([pid]) => pid), turn:0, rec:{}, elapsed:0, _t:null };
   go('play');
 }
 function noiseSentence(){
@@ -1489,7 +1529,7 @@ function noiseSentence(){
 /* ══ 연기 대결 ══ */
 function startActTool(){
   S.play = { gameId:S.gameId, kind:'act', phase:'run',
-    order:players().map(([pid]) => pid), turn:0, lines:shuffle([...ACT_LINES]), card:null, _t:null };
+    order:playing().map(([pid]) => pid), turn:0, lines:shuffle([...ACT_LINES]), card:null, _t:null };
   actDraw();
   go('play');
 }
@@ -1659,26 +1699,31 @@ function vHome(){
 /* ── 대기실 ── */
 function vLobby(){
   const ps = players();
+  const nPlay = playing().length, nSpec = ps.length - nPlay;
+  const meSpec = isSpec(S.room.players?.[S.pid]);
   const t = S.room.teams || {count:0,assign:{}};
   const pts = calcPoints();
   const played = Object.values(S.room.scores || {}).length;
 
   const plist = ps.map(([pid,p],i) => `
-    <div class="pl ${pid===S.pid?'me':''}" style="animation-delay:${i*40}ms">
+    <div class="pl ${pid===S.pid?'me':''} ${isSpec(p)?'spec':''}" style="animation-delay:${i*40}ms">
       ${av(pid, p.name)}
       <div class="pl-n">${h(p.name)}
         ${pid===S.pid ? '<span class="chip hot">나</span>' : ''}
-        ${(p.host || pid===S.room.host) ? '<span class="chip">진행자</span>' : ''}
+        ${isSpec(p) ? '<span class="chip sky">📺 사회자</span>'
+          : ((p.host || pid===S.room.host) ? '<span class="chip">진행자</span>' : '')}
         ${p.bot ? '<span class="chip elec">🧪 테스트</span>' : ''}</div>
       ${isOn(p) ? '' : '<div class="dot-off" title="접속 끊김"></div>'}
-      <div class="pl-pt">${fmtPt(pts[pid]||0)}<small>점</small></div>
+      ${isSpec(p) ? '<div class="pl-pt spec">겨루지 않음</div>'
+        : `<div class="pl-pt">${fmtPt(pts[pid]||0)}<small>점</small></div>`}
       ${S.isHost && pid!==S.pid ? `<button class="pl-x" data-act="kick" data-pid="${pid}">✕</button>` : ''}
     </div>`).join('');
 
   let teamBox = '';
   if (t.count > 1){
     const groups = Array.from({length:t.count}, () => []);
-    Object.entries(t.assign || {}).forEach(([pid,i]) => { if (S.room.players[pid]) groups[i]?.push(pid); });
+    Object.entries(t.assign || {}).forEach(([pid,i]) => {
+      const pl = S.room.players[pid]; if (pl && !isSpec(pl)) groups[i]?.push(pid); });
     teamBox = groups.map((g,i) => `
       <div class="tm" style="--tc:${TEAM_COLORS[i]}">
         <div class="tm-h"><span class="sw"></span>${i+1}팀 <span class="chip">${g.length}명</span></div>
@@ -1710,8 +1755,15 @@ function vLobby(){
         </div>
         <div class="g-ar">›</div>
       </button>` : ''}
-    <div class="sec">참가자 <span class="n">${ps.length}</span></div>
+    <div class="sec">참가자 <span class="n">${nPlay}명</span>${nSpec ? ` <span class="n" style="color:var(--sky)">+ 사회자 ${nSpec}</span>` : ''}</div>
     <div class="plist">${plist}</div>
+    <button class="specbtn ${meSpec?'on':''}" data-act="spec-toggle">
+      <span class="i">📺</span>
+      <span class="b"><b>${meSpec ? '이 기기는 사회자(화면) 입니다' : '이 기기를 사회자(화면)로 쓰기'}</b>
+        <span>${meSpec
+          ? '겨루지 않습니다 — 팀·술래 뽑기·순위에서 빠져 있어요. 눌러서 해제'
+          : '태블릿을 상 위에 두고 다 같이 볼 때. 팀·술래 뽑기·순위에서 빠집니다'}</span></span>
+    </button>
 
     ${S.isHost ? `
       <div class="sec">팀 나누기</div>
@@ -1733,33 +1785,57 @@ function vLobby(){
 }
 
 /* ── 게임 목록 ── */
+/* 게임 목록 — 「개인전 / 팀전」으로 묶어서 보여준다.
+   ⚠️ 사회자 필요 여부(mc)는 개인전·팀전과 **직교하는 축**이라 묶는 기준으로 쓰지 않는다.
+      묶음은 mode 로만 하고, mc 는 칩으로 표시한다. */
 function vGames(){
   const done = playedGames();
+  const nSpec = players().length - playing().length;
+
+  const card = (g,i) => `
+    <button class="g ${done[g.id]?'done':''}" data-act="game" data-id="${g.id}" style="${gcVars(g.color)};animation-delay:${i*45}ms">
+      <div class="g-ic">${g.emoji}</div>
+      <div class="g-b">
+        <div class="g-n">${h(g.name)}</div>
+        <div class="g-m">
+          ${g.mc==='need' ? '<span class="chip sky">📺 사회자 전담</span>' : ''}
+          ${g.role ? `<span class="chip">${h(g.role)}</span>` : ''}
+          <span>${h(g.tag)}</span>
+          ${done[g.id] ? `<span class="chip mint">✓ ${done[g.id]}판</span>` : ''}
+        </div>
+      </div>
+      <div class="g-ar">›</div>
+    </button>`;
+
+  const group = (label, sub, list) => !list.length ? '' : `
+    <div class="sec">${label} <span class="n">${list.length}</span></div>
+    <p class="note" style="margin:-4px 4px 10px">${sub}</p>
+    <div class="glist">${list.map(card).join('')}</div>`;
+
+  const solo = GAMES.filter(g => g.mode !== 'team');
+  const team = GAMES.filter(g => g.mode === 'team');
+  const needMc = GAMES.filter(g => g.mc === 'need');
+
   return `
     ${offBanner()}
-    <p class="note" style="margin:2px 4px 16px">게임을 고르면 규칙과 진행 도구가 열립니다. 끝나고 순위를 입력하면 종합 순위에 자동 합산돼요.</p>
-    <div class="glist">
-      ${GAMES.map((g,i) => `
-        <button class="g ${done[g.id]?'done':''}" data-act="game" data-id="${g.id}" style="${gcVars(g.color)};animation-delay:${i*45}ms">
-          <div class="g-ic">${g.emoji}</div>
-          <div class="g-b">
-            <div class="g-n">${h(g.name)}</div>
-            <div class="g-m">
-              <span class="chip ${g.mode==='team'?'mint':''}">${g.mode==='team'?'팀전':'개인전'}</span>
-              <span>${h(g.tag)}</span>
-              ${done[g.id] ? `<span class="chip mint">✓ ${done[g.id]}판</span>` : ''}
-            </div>
-          </div>
-          <div class="g-ar">›</div>
-        </button>`).join('')}
-    </div>`;
+    <p class="note" style="margin:2px 4px 14px">게임을 고르면 규칙과 진행 도구가 열립니다. 끝나고 순위를 입력하면 종합 순위에 자동 합산돼요.</p>
+    ${needMc.length && !nSpec ? `<div class="mcbox need">
+      <span class="i">📺</span>
+      <span><b>${needMc.map(g=>h(g.name.split(' / ')[0])).join(' · ')}는 사회자가 따로 있어야 깔끔해요</b>
+        <span class="s">지금은 선수 중 한 명이 사회자로 빠집니다. 대기실에서 태블릿 같은 기기 하나를
+          「사회자(화면)」로 지정하면 전원이 플레이할 수 있어요.</span></span>
+    </div>` : ''}
+    ${group('개인전', '각자 겨뤄서 순위를 냅니다', solo)}
+    ${group('팀전', '팀 점수를 팀원 전원이 똑같이 받습니다 — 대기실에서 팀을 먼저 나눠주세요', team)}`;
 }
 
 /* ── 게임 상세 ── */
 function vGame(){
   const g = G(S.gameId); if (!g) return '';
-  const done = (S.room.rotation?.[g.id] || []).filter(p => S.room.players[p]);
-  const all = players();
+  const specs = players().filter(([,p]) => isSpec(p));
+  const nSpec = specs.length, specNames = specs.map(([,p]) => p.name).join(', ');
+  const done = (S.room.rotation?.[g.id] || []).filter(p => S.room.players[p] && !isSpec(S.room.players[p]));
+  const all = playing();
   const last = S._lastPick?.[g.id];
 
   return `
@@ -1771,10 +1847,28 @@ function vGame(){
         <span class="chip ${g.mode==='team'?'mint':''}">${g.mode==='team'?'팀전':'개인전'}</span>
         <span class="chip amb">배점 ×${g.weight}</span>
         ${g.role ? `<span class="chip">${h(g.role)} 필요</span>` : ''}
+        ${g.mc==='need' ? '<span class="chip sky">📺 사회자 전담</span>' : ''}
       </div>
     </div>
 
-    ${g.role ? `
+    ${g.mcWhy ? `<div class="mcbox ${g.mc==='need'?'need':''}">
+      <span class="i">${g.mc==='need' ? '📺' : '🖐'}</span>
+      <span><b>${g.mc==='need' ? '겨루지 않는 사회자가 있어야 깔끔해요' : '지금 안 뛰는 사람이 폰을 맡아주세요'}</b>
+        <span class="s">${h(g.mcWhy)}</span></span>
+    </div>` : ''}
+
+    ${g.role === '사회자' && nSpec ? `
+      <div class="card">
+        <div class="sec" style="margin:0 0 10px">사회자</div>
+        <div class="mcbox need" style="margin:0">
+          <span class="i">📺</span>
+          <span><b>${h(specNames)} 기기가 사회자예요</b>
+            <span class="s">겨루지 않는 기기가 있으니 선수 중에서 따로 뽑지 않아도 됩니다 —
+              ${playing().length}명 전원이 팀에 들어갑니다.</span></span>
+        </div>
+      </div>` : ''}
+
+    ${g.role && !(g.role === '사회자' && nSpec) ? `
       <div class="card">
         <div class="sec" style="margin:0 0 12px">${h(g.role)} 뽑기</div>
         ${last ? `<div class="pickres">
@@ -1821,7 +1915,8 @@ function vDeck(){
   const g = G(p.gameId);
   const teams = S.room.teams || {count:0,assign:{}};
   const tc = i => TEAM_COLORS[i % TEAM_COLORS.length];
-  const members = i => Object.entries(teams.assign||{}).filter(([,t])=>Number(t)===i)
+  const members = i => Object.entries(teams.assign||{})
+    .filter(([p,t])=>Number(t)===i && S.room.players[p] && !isSpec(S.room.players[p]))
     .map(([pid])=>pname(pid)).join(', ');
   const wordCount = p.cats.reduce((n,k) => n + (WORD_DECKS[k]?.words.length || 0), 0);
 
@@ -2116,7 +2211,7 @@ function vAct(){
 /* ── 스마일~! ── */
 function vSmile(){
   const p = S.play;
-  const allP = players();
+  const allP = playing();
 
   if (p.phase === 'pick') return `
     <div class="sec">첫 술래 고르기</div>
@@ -2196,9 +2291,11 @@ function vScore(){
 
   const entries = isTeam
     ? Array.from({length:teams.count}, (_,i) => ({ id:i, label:`${i+1}팀`,
-        sub:Object.entries(teams.assign||{}).filter(([,t])=>Number(t)===i).map(([p])=>pname(p)).join(', '),
+        sub:Object.entries(teams.assign||{})
+          .filter(([p,t])=>Number(t)===i && S.room.players[p] && !isSpec(S.room.players[p]))
+          .map(([p])=>pname(p)).join(', '),
         color:TEAM_COLORS[i] }))
-    : players().map(([pid,p]) => ({ id:pid, label:p.name, sub:'', color:avColor(pid) }));
+    : playing().map(([pid,p]) => ({ id:pid, label:p.name, sub:'', color:avColor(pid) }));
 
   const remain = entries.filter(e => !d.order.some(o => String(o) === String(e.id)));
 
@@ -2246,7 +2343,7 @@ function vScore(){
 /* ── 종합 순위 ── */
 function vBoard(){
   const pts = calcPoints();
-  const rows = players().map(([pid,p]) => ({ pid, name:p.name, pt:pts[pid]||0 }))
+  const rows = playing().map(([pid,p]) => ({ pid, name:p.name, pt:pts[pid]||0 }))
     .sort((a,b) => b.pt - a.pt || a.name.localeCompare(b.name));
   const scores = Object.entries(S.room.scores || {}).sort((a,b) => (b[1].at||0) - (a[1].at||0));
   const hasScore = rows.some(r => r.pt > 0);
@@ -2470,7 +2567,7 @@ async function act(a, d){
   case 'teams': {
     const n = Number(d.n);
     if (n < 2){ S.room.teams = {count:0,assign:{}}; pushHostState(); }
-    else if (players().length < n) return toast(`${n}팀을 나누려면 ${n}명 이상 필요해요`);
+    else if (playing().length < n) return toast(`${n}팀을 나누려면 선수가 ${n}명 이상 필요해요`);
     else { makeTeams(n); confetti(45); }
     render(); break;
   }
@@ -2483,8 +2580,8 @@ async function act(a, d){
   case 'pick': {
     if (!S.isHost) return toast('진행자만 뽑을 수 있어요');
     const g = G(S.gameId);
-    const before = (S.room.rotation?.[g.id] || []).filter(p => S.room.players[p]);
-    const all = players().map(([pid]) => pid);
+    const before = (S.room.rotation?.[g.id] || []).filter(p => S.room.players[p] && !isSpec(S.room.players[p]));
+    const all = playing().map(([pid]) => pid);
     const pool = all.filter(p => !before.includes(p));
     const { pick, reset } = pickRole(S.gameId);
     S._lastPick[S.gameId] = pick;
@@ -2503,7 +2600,7 @@ async function act(a, d){
   /* ── 진행 도구 ── */
   case 'tool-start': {
     if (!S.isHost) return toast('진행 도구는 진행자 기기에서 열어주세요');
-    const g = G(S.gameId), n = players().length;
+    const g = G(S.gameId), n = playing().length;
     if (g.tool === 'deck'){
       if (g.mode === 'team' && (S.room.teams?.count || 0) < 2)
         return toast('팀전이에요 — 대기실에서 팀을 먼저 나눠주세요');
@@ -2591,7 +2688,7 @@ async function act(a, d){
   case 'sm-sul': {
     const p = S.play;
     p.sul = d.pid;
-    p.pool = players().map(([pid]) => pid).filter(x => x !== d.pid);
+    p.pool = playing().map(([pid]) => pid).filter(x => x !== d.pid);
     p.shots = 10; p.sel = []; p.phase = 'run';
     SFX.go(); render(true); break;
   }
@@ -2614,7 +2711,7 @@ async function act(a, d){
     if (p.sel.length === 1){
       const nx = p.sel[0];
       p.sul = nx;
-      p.pool = players().map(([pid]) => pid).filter(x => x !== nx);
+      p.pool = playing().map(([pid]) => pid).filter(x => x !== nx);
     }else if (p.sel.length > 1){
       p.pool = [...p.sel];      // 걸린 사람들끼리 재진행 (술래 유지)
     }                            // 0명 → 같은 술래·같은 대상 다시
@@ -2664,6 +2761,25 @@ async function act(a, d){
     delete S.room.scores[d.sid];
     set(ref(db, `${ROOT}/rooms/${S.code}/scores`), S.room.scores).catch(()=>{});
     render(); break;
+  }
+
+  /* 이 기기를 「사회자(화면)」로 — 겨루지 않는다.
+     ⚠️ 자기 players/{pid} 노드만 쓴다(참가자도 쓸 수 있는 경로). 권위 필드는 안 건드린다.
+     ⚠️ 팀 배정이 남아 있으면 유령 팀원이 되므로 같이 지운다.
+        점수 기록(scores)은 지우지 않는다 — 해제하면 그대로 되살아난다. */
+  case 'spec-toggle': {
+    const me = S.room.players?.[S.pid]; if (!me) break;
+    const on = !isSpec(me);
+    if (on && playing().length <= 1) return toast('선수가 아무도 안 남아요');
+    me.spec = on;
+    update(ref(db, `${ROOT}/rooms/${S.code}/players/${S.pid}`), { spec:on }).catch(()=>{});
+    if (on && S.room.teams?.assign?.[S.pid] != null){
+      delete S.room.teams.assign[S.pid];
+      if (S.isHost) pushHostState();
+    }
+    vib(12); render(true);
+    toast(on ? '📺 이 기기는 사회자(화면)입니다 — 겨루지 않아요' : '다시 선수로 참가합니다');
+    break;
   }
 
   case 'rename': {
