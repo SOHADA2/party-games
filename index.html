@@ -571,6 +571,24 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .holdbox.show{border-color:var(--rose);border-style:solid;background:rgba(255,92,124,.08)}
 .role-team{font-size:30px;font-weight:900;margin-top:6px;letter-spacing:-.03em}
 
+/* 상황극 — 사건 내레이션 / 배역 설정 / 사회자 진행표 */
+.story{font-size:14.5px;line-height:1.78;color:#DAD4EE;word-break:keep-all;margin:0}
+.story.big{font-size:15.5px;line-height:1.8}
+.rolelist{margin-top:14px;padding-top:13px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:9px}
+.rolerow{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:var(--dim);
+  line-height:1.55;word-break:keep-all}
+.rolerow .chip{flex:none;margin-top:1px}
+.guide{background:var(--surf);border:1px solid var(--line);border-radius:var(--r-m);
+  padding:13px 15px;margin-bottom:12px;box-shadow:var(--lift)}
+.guide summary{font-weight:800;font-size:14px;cursor:pointer;list-style:none;letter-spacing:-.02em}
+.guide summary::-webkit-details-marker{display:none}
+.guide summary::after{content:' ▾';color:var(--dim2)}
+.guide[open] summary{margin-bottom:12px}
+.guide[open] summary::after{content:' ▴'}
+.gstep{font-size:13.5px;line-height:1.7;color:#CFC8E6;word-break:keep-all;
+  padding:8px 0;border-top:1px solid var(--line)}
+.gstep b{color:var(--amber)}
+
 /* ══════════════════════════════════════════════════════════
    앱 설치 (PWA)
 ══════════════════════════════════════════════════════════ */
@@ -655,7 +673,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.5.0';
+const APP_VERSION = 'v0.6.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -803,15 +821,181 @@ const ACT_LINES = [
 ];
 
 /* ── 상황극 마피아: 배경 + 캐릭터 풀 ── */
+/* ⚠️ 상황극이 성립하려면 이름표만으로는 안 된다. 배경마다
+     ① intro          — 사회자가 읽어주는 사건 발단
+     ② mafia/cop/doc  — 그 세계관의 말로 바꾼 진영·능력 이름
+                        (왕궁 연회에 「경찰」이 있으면 몰입이 깨진다)
+     ③ chars[].d      — 배역별 연기 힌트 한 줄
+   참가자 상한이 12명이므로 배역도 12개씩 둔다(중복 배정 방지). */
 const MAFIA_SITS = [
-  { n:'심야의 크루즈', chars:['선장','일등항해사','요리사','갑판원','재즈 가수','부자 승객','밀항자','승무원','선상 의사','마술사','사진사','도박사'] },
-  { n:'회사 워크숍', chars:['사장','부장','대리','신입사원','인사팀장','경비원','전속 셰프','버스기사','행사 MC','개발자','디자이너','영업왕'] },
-  { n:'수학여행', chars:['담임선생님','반장','전학생','일진','모범생','매점 사장','버스기사','사진사','양호선생님','체육선생님','급식왕','지각대장'] },
-  { n:'한밤의 캠핑장', chars:['캠핑장 주인','불멍 장인','요리 담당','텐트 장인','곤충 박사','낚시꾼','길 잃은 등산객','별 관측가','장작 담당','라면 달인'] },
-  { n:'유럽 배낭여행', chars:['가이드','사진작가','길치','환전 담당','맛집 헌터','통역 담당','수상한 소매치기','호스텔 주인','버스킹 뮤지션','지도 담당'] },
-  { n:'좀비 대피소', chars:['전직 군인','의사','해커','요리사','라디오 DJ','건물 관리인','수상한 과학자','생존왕','정찰 담당','무기 담당'] },
-  { n:'왕궁 연회', chars:['왕','왕비','왕자','공주','재상','근위대장','궁중 요리사','광대','점성술사','수상한 자객','시녀장','외국 사신'] },
-  { n:'예능 촬영장', chars:['메인 MC','보조 MC','PD','메인 작가','카메라 감독','게스트 아이돌','매니저','코디','막내 스태프','분장사'] },
+  {
+    n:'심야의 크루즈',
+    intro:'출항 사흘째 새벽, 갑판에서 짧은 비명이 들렸다. 아침에 세어보니 승객 한 명이 없고 구명보트 하나가 비어 있다. 다음 항구까지는 이틀. 범인은 아직 이 배 안에 있다.',
+    mafia:{ name:'밀항자', desc:'표 없이 숨어든 자들. 밤마다 한 명을 바다로 밀어버린다.' },
+    cop:{ name:'항해사', desc:'밤에 한 사람의 선실을 뒤져 정체를 알아낸다.' },
+    doc:{ name:'선의(船醫)', desc:'밤에 한 사람 곁을 지켜 죽음을 막는다.' },
+    chars:[
+      {n:'선장', d:'배의 주인. 위엄 있게 말하고 아무도 쉽게 믿지 않는다.'},
+      {n:'재즈 가수', d:'매일 밤 라운지에서 노래한다. 모두의 얼굴을 안다.'},
+      {n:'부자 승객', d:'돈이면 다 된다고 믿는다. 계속 특별대우를 요구한다.'},
+      {n:'갑판원', d:'밤새 일했다. 누가 돌아다녔는지 봤을지도 모른다.'},
+      {n:'요리사', d:'주방 밖으로 잘 안 나온다. 칼을 아주 잘 쓴다.'},
+      {n:'도박사', d:'카지노에 산다. 사람 표정 읽는 게 특기.'},
+      {n:'사진사', d:'아무 데나 카메라를 들이민다. 증거를 갖고 있을 수도.'},
+      {n:'승무원', d:'모든 선실 열쇠를 갖고 있다. 늘 웃는 얼굴.'},
+      {n:'마술사', d:'손이 빠르다. 하는 말을 믿기 어렵다.'},
+      {n:'노부인', d:'잠이 없다. 새벽마다 복도를 걷는다.'},
+      {n:'기관사', d:'엔진실에 혼자 있었다. 증명해 줄 사람이 없다.'},
+      {n:'신혼여행객', d:'둘이 붙어 다닌다. 서로만 감싼다.'},
+    ]
+  },
+  {
+    n:'회사 워크숍',
+    intro:'워크숍 둘째 날 아침, 부장이 방에서 나오지 않는다. 문은 안에서 잠겨 있었다. 어젯밤 회식 자리에 있던 건 우리뿐이고, 산장을 나가는 길은 눈으로 막혔다.',
+    mafia:{ name:'산업 스파이', desc:'경쟁사가 심어둔 자들. 밤마다 입을 하나씩 막는다.' },
+    cop:{ name:'감사팀', desc:'밤에 한 사람의 기록을 열어 정체를 확인한다.' },
+    doc:{ name:'보건 담당', desc:'밤에 한 사람 곁을 지켜 살려낸다.' },
+    chars:[
+      {n:'사장', d:'전부 자기 덕이라 생각한다. 훈화를 길게 한다.'},
+      {n:'이사', d:'사장 눈치만 본다. 말끝을 흐린다.'},
+      {n:'팀장', d:'실적에 목숨 건다. 남 탓이 빠르다.'},
+      {n:'신입사원', d:'아무것도 모른다. 자꾸 사과한다.'},
+      {n:'개발자', d:'노트북에서 눈을 안 뗀다. 말수가 적다.'},
+      {n:'영업왕', d:'누구와도 금방 친해진다. 술이 세다.'},
+      {n:'경리', d:'돈 흐름을 다 안다. 조용하지만 예리하다.'},
+      {n:'인턴', d:'사진 찍고 기록한다. 의외로 다 보고 있다.'},
+      {n:'총무', d:'열쇠와 일정표를 쥐고 있다.'},
+      {n:'운전기사', d:'밖에서 대기했다. 누가 나갔는지 안다.'},
+      {n:'홍보 담당', d:'말을 아주 잘 돌린다. 논점을 흐린다.'},
+      {n:'퇴사자', d:'퇴사했는데 왜 여기 있는지 아무도 모른다.'},
+    ]
+  },
+  {
+    n:'수학여행 밤',
+    intro:'소등하고 한 시간쯤 뒤, 3층 복도에서 발소리가 났다. 아침 점호에 한 명이 없다. 선생님은 아무도 밖으로 못 나갔다고 한다. 그럼 남은 답은 하나다.',
+    mafia:{ name:'몰래 나간 아이들', desc:'규칙을 깬 자들. 들키면 끝이라 목격자를 없앤다.' },
+    cop:{ name:'규율부장', desc:'밤에 한 명의 방을 확인해 정체를 알아낸다.' },
+    doc:{ name:'보건 선생님', desc:'밤에 한 명을 데려가 무사히 넘긴다.' },
+    chars:[
+      {n:'담임 선생님', d:'자꾸 헛기침한다. 사실 제일 무서워하고 있다.'},
+      {n:'반장', d:'책임감이 과하다. 계속 정리하려 든다.'},
+      {n:'전학생', d:'아직 아무도 잘 모른다. 말수가 적다.'},
+      {n:'일진', d:'다 귀찮다는 표정. 은근히 다 보고 있다.'},
+      {n:'모범생', d:'규칙 어긴 사람을 못 참는다. 따박따박 따진다.'},
+      {n:'잠꾸러기', d:'계속 존다. 알리바이가 하나도 없다.'},
+      {n:'사진 담당', d:'밤에도 카메라를 들고 다녔다.'},
+      {n:'매점 단골', d:'밤에 매점에 갔다. 뭔가 봤을지도.'},
+      {n:'이어폰 낀 아이', d:'아무 소리도 못 들었다고 우긴다.'},
+      {n:'룸메이트', d:'옆자리가 비었던 걸 아는 유일한 사람.'},
+      {n:'체육부장', d:'목소리가 크다. 우기면 이긴다고 믿는다.'},
+      {n:'버스 기사', d:'주차장에서 잤다. 차 소리를 들었다고 한다.'},
+    ]
+  },
+  {
+    n:'한밤의 캠핑장',
+    intro:'모닥불이 꺼질 무렵, 텐트 하나가 찢겨 있었다. 안에 있던 사람은 없다. 곰이라기엔 자국이 이상하다. 산 아래로 내려가는 길은 아침에야 열린다.',
+    mafia:{ name:'밤손님', desc:'산속에 숨어 있던 자들. 이미 우리 틈에 섞여 있다.' },
+    cop:{ name:'산장지기', desc:'밤에 한 사람의 텐트를 살펴 정체를 안다.' },
+    doc:{ name:'응급구조사', desc:'밤에 한 사람을 지켜 살려낸다.' },
+    chars:[
+      {n:'캠핑장 주인', d:'이 산을 제일 잘 안다. 말이 짧다.'},
+      {n:'불멍 장인', d:'장작만 본다. 밤새 불 옆에 있었다.'},
+      {n:'요리 담당', d:'계속 뭔가 굽고 있다. 칼 솜씨가 좋다.'},
+      {n:'곤충 박사', d:'밤에 채집하러 혼자 돌아다녔다.'},
+      {n:'낚시꾼', d:'새벽에 저수지에 있었다. 본 사람이 없다.'},
+      {n:'길 잃은 등산객', d:'어제 갑자기 합류했다. 아무도 초대 안 했다.'},
+      {n:'별 관측가', d:'하늘만 봤다고 한다. 망원경이 엉뚱한 곳을 향해 있었다.'},
+      {n:'장작 담당', d:'도끼를 들고 다닌다. 손에 뭔가 묻었다.'},
+      {n:'라디오 담당', d:'유일하게 바깥과 연락되는 사람.'},
+      {n:'강아지 주인', d:'개가 밤새 짖었다고 한다.'},
+      {n:'텐트 장인', d:'모든 텐트를 자기가 쳤다. 구조를 다 안다.'},
+      {n:'옆자리 캠퍼', d:'우리 일행이 아닌데 자꾸 끼어든다.'},
+    ]
+  },
+  {
+    n:'왕궁 연회',
+    intro:'연회가 무르익던 밤, 왕의 술잔이 엎어졌다. 독이었다. 문은 모두 잠겼고 연회장 안에 있던 건 우리뿐이다. 새벽이 오기 전에 범인을 찾아야 한다.',
+    mafia:{ name:'자객', desc:'왕의 목숨을 노리고 스며든 자들. 밤마다 하나씩 벤다.' },
+    cop:{ name:'점성술사', desc:'밤에 한 사람의 별을 읽어 정체를 알아낸다.' },
+    doc:{ name:'어의(御醫)', desc:'밤에 한 사람에게 해독제를 준비해 살린다.' },
+    chars:[
+      {n:'왕', d:'의심이 많다. 늘 명령조로 말한다.'},
+      {n:'왕비', d:'우아하지만 말에 가시가 있다.'},
+      {n:'왕자', d:'왕좌를 노린다. 티 안 내려고 애쓴다.'},
+      {n:'재상', d:'모든 서류를 쥐고 있다. 말을 아주 길게 한다.'},
+      {n:'근위대장', d:'경비를 책임졌다. 그래서 제일 곤란한 처지.'},
+      {n:'궁중 요리사', d:'술과 음식을 준비했다. 손이 떨린다.'},
+      {n:'광대', d:'아무 말이나 한다. 그중에 진실이 섞여 있다.'},
+      {n:'시녀장', d:'모든 방을 드나든다. 소문을 전부 안다.'},
+      {n:'외국 사신', d:'말투가 어색하다. 목적을 알 수 없다.'},
+      {n:'악사', d:'계속 연주했다. 소리에 묻힌 걸 들었을지도.'},
+      {n:'기사단장', d:'명예를 목숨보다 중히 여긴다. 거짓말은 못 한다고 주장한다.'},
+      {n:'공주', d:'아무도 자기를 안 믿어준다고 서러워한다.'},
+    ]
+  },
+  {
+    n:'좀비 대피소',
+    intro:'셋째 날 밤, 지하 셔터가 안쪽에서 열려 있었다. 한 명이 물렸고, 물린 걸 숨기고 있는 자가 있다. 구조대는 빨라야 이틀 뒤에 온다.',
+    mafia:{ name:'감염자', desc:'이미 물렸지만 숨기고 있다. 밤마다 한 명씩 끌고 간다.' },
+    cop:{ name:'정찰병', desc:'밤에 한 사람을 관찰해 감염 여부를 확인한다.' },
+    doc:{ name:'군의관', desc:'밤에 한 사람을 치료해 감염을 막는다.' },
+    chars:[
+      {n:'전직 군인', d:'명령하듯 말한다. 총을 놓지 않는다.'},
+      {n:'약사', d:'남은 약을 관리한다. 판단이 지나치게 냉정하다.'},
+      {n:'해커', d:'통신 장비만 만진다. 사람 눈을 안 본다.'},
+      {n:'배급 담당', d:'남은 식량을 쥐고 있다. 그걸로 사람을 다룬다.'},
+      {n:'라디오 진행자', d:'계속 떠든다. 침묵을 못 견딘다.'},
+      {n:'건물 관리인', d:'모든 문의 구조를 안다.'},
+      {n:'수상한 연구원', d:'가방을 절대 열지 않는다.'},
+      {n:'생존왕', d:'혼자 오래 버텼다. 아무도 안 믿는다.'},
+      {n:'어린 학생', d:'겁에 질려 있다. 뭔가 봤다고 한다.'},
+      {n:'간호사', d:'물린 자국을 구분할 수 있다고 한다.'},
+      {n:'성직자', d:'모두를 용서하자고 한다. 속을 알 수 없다.'},
+      {n:'택배기사', d:'우연히 들어왔다. 이 동네를 제일 잘 안다.'},
+    ]
+  },
+  {
+    n:'예능 촬영장',
+    intro:'생방송 30분 전, 메인 MC의 큐카드가 갈기갈기 찢겨 있고 대기실에서 스태프 한 명이 쓰러진 채 발견됐다. 촬영은 취소할 수 없다. 범인은 이 팀 안에 있다.',
+    mafia:{ name:'잠입 기자', desc:'특종을 노리고 들어온 자들. 방해되는 사람을 치운다.' },
+    cop:{ name:'조연출', desc:'밤에 CCTV를 돌려 한 사람의 정체를 확인한다.' },
+    doc:{ name:'매니저', desc:'밤에 한 사람 옆을 지켜 사고를 막는다.' },
+    chars:[
+      {n:'메인 MC', d:'카메라 앞에서만 웃는다. 뒤에서는 말이 짧다.'},
+      {n:'보조 MC', d:'눈치가 빠르다. 빈틈이 보이면 치고 들어온다.'},
+      {n:'PD', d:'시청률만 본다. 사람보다 그림이 먼저다.'},
+      {n:'메인 작가', d:'대본을 전부 안다. 말이 많고 빠르다.'},
+      {n:'카메라 감독', d:'그 시간에도 찍고 있었다.'},
+      {n:'게스트 가수', d:'잔뜩 긴장해 있다. 말을 아주 조심한다.'},
+      {n:'코디', d:'대기실을 제일 자주 드나든다. 옷에 뭔가 묻었다.'},
+      {n:'막내 스태프', d:'심부름으로 안 가본 데가 없다.'},
+      {n:'분장사', d:'오늘 모두의 얼굴을 만졌다.'},
+      {n:'방청객 대표', d:'원래 여기 있으면 안 되는 사람.'},
+      {n:'음향 감독', d:'모든 마이크를 듣고 있었다.'},
+      {n:'섭외 담당', d:'누가 왜 왔는지 다 안다. 입이 무겁다.'},
+    ]
+  },
+  {
+    n:'야간열차',
+    intro:'열차가 국경 앞에서 갑자기 멈췄다. 아침에 세어보니 배낭 하나와 사람 하나가 사라졌다. 다음 역까지 다섯 시간, 그동안 아무도 내리지 않았다.',
+    mafia:{ name:'소매치기 일당', desc:'여행자를 노리는 자들. 들킬 것 같으면 없앤다.' },
+    cop:{ name:'승무원', desc:'밤에 한 사람의 여권을 확인해 정체를 알아낸다.' },
+    doc:{ name:'동행 간호사', desc:'밤에 한 사람을 돌봐 살려낸다.' },
+    chars:[
+      {n:'인솔 가이드', d:'일정에 집착한다. 계속 인원을 센다.'},
+      {n:'사진작가', d:'밤새 창밖을 찍었다.'},
+      {n:'길치', d:'계속 헤맨다. 알리바이가 엉망이다.'},
+      {n:'환전 담당', d:'일행의 현금을 전부 갖고 있다.'},
+      {n:'맛집 헌터', d:'식당칸에서 살다시피 했다.'},
+      {n:'통역 담당', d:'유일하게 현지 말을 한다. 뭐라 통역했는지 알 수 없다.'},
+      {n:'배낭 큰 사람', d:'짐이 이상하게 무겁다.'},
+      {n:'옆칸 승객', d:'원래 일행이 아닌데 계속 붙어 있다.'},
+      {n:'버스킹 뮤지션', d:'밤새 기타를 쳤다. 소리를 덮었을 수도.'},
+      {n:'일기 쓰는 사람', d:'모든 걸 기록한다. 보여주진 않는다.'},
+      {n:'차장', d:'열차의 모든 문을 열 수 있다.'},
+      {n:'노숙 여행자', d:'표가 있는지도 확실하지 않다.'},
+    ]
+  },
 ];
 
 /* ══════════════════════════════════════════════
@@ -2263,6 +2447,7 @@ function vMafiaTool(){
   const p = S.play;
   let pool = players().map(([pid]) => pid);
   if (!p.incHost) pool = pool.filter(x => x !== S.pid);
+  const sd = MAFIA_SITS.find(x => x.n === p.sit) || MAFIA_SITS[0];
 
   if (p.phase === 'setup') return `
     <div class="gh" style="${gcVars('#FF5C7C')};padding:18px">
@@ -2272,22 +2457,33 @@ function vMafiaTool(){
     </div>
 
     <div class="sec">배경 상황</div>
-    <div class="card" style="display:flex;align-items:center;gap:12px">
-      <div style="flex:1;font-weight:900;font-size:17px">${h(p.sit)}</div>
-      <button class="btn sm" data-act="mf-sit">🎲 바꾸기</button>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div style="flex:1;font-weight:900;font-size:18px;letter-spacing:-.03em">${h(sd.n)}</div>
+        <button class="btn sm" data-act="mf-sit">🎲 바꾸기</button>
+      </div>
+      <p class="story">${h(sd.intro)}</p>
+      <div class="rolelist">
+        <div class="rolerow"><span class="chip rose">${h(sd.mafia.name)}</span><span>${h(sd.mafia.desc)}</span></div>
+        ${p.pol ? `<div class="rolerow"><span class="chip elec">${h(sd.cop.name)}</span><span>${h(sd.cop.desc)}</span></div>` : ''}
+        ${p.doc ? `<div class="rolerow"><span class="chip mint">${h(sd.doc.name)}</span><span>${h(sd.doc.desc)}</span></div>` : ''}
+      </div>
     </div>
 
     <div class="sec">구성 <span class="n">역할 받을 사람 ${pool.length}명</span></div>
     <div class="card">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <div style="flex:1;font-weight:800">🔪 마피아 수</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800">${h(sd.mafia.name)} 수</div>
+          <div class="note" style="font-size:11.5px">이 판의 마피아 진영</div>
+        </div>
         <button class="stepbtn" data-act="mf-cnt" data-v="-1">−</button>
         <div style="font-weight:900;font-size:22px;min-width:26px;text-align:center">${p.cnt}</div>
         <button class="stepbtn" data-act="mf-cnt" data-v="1">＋</button>
       </div>
       <div class="catgrid">
-        <button class="cat ${p.pol?'on':''}" data-act="mf-tog" data-v="pol"><span class="e">👮</span><span>경찰</span></button>
-        <button class="cat ${p.doc?'on':''}" data-act="mf-tog" data-v="doc"><span class="e">💉</span><span>의사</span></button>
+        <button class="cat ${p.pol?'on':''}" data-act="mf-tog" data-v="pol"><span class="e">🔍</span><span>${h(sd.cop.name)}</span></button>
+        <button class="cat ${p.doc?'on':''}" data-act="mf-tog" data-v="doc"><span class="e">💉</span><span>${h(sd.doc.name)}</span></button>
       </div>
       <div style="height:10px"></div>
       <button class="cat ${p.incHost?'on':''}" data-act="mf-tog" data-v="incHost" style="width:100%">
@@ -2303,22 +2499,42 @@ function vMafiaTool(){
   /* dealt */
   const m = S.room.mafia || { roles:{} };
   const rows = Object.entries(m.roles || {}).filter(([pid]) => S.room.players[pid]);
+  const mafiaNm = m.mafiaName || '마피아';
+  const cop = rows.find(([,r]) => r.job && r.job === sd.cop.name);
+  const doc = rows.find(([,r]) => r.job && r.job === sd.doc.name);
   return `
     <div class="gh" style="${gcVars('#FF5C7C')};padding:18px">
       <div class="gh-em">🎭</div>
-      <div class="gh-n" style="font-size:18px;padding-right:0">배경 — ${h(m.sit||'')}</div>
-      <p class="note" style="margin-top:7px;position:relative">전원에게 "대기실에서 내 역할 확인"이라고 알려주세요</p>
+      <div class="gh-n" style="font-size:19px;padding-right:0">${h(m.sit||'')}</div>
+      <div class="gh-m"><span class="chip">📢 소리 내어 읽어주세요</span></div>
     </div>
+    <div class="card"><p class="story big">${h(m.intro||'')}</p></div>
+
+    <details class="guide">
+      <summary>📋 사회자 진행 순서 (처음이면 펼쳐보세요)</summary>
+      <div class="gstep"><b>밤</b> — "모두 눈을 감아주세요."</div>
+      <div class="gstep">① <b>${h(mafiaNm)}</b> 눈을 뜨고, 오늘 없앨 사람을 손가락으로 지목 → 다시 감기</div>
+      ${cop ? `<div class="gstep">② <b>${h(sd.cop.name)}</b> 눈을 뜨고, 알아볼 사람을 지목 → 사회자가 고개를 끄덕이거나(마피아) 젓는다(시민) → 다시 감기</div>` : ''}
+      ${doc ? `<div class="gstep">③ <b>${h(sd.doc.name)}</b> 눈을 뜨고, 지킬 사람을 지목 → 다시 감기<br>
+        <span class="note">지목이 겹치면 그 사람은 살아남습니다</span></div>` : ''}
+      <div class="gstep"><b>아침</b> — "간밤에 ○○님이 사라졌습니다." (지켜졌다면 "아무 일도 없었습니다")</div>
+      <div class="gstep">→ 각자 <b>자기 배역으로</b> 변론·추리 → 다수결 투표 → 한 명 지목 → 정체 공개</div>
+      <div class="gstep"><b>승리</b> — ${h(mafiaNm)}가 전부 밝혀지면 <b>시민 승</b> ·
+        ${h(mafiaNm)} 수가 나머지와 같아지면 <b>${h(mafiaNm)} 승</b></div>
+    </details>
 
     <div class="sec">배정 현황 <span class="n">${rows.length}명</span></div>
+    <p class="note" style="margin:-4px 4px 10px">전원에게 "대기실에서 내 역할 확인"이라고 알려주세요</p>
     <button class="btn gh sm" data-act="mf-show" style="width:100%;margin-bottom:10px">
       ${p.show?'🙈 비밀 역할 가리기':'👁 비밀 역할 보기 (사회자용)'}</button>
     ${rows.map(([pid,r]) => `
       <div class="tscore" style="--tc:${p.show&&r.team==='mafia'?'var(--rose)':avColor(pid)}">
         <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pname(pid), 'sm')}
-          <div><div>${h(pname(pid))}</div><div class="note" style="font-size:11.5px">${h(r.char)}</div></div></div>
+          <div style="min-width:0"><div>${h(pname(pid))}</div>
+            <div class="note" style="font-size:11.5px">${h(r.char)}</div></div></div>
         ${p.show
-          ? `<span class="chip ${r.team==='mafia'?'rose':'mint'}">${r.team==='mafia'?'🔪 마피아':'🕊 시민'}${r.job?' · '+r.job:''}</span>`
+          ? `<span class="chip ${r.team==='mafia'?'rose':(r.job?'elec':'mint')}">${
+              r.team==='mafia' ? '🔪 '+h(mafiaNm) : (r.job ? h(r.job) : '🕊 시민')}</span>`
           : '<span class="chip">비밀</span>'}
       </div>`).join('')}
     <div style="height:14px"></div>
@@ -2338,22 +2554,33 @@ function vRole(){
       <div class="empty-t">배정된 역할이 없어요</div>
       <div class="note">진행자가 역할을 나눠주면 대기실에 알림이 떠요</div>
     </div>`;
+  const mafiaNm = m.mafiaName || '마피아';
   return `
     <div class="gh" style="${gcVars('#FF5C7C')};padding:20px">
       <div class="gh-em">🎭</div>
-      <div class="gh-n" style="font-size:15px;padding-right:0">배경 — ${h(m.sit||'')}</div>
-      <div class="gh-m"><span class="chip">내 캐릭터 (공개해도 됨)</span></div>
-      <div style="font-size:27px;font-weight:900;margin-top:8px;position:relative">${h(my.char)}</div>
+      <div class="gh-n" style="font-size:17px;padding-right:0">${h(m.sit||'')}</div>
     </div>
-    <p class="note" style="margin:0 4px 12px">이 캐릭터로 연기하세요. 아래 비밀 정보는 아무에게도 보여주지 마세요.</p>
+    <div class="card"><p class="story">${h(m.intro||'')}</p></div>
+
+    <div class="sec">내 배역 <span class="n">공개해도 됨</span></div>
+    <div class="card" style="background:linear-gradient(150deg,rgba(255,92,124,.14),var(--surf));border-color:rgba(255,92,124,.3)">
+      <div style="font-size:28px;font-weight:900;letter-spacing:-.04em;margin-bottom:8px">${h(my.char)}</div>
+      ${my.charDesc ? `<p class="story" style="margin:0">${h(my.charDesc)}</p>` : ''}
+    </div>
+    <p class="note" style="margin:0 4px 12px">이 배역으로 연기하세요. 아래 정체는 <b style="color:var(--rose)">아무에게도</b> 보여주면 안 됩니다.</p>
+
     <div class="holdbox" id="role-hold">
       <div class="hint">🔒 꾹 누르고 있는 동안만 보여요</div>
       <div class="secret">
         <div class="note">나의 정체</div>
-        <div class="role-team" style="color:${my.team==='mafia'?'var(--rose)':'var(--mint)'}">
-          ${my.team==='mafia'?'🔪 마피아':'🕊 시민'}</div>
-        ${my.job ? `<div style="margin-top:8px;font-weight:800;font-size:14px">
-          ${my.job==='경찰'?'👮 경찰 — 밤에 한 명의 정체를 조사할 수 있어요':'💉 의사 — 밤에 한 명을 지목해 살릴 수 있어요'}</div>` : ''}
+        <div class="role-team" style="color:${my.team==='mafia'?'var(--rose)':(my.job?'#B8AEFF':'var(--mint)')}">
+          ${my.team==='mafia' ? '🔪 ' + h(mafiaNm) : (my.job ? h(my.job) : '🕊 시민')}</div>
+        <div style="margin-top:10px;font-weight:700;font-size:13.5px;line-height:1.6;color:#DAD4EE;word-break:keep-all">
+          ${my.team==='mafia' ? h(m.mafiaDesc || '밤마다 한 명을 지목해 없앤다.')
+            : (my.jobDesc ? h(my.jobDesc) : '특별한 능력은 없다. 대신 말과 눈치로 범인을 찾아내야 한다.')}
+        </div>
+        ${my.team==='mafia' ? `<div style="margin-top:10px;font-size:12.5px;color:#FFB0BC;font-weight:700">
+          같은 편은 밤에 눈을 떴을 때 확인하세요</div>` : ''}
       </div>
     </div>
     <p class="note" style="text-align:center">확인했으면 뒤로 나가서 연기를 시작하세요 🎬</p>`;
@@ -2855,11 +3082,16 @@ async function act(a, d){
     const sit = MAFIA_SITS.find(x => x.n === p.sit) || MAFIA_SITS[0];
     const chars = shuffle([...sit.chars]);
     const roles = {};
-    pool.forEach((pid,i) => { roles[pid] = { team: i < p.cnt ? 'mafia' : 'civil', job:'', char:chars[i % chars.length] }; });
+    pool.forEach((pid,i) => {
+      const c = chars[i % chars.length];
+      roles[pid] = { team: i < p.cnt ? 'mafia' : 'civil', job:'', jobDesc:'', char:c.n, charDesc:c.d };
+    });
     const civ = pool.slice(p.cnt);
-    if (p.pol && civ.length)     roles[civ[0]].job = '경찰';
-    if (p.doc && civ.length > 1) roles[civ[1]].job = '의사';
-    S.room.mafia = { round:now(), sit:sit.n, roles };
+    if (p.pol && civ.length){     roles[civ[0]].job = sit.cop.name;  roles[civ[0]].jobDesc = sit.cop.desc; }
+    if (p.doc && civ.length > 1){ roles[civ[1]].job = sit.doc.name;  roles[civ[1]].jobDesc = sit.doc.desc; }
+    // 세계관 명칭을 함께 저장 — 참가자 폰이 MAFIA_SITS를 다시 찾지 않아도 되게
+    S.room.mafia = { round:now(), sit:sit.n, intro:sit.intro,
+      mafiaName:sit.mafia.name, mafiaDesc:sit.mafia.desc, roles };
     pushHostState();
     p.phase = 'dealt'; p.show = false;
     confetti(50); render(true); break;
