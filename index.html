@@ -549,6 +549,25 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .tscore .v{font-weight:900;font-size:24px;color:var(--amber)}
 .tscore .v small{font-size:11px;color:var(--dim2);margin-left:2px}
 
+/* 스텝 버튼 / 큰 숫자 / 비밀 확인(꾹 누르기) */
+.stepbtn{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:none;
+  font-size:20px;font-weight:900;background:var(--surf3);border:1px solid var(--line2);
+  box-shadow:var(--lift);transition:transform .12s var(--spring)}
+.stepbtn:active{transform:scale(.86)}
+.bignum{font-size:58px;font-weight:900;letter-spacing:-.04em;line-height:1;text-align:center}
+.chip.rose{background:rgba(255,92,124,.16);color:#FFB0BC}
+.holdbox{
+  position:relative;border-radius:var(--r-l);border:1.5px dashed var(--line2);
+  background:rgba(0,0,0,.28);padding:34px 18px;text-align:center;margin-bottom:12px;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;
+}
+.holdbox .hint{color:var(--dim2);font-weight:800;font-size:14px}
+.holdbox .secret{display:none}
+.holdbox.show .hint{display:none}
+.holdbox.show .secret{display:block}
+.holdbox.show{border-color:var(--rose);border-style:solid;background:rgba(255,92,124,.08)}
+.role-team{font-size:30px;font-weight:900;margin-top:6px;letter-spacing:-.03em}
+
 /* ══════════════════════════════════════════════════════════
    피드백
 ══════════════════════════════════════════════════════════ */
@@ -605,7 +624,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.3.0';
+const APP_VERSION = 'v0.4.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -695,13 +714,82 @@ const WORD_DECKS = {
 };
 const DECK_KEYS = Object.keys(WORD_DECKS);
 
+/* 받침에 따라 조사 선택: jo('현민','이','가') → 현민이 */
+function jo(w, a, b){
+  const s = String(w), c = s.charCodeAt(s.length - 1);
+  if (c < 0xAC00 || c > 0xD7A3) return s + b;
+  return s + (((c - 0xAC00) % 28) ? a : b);
+}
+
+/* ── 멕썸노이즈 미션 문장 재료 ──
+   사람 상호작용(참가자 이름이 들어감) + 혼자 하는 행동. 숙소 방 안에서 가능한 것만. */
+const NOISE_PERSON = [
+  n => jo(n,'을','를') + ' 업는다',
+  n => jo(n,'과','와') + ' 하이파이브를 한다',
+  n => n + '의 어깨를 5초간 주무른다',
+  n => jo(n,'과','와') + ' 팔짱을 낀다',
+  n => n + '에게 큰절을 한다',
+  n => jo(n,'과','와') + ' 셀카 포즈를 잡는다',
+  n => n + '의 머리를 쓰다듬는다',
+  n => jo(n,'과','와') + ' 가위바위보를 해서 이길 때까지 한다',
+  n => n + '에게 윙크를 3번 한다',
+  n => jo(n,'과','와') + ' 등을 맞대고 앉는다',
+  n => n + '의 손을 잡고 한 바퀴 돈다',
+  n => n + '에게 손하트를 날린다',
+  n => n + ' 옆에서 만세를 3번 한다',
+];
+const NOISE_SOLO = [
+  '제자리에서 3바퀴 돈다','팔굽혀펴기를 3번 한다','신발 한 짝을 벗어 머리에 올린다',
+  '베개(또는 쿠션)를 안고 바닥에 눕는다','냉장고 문을 열었다 닫는다','방 불을 껐다 켠다',
+  '창문(또는 문) 쪽으로 가서 손을 흔든다','물을 한 모금 마신다','박수를 정확히 5번 친다',
+  '벽에 대고 공손히 인사한다','양말 한 짝을 벗는다','휴지 한 칸을 이마에 붙인다',
+  '문을 열고 "안녕하세요"라고 외친다','바닥에 대(大)자로 눕는다','점프를 5번 한다',
+  '제자리 달리기를 10초 한다','겉옷(또는 이불)을 뒤집어쓴다','텔레비전(또는 벽)을 가리키며 크게 웃는다',
+];
+
+/* ── 연기 대결: 대사 × 감정 ── */
+const ACT_LINES = [
+  { l:'네? 저희집에 불이 났다고요?', e:['분노','슬픔','경멸','조롱'] },
+  { l:'너 가난하게 컸어?', e:['궁금','꼽','플러팅','화남'] },
+  { l:'저... 사실 나 로또 됐어', e:['속삭이며','오열하며','잘난 척','공포에 질려'] },
+  { l:'이거 네가 먹었지?', e:['추궁하듯','애교로','체념하며','광기'] },
+  { l:'우리 헤어져', e:['시원하게','미련 가득','사극 톤','사무적으로'] },
+  { l:'사장님, 저 내일부터 안 나옵니다', e:['통쾌하게','공손하게','벌벌 떨며','랩하듯'] },
+  { l:'야, 네 뒤에 바퀴벌레 있어', e:['무덤덤','패닉','신나서','속삭이며'] },
+  { l:'제가 그걸 왜 해요?', e:['당당하게','억울하게','비굴하게','귀찮다는 듯'] },
+  { l:'엄마, 나 시험 망쳤어', e:['해맑게','비장하게','변명하며','뉴스 앵커처럼'] },
+  { l:'혹시... 저 아세요?', e:['설레며','경계하며','느끼하게','취한 듯'] },
+  { l:'지금 몇 시인 줄 알아?', e:['잔소리로','걱정하며','로봇처럼','성악가처럼'] },
+  { l:'와, 이게 되네?', e:['감탄하며','의심하며','현타 온 듯','오열하며'] },
+  { l:'다신 안 그럴게, 진짜 마지막이야', e:['간절하게','뻔뻔하게','협박하듯','팬미팅 아이돌처럼'] },
+  { l:'저기요, 지금 줄 서신 거예요?', e:['시비조로','수줍게','다급하게','외국인처럼'] },
+  { l:'내 치킨 누가 먹었어', e:['절규하며','수사관처럼','슬픔 참으며','웃음 참으며'] },
+  { l:'오늘부터 1일이다?', e:['설레며','장난스럽게','사극 톤','후회하며'] },
+  { l:'나 오늘 좀 예쁘지 않냐?', e:['자신만만','불안하게','아나운서처럼','록스타처럼'] },
+  { l:'그건 제 잘못이 아닙니다', e:['법정 드라마처럼','울먹이며','래퍼처럼','무성의하게'] },
+  { l:'잠깐만, 나 이 노래 알아', e:['흥분하며','아련하게','잘난 척','졸린 듯'] },
+  { l:'너한테만 말하는 건데...', e:['속삭이며','다급하게','의미심장하게','신나서'] },
+];
+
+/* ── 상황극 마피아: 배경 + 캐릭터 풀 ── */
+const MAFIA_SITS = [
+  { n:'심야의 크루즈', chars:['선장','일등항해사','요리사','갑판원','재즈 가수','부자 승객','밀항자','승무원','선상 의사','마술사','사진사','도박사'] },
+  { n:'회사 워크숍', chars:['사장','부장','대리','신입사원','인사팀장','경비원','전속 셰프','버스기사','행사 MC','개발자','디자이너','영업왕'] },
+  { n:'수학여행', chars:['담임선생님','반장','전학생','일진','모범생','매점 사장','버스기사','사진사','양호선생님','체육선생님','급식왕','지각대장'] },
+  { n:'한밤의 캠핑장', chars:['캠핑장 주인','불멍 장인','요리 담당','텐트 장인','곤충 박사','낚시꾼','길 잃은 등산객','별 관측가','장작 담당','라면 달인'] },
+  { n:'유럽 배낭여행', chars:['가이드','사진작가','길치','환전 담당','맛집 헌터','통역 담당','수상한 소매치기','호스텔 주인','버스킹 뮤지션','지도 담당'] },
+  { n:'좀비 대피소', chars:['전직 군인','의사','해커','요리사','라디오 DJ','건물 관리인','수상한 과학자','생존왕','정찰 담당','무기 담당'] },
+  { n:'왕궁 연회', chars:['왕','왕비','왕자','공주','재상','근위대장','궁중 요리사','광대','점성술사','수상한 자객','시녀장','외국 사신'] },
+  { n:'예능 촬영장', chars:['메인 MC','보조 MC','PD','메인 작가','카메라 감독','게스트 아이돌','매니저','코디','막내 스태프','분장사'] },
+];
+
 /* ══════════════════════════════════════════════
    게임 레지스트리 — 여기에 한 줄 추가하면 앱 전체에 반영됨
 ══════════════════════════════════════════════ */
 const GAMES = [
   {
     id:'noise', name:'멕썸노이즈', emoji:'🔊', color:'#FF6B4A', mode:'solo', weight:1,
-    role:'술래', tag:'술래 1명',
+    role:'술래', tag:'술래 1명', tool:'noise', toolLabel:'▶ 미션 문장 뽑고 시작',
     rules:
 `정답에 가까운 행동을 하면 나머지가 소리를 질러 알려주는 게임.
 
@@ -721,7 +809,7 @@ const GAMES = [
   },
   {
     id:'smile', name:'스마일~!', emoji:'📸', color:'#7C6BFF', mode:'solo', weight:1,
-    role:'술래', tag:'술래 1명 · 사진 10장',
+    role:'술래', tag:'술래 1명 · 사진 10장', tool:'smile', toolLabel:'▶ 사진 카운터로 시작',
     rules:
 `술래가 찍은 사진에 걸리면 다음 술래가 되는 게임.
 
@@ -759,7 +847,7 @@ const GAMES = [
   },
   {
     id:'mafia', name:'상황극 마피아', emoji:'🎭', color:'#FF5C7C', mode:'solo', weight:1.5,
-    role:'사회자', tag:'개인전 · 사회자 필요',
+    role:'사회자', tag:'개인전 · 사회자 필요', tool:'mafia', toolLabel:'🎭 역할 나눠주기 (각자 폰)',
     rules:
 `마피아 게임 + 역할극.
 
@@ -777,7 +865,7 @@ const GAMES = [
   },
   {
     id:'watch', name:'안 봤어도 들키지마', emoji:'🎬', color:'#FFB84D', mode:'solo', weight:1.5,
-    role:'출제자', tag:'개인전 · 코인제 · 출제자 로테이션',
+    role:'출제자', tag:'개인전 · 코인제 · 출제자 로테이션', tool:'watch', toolLabel:'⏱ 토론 타이머 · 코인판',
     rules:
 `<b>흐름</b>
 · 시계방향으로 한 명씩 돌아가며 출제자가 된다.
@@ -810,7 +898,7 @@ const GAMES = [
   },
   {
     id:'act', name:'연기 대결', emoji:'🎤', color:'#4DB8FF', mode:'solo', weight:1,
-    role:null, tag:'개인전 · 탈락식',
+    role:null, tag:'개인전 · 탈락식', tool:'act', toolLabel:'▶ 대사 뽑고 시작',
     rules:
 `각자 같은 대사를 서로 다른 감정으로 연기한다.
 
@@ -828,7 +916,7 @@ const GAMES = [
   },
   {
     id:'cup', name:'물에 담긴 컵 — 휴지 레이스', emoji:'🥤', color:'#A8E063', mode:'solo', weight:0.5,
-    role:null, tag:'물리 게임',
+    role:null, tag:'물리 게임', tool:'cup', toolLabel:'▶ 스톱워치로 시작',
     rules:
 `물이 담긴 컵을 휴지로 당겨 옮기는 레이스.
 
@@ -858,7 +946,7 @@ const S = {
 const $ = s => document.querySelector(s);
 const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const now = () => Date.now();
-const emptyRoom = () => ({ createdAt:now(), host:'', status:'lobby', players:{}, teams:{count:0,assign:{}}, scores:{}, rotation:{} });
+const emptyRoom = () => ({ createdAt:now(), host:'', status:'lobby', players:{}, teams:{count:0,assign:{}}, scores:{}, rotation:{}, mafia:null });
 
 function toast(msg, ms=2400){
   const t = $('#toast'); t.textContent = msg; t.classList.add('on');
@@ -972,6 +1060,7 @@ function pushHostState(){
   update(roomRef(S.code), {
     status:r.status||'lobby', host:r.host||S.pid,
     teams:r.teams||{count:0,assign:{}}, scores:r.scores||{}, rotation:r.rotation||{},
+    mafia:r.mafia||null,
     touchedAt:now(),
   }).catch(()=>{});
 }
@@ -987,7 +1076,7 @@ function subscribe(code){
       S.room = {
         createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
         players:v.players||{}, teams:v.teams||{count:0,assign:{}},
-        scores:v.scores||{}, rotation:v.rotation||{},
+        scores:v.scores||{}, rotation:v.rotation||{}, mafia:v.mafia||null,
       };
     }
     render();
@@ -1037,7 +1126,7 @@ async function joinRoom(code, name){
   if (!v){ toast('그런 방이 없어요'); return false; }
   S.pid = uid(); S.isHost = false; S.code = code;
   S.room = { createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
-    players:v.players||{}, teams:v.teams||{count:0,assign:{}}, scores:v.scores||{}, rotation:v.rotation||{} };
+    players:v.players||{}, teams:v.teams||{count:0,assign:{}}, scores:v.scores||{}, rotation:v.rotation||{}, mafia:v.mafia||null };
   try{ await set(ref(db, `${ROOT}/rooms/${code}/players/${S.pid}`), { name, joinedAt:now(), seen:now() }); }catch{}
   saveSession(); subscribe(code); startHeartbeat(); keepAwake();
   go('lobby'); return true;
@@ -1049,7 +1138,7 @@ async function rejoin(sess){
   if (!v || !v.players || !v.players[sess.pid]) return false;
   S.pid = sess.pid; S.code = sess.code; S.isHost = !!sess.isHost;
   S.room = { createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
-    players:v.players||{}, teams:v.teams||{count:0,assign:{}}, scores:v.scores||{}, rotation:v.rotation||{} };
+    players:v.players||{}, teams:v.teams||{count:0,assign:{}}, scores:v.scores||{}, rotation:v.rotation||{}, mafia:v.mafia||null };
   subscribe(sess.code); startHeartbeat(); keepAwake();
   go('lobby'); return true;
 }
@@ -1206,17 +1295,115 @@ function markWord(ok){
   render();
 }
 
-/* 결과 → 기존 순위 입력 화면으로 넘긴다(동점·이견은 거기서 손으로 조정) */
-function deckToScore(){
+/* 공통: 도구 결과 → 기존 순위 입력 화면으로 넘긴다(동점·이견은 거기서 손으로 조정) */
+function toScore(order, mode){
   const p = S.play;
-  const cnt = t => (p.results[t] || []).filter(x => x.ok).length;
-  const ranked = [...p.order].sort((a,b) => cnt(b) - cnt(a));
   const teams = S.room.teams || {count:0,assign:{}};
-  S.draft = { gameId:p.gameId, mode:'team', order:ranked,
+  S.draft = { gameId:p.gameId, mode, order,
     weight:G(p.gameId)?.weight ?? 1, assign:JSON.parse(JSON.stringify(teams.assign || {})) };
   stopPlayTimer(); S.play = null;
   go('score');
 }
+
+function deckToScore(){
+  const p = S.play;
+  const cnt = t => (p.results[t] || []).filter(x => x.ok).length;
+  toScore([...p.order].sort((a,b) => cnt(b) - cnt(a)), 'team');
+}
+
+/* ── 공통 시간 표시/스톱워치 ── */
+const fmtSw = s => s == null ? '실패'
+  : (s >= 60 ? `${Math.floor(s/60)}분 ${(s%60).toFixed(1)}초` : `${s.toFixed(1)}초`);
+function fmtClock(s){ s = Math.max(0, Math.ceil(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+function swBegin(){
+  const p = S.play; p.t0 = Date.now(); p.elapsed = 0;
+  stopPlayTimer();
+  p._t = setInterval(() => {
+    p.elapsed = (Date.now() - p.t0) / 1000;
+    const el = document.getElementById('sw-sec');
+    if (el) el.textContent = fmtSw(p.elapsed);
+  }, 100);
+}
+
+/* ══ 멕썸노이즈 / 컵 레이스 — 시간 기록형 (race-* 핸들러 공유) ══ */
+function startNoiseTool(){
+  S.play = { gameId:S.gameId, kind:'noise', phase:'ready',
+    order:players().map(([pid]) => pid), turn:0, sen:'', rec:{}, elapsed:0, _t:null };
+  go('play');
+}
+function startCupTool(){
+  S.play = { gameId:S.gameId, kind:'cup', phase:'ready',
+    order:players().map(([pid]) => pid), turn:0, rec:{}, elapsed:0, _t:null };
+  go('play');
+}
+function noiseSentence(){
+  const p = S.play, runner = p.order[p.turn];
+  const others = p.order.filter(x => x !== runner && S.room.players[x]);
+  if (others.length && Math.random() < 0.62){
+    const t = pname(others[(Math.random()*others.length)|0]);
+    return NOISE_PERSON[(Math.random()*NOISE_PERSON.length)|0](t);
+  }
+  return NOISE_SOLO[(Math.random()*NOISE_SOLO.length)|0];
+}
+
+/* ══ 연기 대결 ══ */
+function startActTool(){
+  S.play = { gameId:S.gameId, kind:'act', phase:'run',
+    order:players().map(([pid]) => pid), turn:0, lines:shuffle([...ACT_LINES]), card:null, _t:null };
+  actDraw();
+  go('play');
+}
+function actDraw(){
+  const p = S.play;
+  if (!p.lines.length) p.lines = shuffle([...ACT_LINES]);
+  const L = p.lines.pop();
+  p.card = { l:L.l, e:L.e[(Math.random()*L.e.length)|0] };
+}
+
+/* ══ 스마일~! ══ */
+function startSmileTool(){
+  S.play = { gameId:S.gameId, kind:'smile', phase:'pick',
+    sul:null, shots:10, round:1, pool:[], sel:[], log:[], _t:null };
+  go('play');
+}
+
+/* ══ 안 봤어도 들키지마 — 토론 타이머 + 코인판 ══ */
+function startWatchTool(){
+  S.play = { gameId:S.gameId, kind:'watch', phase:'run',
+    sec:600, left:600, running:false, over:false, coins:{}, _t:null };
+  go('play');
+}
+function watchTimerStart(){
+  const p = S.play; if (p.running || p.left <= 0) return;
+  p.running = true; p.over = false;
+  stopPlayTimer();
+  let last = Math.ceil(p.left);
+  p._t = setInterval(() => {
+    p.left -= 0.2;
+    const s = Math.ceil(p.left);
+    if (s !== last){ last = s; if (s > 0 && s <= 5) SFX.tick(); }
+    if (p.left <= 0){
+      p.left = 0; p.running = false; p.over = true;
+      stopPlayTimer(); SFX.end(); vib([40,60,40]); render(true); return;
+    }
+    const el = document.getElementById('wt-sec'); if (el) el.textContent = fmtClock(p.left);
+    const bar = document.getElementById('wt-bar'); if (bar) bar.style.width = (p.left/p.sec*100)+'%';
+  }, 200);
+  render(true);
+}
+
+/* ══ 상황극 마피아 — 유일하게 Firebase를 쓴다(각자 폰 비밀 역할).
+     room.mafia = { round, sit, roles:{pid:{team,job,char}} } — 호스트만 쓰고 전원이 읽음.
+     ⚠️ 신뢰 모델: RTDB가 공개라 개발자도구로 남의 역할을 볼 수는 있다(친구끼리 전제, aram과 동일). ══ */
+function startMafiaTool(){
+  S.play = { gameId:S.gameId, kind:'mafia',
+    phase: S.room.mafia ? 'dealt' : 'setup',
+    cnt:suggestMafia(), pol:true, doc:false, incHost:false,
+    sit:MAFIA_SITS[(Math.random()*MAFIA_SITS.length)|0].n, show:false, _t:null };
+  go('play');
+}
+function suggestMafia(){ const n = players().length; return n >= 9 ? 3 : n >= 6 ? 2 : 1; }
 
 /* ══════════════════════════════════════════════
    렌더
@@ -1241,12 +1428,19 @@ function renderSig(){
   return JSON.stringify([
     S.view, S.gameId, S.online, S.isHost, S.code,
     r ? Object.entries(r.players).map(([k,p]) => [k, p.name, isOn(p)?1:0, (p.host||k===r.host)?1:0]) : 0,
-    r?.teams || 0, r?.scores || 0, r?.rotation || 0,
+    r?.teams || 0, r?.scores || 0, r?.rotation || 0, r?.mafia || 0,
     S.draft?.order || 0, S._lastPick || 0,
-    // ⚠️ play의 `left`(남은 초)는 넣지 않는다 — 매 틱 바뀌어 재렌더 폭주가 된다.
-    //    타이머 표시는 renderTimer()가 DOM을 직접 갱신한다.
-    S.play ? [S.play.phase, S.play.turn, S.play.di, S.play.hits.length,
-              S.play.mode, S.play.cats.join(''), S.play.sec, S.play.letters] : 0,
+    // ⚠️ 타이머의 left/elapsed(매 틱 변화)는 넣지 않는다 — 재렌더 폭주가 된다.
+    //    타이머 숫자는 각 도구의 인터벌이 DOM을 직접 갱신한다.
+    S.play ? [S.play.kind, S.play.phase, S.play.turn ?? 0, S.play.di ?? 0,
+      (S.play.hits || []).length, S.play.mode ?? 0, (S.play.cats || []).join(''),
+      S.play.sec ?? 0, S.play.letters || 0, S.play.shots ?? 0, S.play.round ?? 0,
+      (S.play.sel || []).join(''), S.play.coins || 0, S.play.rec || 0,
+      S.play.sen || 0, S.play.card || 0, S.play.cnt ?? 0, S.play.sit || 0,
+      !!S.play.show, !!S.play.pol, !!S.play.doc, !!S.play.incHost,
+      !!S.play.running, !!S.play.over, S.play.sul || 0,
+      (S.play.pool || []).length, (S.play.log || []).length,
+      Object.keys(S.play.results || {}).length] : 0,
   ]);
 }
 
@@ -1276,14 +1470,14 @@ function render(force){
   code.style.display = inRoom ? '' : 'none';
   code.innerHTML = inRoom
     ? `${h(S.code)}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></svg>` : '';
-  back.style.display = ['games','game','play','score','board','settings'].includes(S.view) ? '' : 'none';
+  back.style.display = ['games','game','play','role','score','board','settings'].includes(S.view) ? '' : 'none';
   title.textContent = ({ home:'숙소 게임', lobby:'대기실', games:'게임 고르기',
-    game:G(S.gameId)?.name || '게임', play:G(S.gameId)?.name || '진행 중',
+    game:G(S.gameId)?.name || '게임', play:G(S.gameId)?.name || '진행 중', role:'내 역할',
     score:'순위 입력', board:'종합 순위', settings:'설정' })[S.view] || '숙소 게임';
 
   const v = $('#view');
   const keep = grabFocus();
-  v.innerHTML = ({ home:vHome, lobby:vLobby, games:vGames, game:vGame, play:vPlay, score:vScore, board:vBoard, settings:vSettings })[S.view]();
+  v.innerHTML = ({ home:vHome, lobby:vLobby, games:vGames, game:vGame, play:vPlay, role:vRole, score:vScore, board:vBoard, settings:vSettings })[S.view]();
 
   // 화면 전환일 때만 진입 애니메이션. 제자리 갱신은 애니메이션 없이 조용히 교체한다.
   if (viewChanged){
@@ -1302,6 +1496,7 @@ setInterval(() => { if (S.code) render(); }, 15000);
 
 $('#hd-back').onclick = () => {
   vib();
+  if (S.view === 'role'){ go('lobby'); return; }
   if (S.view === 'play'){ act('pl-quit', {}); return; }
   if (S.view === 'score'){ S.draft = null; go('game'); }
   else if (S.view === 'game') go('games');
@@ -1398,6 +1593,21 @@ function vLobby(){
       <div class="rc-hint">친구들이 이 코드를 입력하면 바로 들어와요</div>
     </div>
 
+    ${S.room.mafia?.roles?.[S.pid] ? `
+      <button class="g" style="${gcVars('#FF5C7C')};margin-bottom:10px" data-act="go-role">
+        <div class="g-ic">🎭</div>
+        <div class="g-b"><div class="g-n">내 비밀 역할 도착!</div>
+          <div class="g-m"><span>아무도 안 볼 때 확인하세요</span></div></div>
+        <div class="g-ar">›</div>
+      </button>` : ''}
+    ${S.isHost && S.room.mafia ? `
+      <button class="g" style="${gcVars('#FF5C7C')};margin-bottom:10px" data-act="mf-open">
+        <div class="g-ic">🗂</div>
+        <div class="g-b"><div class="g-n">상황극 마피아 진행 중</div>
+          <div class="g-m"><span>배경 — ${h(S.room.mafia.sit||'')}</span></div></div>
+        <div class="g-ar">›</div>
+      </button>` : ''}
+
     <div class="sec">참가자 <span class="n">${ps.length}</span></div>
     <div class="plist">${plist}</div>
 
@@ -1484,15 +1694,30 @@ function vGame(){
 
     ${g.tool && S.isHost ? `
       <div class="stack">
-        <button class="btn pri" data-act="tool-start">▶ 진행 도구로 시작하기</button>
+        <button class="btn pri" data-act="tool-start">${h(g.toolLabel||'▶ 진행 도구로 시작하기')}</button>
         <button class="btn gh" data-act="score-start">순위만 직접 입력</button>
       </div>`
     : `<button class="btn pri" data-act="score-start">✅ 게임 끝 — 순위 입력</button>`}`;
 }
 
-/* ── 진행 도구: 제시어 덱 ── */
+/* ── 진행 도구 라우터 ── */
 function vPlay(){
   const p = S.play; if (!p) return '';
+  switch (p.kind){
+    case 'deck':  return vDeck();
+    case 'noise': return vNoise();
+    case 'cup':   return vCup();
+    case 'act':   return vAct();
+    case 'smile': return vSmile();
+    case 'watch': return vWatch();
+    case 'mafia': return vMafiaTool();
+  }
+  return '';
+}
+
+/* ── 제시어 덱 (몸으로/한글자로 말해요) ── */
+function vDeck(){
+  const p = S.play;
   const g = G(p.gameId);
   const teams = S.room.teams || {count:0,assign:{}};
   const tc = i => TEAM_COLORS[i % TEAM_COLORS.length];
@@ -1648,6 +1873,352 @@ function vPlay(){
     </div>
     <p class="note" style="text-align:center;margin-top:12px">
       동점이거나 순서를 바꾸고 싶으면 다음 화면에서 조정할 수 있어요</p>`;
+}
+
+/* ── 멕썸노이즈 ── */
+function vNoise(){
+  const p = S.play, g = G(p.gameId);
+  const runner = p.order[p.turn], nm = pname(runner);
+  const head = `<div class="turnhd"><span class="sw" style="--tc:${avColor(runner)}"></span>
+      <span class="t">술래 — ${h(nm)}</span><span class="r">${p.turn+1} / ${p.order.length}</span></div>`;
+
+  if (p.phase === 'ready') return `${head}
+    <div style="text-align:center;padding:30px 18px;border-radius:var(--r-l);
+      background:linear-gradient(150deg,rgba(255,107,74,.14),rgba(255,184,77,.05));
+      border:1px solid rgba(255,184,77,.3);margin-bottom:14px">
+      <div style="font-size:38px;margin-bottom:10px">🙈</div>
+      <div style="font-weight:800;font-size:15.5px;line-height:1.6;word-break:keep-all">
+        ${h(nm)}, 잠깐 뒤돌아서 눈 감고 귀 막기!<br>
+        <span style="color:var(--dim);font-weight:600;font-size:13.5px">나머지가 미션 문장을 확인할 거예요</span>
+      </div>
+    </div>
+    <div class="stack">
+      <button class="btn pri" data-act="no-brief">📜 미션 문장 만들기</button>
+      <button class="btn gh" data-act="pl-quit">그만두기</button>
+    </div>`;
+
+  if (p.phase === 'brief') return `${head}
+    <div class="wcard"><div>
+      <div class="wcat">🤫 술래 몰래 확인!</div>
+      <div class="wtxt ${p.sen.length>16?'xlong':p.sen.length>10?'long':''}">${h(p.sen)}</div>
+    </div></div>
+    <div class="warnbox"><span class="i">📢</span><span>다 확인했으면 술래를 부르세요. 술래가 정답에 <b>가까워지면 크게 소리</b>, 멀어지면 조용히!</span></div>
+    <div class="stack">
+      <button class="btn pri" data-act="race-run">🚦 술래 준비 완료 — 시작!</button>
+      <button class="btn" data-act="no-reroll">🔄 다른 문장으로</button>
+      <button class="btn gh" data-act="pl-quit">그만두기</button>
+    </div>`;
+
+  if (p.phase === 'run') return `${head}
+    <div class="wcard" style="min-height:150px;padding:28px 18px"><div>
+      <div class="wcat">경과 시간</div>
+      <div class="bignum" id="sw-sec">${fmtSw(p.elapsed||0)}</div>
+    </div></div>
+    <p class="note" style="text-align:center;margin:0 0 14px">미션 — ${h(p.sen)}<br>(술래에게 보여주지 마세요)</p>
+    <div class="wbtns">
+      <button class="bigbtn pass" data-act="race-end" data-v="0">🙅 포기</button>
+      <button class="bigbtn ok" data-act="race-end" data-v="1">🎉 성공!</button>
+    </div>`;
+
+  if (p.phase === 'turnEnd'){
+    const r = p.rec[runner];
+    return `<div class="pickres">
+        <div class="pickres-l">${h(nm)}의 기록</div>
+        <div class="pickres-v">${r==null?'실패 😵':fmtSw(r)}</div>
+      </div>
+      <p class="note" style="text-align:center;margin-bottom:14px">미션 — ${h(p.sen)}</p>
+      <button class="btn pri" data-act="race-next">${p.turn>=p.order.length-1?'🏁 전체 결과 보기':'다음 술래 →'}</button>`;
+  }
+  return vRaceDone(p, '성공까지 걸린 시간이 짧은 순 · 실패는 마지막');
+}
+
+/* ── 컵 레이스 ── */
+function vCup(){
+  const p = S.play;
+  const cur = p.order[p.turn], nm = pname(cur);
+  const head = `<div class="turnhd"><span class="sw" style="--tc:${avColor(cur)}"></span>
+      <span class="t">${h(nm)} 차례</span><span class="r">${p.turn+1} / ${p.order.length}</span></div>`;
+
+  if (p.phase === 'ready') return `${head}
+    <div class="card"><p class="note" style="font-size:14px;color:var(--dim);line-height:1.7">
+      물이 담긴 컵 아래 휴지를 깔고, 휴지만 당겨서 목표 지점까지!<br>
+      물을 쏟거나 휴지가 찢어지면 실패예요.</p></div>
+    <div class="stack">
+      <button class="btn pri" data-act="race-run">🚦 출발!</button>
+      <button class="btn gh" data-act="pl-quit">그만두기</button>
+    </div>`;
+
+  if (p.phase === 'run') return `${head}
+    <div class="wcard" style="min-height:170px;padding:30px 18px"><div>
+      <div class="wcat">기록</div>
+      <div class="bignum" id="sw-sec">${fmtSw(p.elapsed||0)}</div>
+    </div></div>
+    <div class="wbtns">
+      <button class="bigbtn pass" data-act="race-end" data-v="0">💦 실패</button>
+      <button class="bigbtn ok" data-act="race-end" data-v="1">🏁 도착!</button>
+    </div>`;
+
+  if (p.phase === 'turnEnd'){
+    const r = p.rec[cur];
+    return `<div class="pickres">
+        <div class="pickres-l">${h(nm)}의 기록</div>
+        <div class="pickres-v">${r==null?'실패 💦':fmtSw(r)}</div></div>
+      <button class="btn pri" data-act="race-next">${p.turn>=p.order.length-1?'🏁 전체 결과 보기':'다음 사람 →'}</button>`;
+  }
+  return vRaceDone(p, '빠른 순 · 실패는 마지막');
+}
+
+/* 시간 기록형 공통 결과 */
+function vRaceDone(p, subtitle){
+  const order = [...p.order].sort((a,b) => (p.rec[a] ?? 1e9) - (p.rec[b] ?? 1e9));
+  return `<div class="sec">최종 기록</div>
+    ${order.map((pid,i) => `
+      <div class="tscore" style="--tc:${avColor(pid)}">
+        <div class="rno ${i<3?'m'+(i+1):''}">${i+1}</div>
+        <div class="n">${h(pname(pid))}</div>
+        <div class="v" style="font-size:18px">${fmtSw(p.rec[pid])}</div>
+      </div>`).join('')}
+    <p class="note" style="text-align:center;margin:4px 0 14px">${h(subtitle)}</p>
+    <div class="stack">
+      <button class="btn pri" data-act="race-save">이 순위로 반영하기</button>
+      <button class="btn gh" data-act="pl-quit">점수 반영 없이 나가기</button>
+    </div>`;
+}
+
+/* ── 연기 대결 ── */
+function vAct(){
+  const p = S.play;
+  if (p.phase === 'done') return `
+    <div class="pickres"><div class="pickres-l">전원 연기 완료</div><div class="pickres-v">🎬 심사 시간!</div></div>
+    <div class="card"><p class="note" style="font-size:14px;line-height:1.7">
+      다 같이 의논해서 <b style="color:var(--amber)">가장 잘한 사람부터</b> 순위를 정하세요.
+      다음 화면에서 순서대로 탭하면 됩니다.</p></div>
+    <div class="stack">
+      <button class="btn pri" data-act="ac-score">🏆 순위 입력하기</button>
+      <button class="btn gh" data-act="pl-quit">점수 반영 없이 나가기</button>
+    </div>`;
+  const cur = p.order[p.turn], nm = pname(cur);
+  return `
+    <div class="turnhd"><span class="sw" style="--tc:${avColor(cur)}"></span>
+      <span class="t">${h(nm)} 차례</span><span class="r">${p.turn+1} / ${p.order.length}</span></div>
+    <div class="wcard" style="min-height:230px"><div>
+      <div class="wletter">🎭 감정 — ${h(p.card.e)}</div>
+      <div class="wtxt" style="font-size:${p.card.l.length>16?24:29}px">“${h(p.card.l)}”</div>
+    </div></div>
+    <p class="note" style="text-align:center;margin:0 0 14px">이 대사를 저 감정으로 연기하세요</p>
+    <div class="stack">
+      <button class="btn pri" data-act="ac-next">${p.turn>=p.order.length-1?'연기 끝 — 심사하러 →':'다음 사람 →'}</button>
+      <button class="btn" data-act="ac-reroll">🔄 다른 대사 뽑기</button>
+      <button class="btn gh" data-act="pl-quit">그만두기</button>
+    </div>`;
+}
+
+/* ── 스마일~! ── */
+function vSmile(){
+  const p = S.play;
+  const allP = players();
+
+  if (p.phase === 'pick') return `
+    <div class="sec">첫 술래 고르기</div>
+    ${allP.map(([pid,pl]) => `
+      <button class="pick" data-act="sm-sul" data-pid="${pid}">
+        ${av(pid, pl.name, 'sm')}
+        <div style="font-weight:800;font-size:15px">${h(pl.name)}</div>
+      </button>`).join('')}
+    <div style="height:8px"></div>
+    <button class="btn gh" data-act="pl-quit">그만두기</button>`;
+
+  const sulNm = pname(p.sul);
+  const narrowed = p.pool.length < allP.length - 1;
+
+  if (p.phase === 'run') return `
+    <div class="turnhd"><span class="sw" style="--tc:${avColor(p.sul)}"></span>
+      <span class="t">술래 — ${h(sulNm)}</span><span class="r">라운드 ${p.round}</span></div>
+    ${narrowed ? `<div class="banner" style="background:rgba(124,107,255,.1);border:1px solid rgba(124,107,255,.3);color:#B8AEFF">
+      🎯 재진행 — 대상: ${p.pool.map(x => h(pname(x))).join(', ')}</div>` : ''}
+    <div class="wcard" style="min-height:160px;padding:26px 18px"><div>
+      <div class="wcat">남은 사진</div>
+      <div class="bignum">${p.shots}<span style="font-size:22px;color:var(--dim2)"> / 10</span></div>
+    </div></div>
+    <div class="stack">
+      <button class="bigbtn ok" data-act="sm-shot" style="width:100%">📸 찍었다!</button>
+      <button class="btn" data-act="sm-judge">🧐 판정하기 — 사진 확인</button>
+      <button class="btn gh sm" data-act="sm-done" style="width:100%">게임 종료</button>
+    </div>`;
+
+  if (p.phase === 'judge'){
+    const n = p.sel.length;
+    const label = n === 0 ? '아무도 안 걸림 — 같은 술래 다시'
+      : n === 1 ? `${jo(pname(p.sel[0]),'이','가')} 다음 술래!`
+      : `걸린 ${n}명끼리 재진행`;
+    return `
+      <div class="sec">사진에 걸린 사람은?</div>
+      ${p.pool.map(pid => `
+        <button class="pick" data-act="sm-sel" data-pid="${pid}"
+          style="${p.sel.includes(pid)?'border-color:var(--rose);background:rgba(255,92,124,.1)':''}">
+          ${av(pid, pname(pid), 'sm')}
+          <div style="flex:1;font-weight:800;font-size:15px">${h(pname(pid))}</div>
+          ${p.sel.includes(pid)?'<span class="chip rose">📸 걸림</span>':''}
+        </button>`).join('')}
+      <div style="height:12px"></div>
+      <div class="stack">
+        <button class="btn pri" data-act="sm-apply">${label}</button>
+        <button class="btn gh" data-act="sm-back">← 계속 찍기</button>
+      </div>`;
+  }
+
+  /* done */
+  return `
+    <div class="sec">라운드 기록</div>
+    ${p.log.length ? p.log.map(L => `
+      <div class="sumrow"><span class="m">📸</span>
+        <span>R${L.r} · 술래 ${h(pname(L.sul))} → ${L.caught.length ? L.caught.map(x=>h(pname(x))).join(', ') : '아무도 안 걸림'}</span>
+      </div>`).join('') : '<p class="note" style="margin:0 4px 10px">기록 없음</p>'}
+    <div class="card" style="margin-top:12px"><p class="note" style="font-size:13.5px;line-height:1.7">
+      순위 기준 — <b style="color:var(--amber)">끝까지 안 걸린 사람이 1등</b>, 술래가 된 순서의 역순.
+      다음 화면에서 순서대로 탭해 주세요.</p></div>
+    <div class="stack">
+      <button class="btn pri" data-act="sm-score">🏆 순위 입력하기</button>
+      <button class="btn gh" data-act="pl-quit">나가기</button>
+    </div>`;
+}
+
+/* ── 안 봤어도 들키지마: 토론 타이머 + 코인판 ── */
+function vWatch(){
+  const p = S.play;
+  return `
+    <div class="card">
+      <div class="sec" style="margin:0 0 12px">토론 타이머</div>
+      ${p.over ? `<div class="banner" style="background:rgba(255,184,77,.1);border:1px solid rgba(255,184,77,.32);color:#FFD9A3">
+        🗣 토론 종료! 다 같이 "너 이거 안 봤지!" 지목하세요</div>` : ''}
+      <div class="tbar ${p.left<=30&&p.running?'warn':''}" style="margin-bottom:10px">
+        <i id="wt-bar" style="width:${(p.left/p.sec*100)}%"></i></div>
+      <div class="bignum" id="wt-sec" style="margin-bottom:14px">${fmtClock(p.left)}</div>
+      <div class="seg" style="margin-bottom:10px">
+        ${[600,300,180].map(s => `<button data-act="wa-sec" data-v="${s}" class="${p.sec===s?'on':''}">${s/60}분</button>`).join('')}
+      </div>
+      <div class="row">
+        <button class="btn sm ${p.running?'':'pri'}" data-act="wa-toggle" style="flex:2">${p.running?'⏸ 일시정지':'▶ 토론 시작'}</button>
+        <button class="btn sm gh" data-act="wa-reset">↺</button>
+      </div>
+    </div>
+
+    <div class="sec">코인</div>
+    <p class="note" style="margin:-4px 4px 10px">맞추면 지목받은 수만큼 · 틀리면 지목한 사람들과 출제자가 1개씩</p>
+    ${players().map(([pid,pl]) => `
+      <div class="tscore" style="--tc:${avColor(pid)}">
+        <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pl.name, 'sm')} ${h(pl.name)}</div>
+        <button class="stepbtn" data-act="wa-coin" data-pid="${pid}" data-v="-1">−</button>
+        <div class="v" style="min-width:34px;text-align:center">${p.coins[pid]||0}</div>
+        <button class="stepbtn" data-act="wa-coin" data-pid="${pid}" data-v="1">＋</button>
+      </div>`).join('')}
+    <div style="height:14px"></div>
+    <div class="stack">
+      <button class="btn pri" data-act="wa-save">🏁 코인 순위로 반영하기</button>
+      <button class="btn gh" data-act="pl-quit">나가기</button>
+    </div>
+    <p class="note" style="text-align:center;margin-top:10px">출제자 뽑기는 게임 화면의 「출제자 뽑기」를 쓰세요</p>`;
+}
+
+/* ── 상황극 마피아 (사회자 도구) ── */
+function vMafiaTool(){
+  const p = S.play;
+  let pool = players().map(([pid]) => pid);
+  if (!p.incHost) pool = pool.filter(x => x !== S.pid);
+
+  if (p.phase === 'setup') return `
+    <div class="gh" style="${gcVars('#FF5C7C')};padding:18px">
+      <div class="gh-em">🎭</div>
+      <div class="gh-n" style="font-size:18px;padding-right:0">역할 나눠주기</div>
+      <p class="note" style="margin-top:7px;position:relative">각자 자기 폰(대기실)에서 비밀 역할을 확인하게 됩니다</p>
+    </div>
+
+    <div class="sec">배경 상황</div>
+    <div class="card" style="display:flex;align-items:center;gap:12px">
+      <div style="flex:1;font-weight:900;font-size:17px">${h(p.sit)}</div>
+      <button class="btn sm" data-act="mf-sit">🎲 바꾸기</button>
+    </div>
+
+    <div class="sec">구성 <span class="n">역할 받을 사람 ${pool.length}명</span></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="flex:1;font-weight:800">🔪 마피아 수</div>
+        <button class="stepbtn" data-act="mf-cnt" data-v="-1">−</button>
+        <div style="font-weight:900;font-size:22px;min-width:26px;text-align:center">${p.cnt}</div>
+        <button class="stepbtn" data-act="mf-cnt" data-v="1">＋</button>
+      </div>
+      <div class="catgrid">
+        <button class="cat ${p.pol?'on':''}" data-act="mf-tog" data-v="pol"><span class="e">👮</span><span>경찰</span></button>
+        <button class="cat ${p.doc?'on':''}" data-act="mf-tog" data-v="doc"><span class="e">💉</span><span>의사</span></button>
+      </div>
+      <div style="height:10px"></div>
+      <button class="cat ${p.incHost?'on':''}" data-act="mf-tog" data-v="incHost" style="width:100%">
+        <span class="e">🙋</span><span>나(사회자)도 역할 받기</span></button>
+    </div>
+
+    <div style="height:14px"></div>
+    <div class="stack">
+      <button class="btn pri" data-act="mf-deal">🎭 역할 나눠주기</button>
+      <button class="btn gh" data-act="pl-quit">나가기</button>
+    </div>`;
+
+  /* dealt */
+  const m = S.room.mafia || { roles:{} };
+  const rows = Object.entries(m.roles || {}).filter(([pid]) => S.room.players[pid]);
+  return `
+    <div class="gh" style="${gcVars('#FF5C7C')};padding:18px">
+      <div class="gh-em">🎭</div>
+      <div class="gh-n" style="font-size:18px;padding-right:0">배경 — ${h(m.sit||'')}</div>
+      <p class="note" style="margin-top:7px;position:relative">전원에게 "대기실에서 내 역할 확인"이라고 알려주세요</p>
+    </div>
+
+    <div class="sec">배정 현황 <span class="n">${rows.length}명</span></div>
+    <button class="btn gh sm" data-act="mf-show" style="width:100%;margin-bottom:10px">
+      ${p.show?'🙈 비밀 역할 가리기':'👁 비밀 역할 보기 (사회자용)'}</button>
+    ${rows.map(([pid,r]) => `
+      <div class="tscore" style="--tc:${p.show&&r.team==='mafia'?'var(--rose)':avColor(pid)}">
+        <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pname(pid), 'sm')}
+          <div><div>${h(pname(pid))}</div><div class="note" style="font-size:11.5px">${h(r.char)}</div></div></div>
+        ${p.show
+          ? `<span class="chip ${r.team==='mafia'?'rose':'mint'}">${r.team==='mafia'?'🔪 마피아':'🕊 시민'}${r.job?' · '+r.job:''}</span>`
+          : '<span class="chip">비밀</span>'}
+      </div>`).join('')}
+    <div style="height:14px"></div>
+    <div class="stack">
+      <button class="btn" data-act="mf-redeal">🔄 다시 나눠주기</button>
+      <button class="btn dan" data-act="mf-clear">🧹 역할 회수 — 게임 종료</button>
+      <button class="btn gh" data-act="pl-quit">나가기 (역할 유지)</button>
+    </div>
+    <p class="note" style="text-align:center;margin-top:10px">게임이 끝나면 「순위 입력」으로 결과를 기록하세요</p>`;
+}
+
+/* ── 내 역할 (참가자 각자 폰) ── */
+function vRole(){
+  const m = S.room?.mafia, my = m?.roles?.[S.pid];
+  if (!my) return `<div class="empty">
+      <div class="empty-e">🎭</div>
+      <div class="empty-t">배정된 역할이 없어요</div>
+      <div class="note">진행자가 역할을 나눠주면 대기실에 알림이 떠요</div>
+    </div>`;
+  return `
+    <div class="gh" style="${gcVars('#FF5C7C')};padding:20px">
+      <div class="gh-em">🎭</div>
+      <div class="gh-n" style="font-size:15px;padding-right:0">배경 — ${h(m.sit||'')}</div>
+      <div class="gh-m"><span class="chip">내 캐릭터 (공개해도 됨)</span></div>
+      <div style="font-size:27px;font-weight:900;margin-top:8px;position:relative">${h(my.char)}</div>
+    </div>
+    <p class="note" style="margin:0 4px 12px">이 캐릭터로 연기하세요. 아래 비밀 정보는 아무에게도 보여주지 마세요.</p>
+    <div class="holdbox" id="role-hold">
+      <div class="hint">🔒 꾹 누르고 있는 동안만 보여요</div>
+      <div class="secret">
+        <div class="note">나의 정체</div>
+        <div class="role-team" style="color:${my.team==='mafia'?'var(--rose)':'var(--mint)'}">
+          ${my.team==='mafia'?'🔪 마피아':'🕊 시민'}</div>
+        ${my.job ? `<div style="margin-top:8px;font-weight:800;font-size:14px">
+          ${my.job==='경찰'?'👮 경찰 — 밤에 한 명의 정체를 조사할 수 있어요':'💉 의사 — 밤에 한 명을 지목해 살릴 수 있어요'}</div>` : ''}
+      </div>
+    </div>
+    <p class="note" style="text-align:center">확인했으면 뒤로 나가서 연기를 시작하세요 🎬</p>`;
 }
 
 /* ── 순위 입력 ── */
@@ -1853,6 +2424,16 @@ function bind(root){
     root.querySelector('#code-boxes').onclick = () => ci.focus();
     paint();
   }
+
+  /* 비밀 역할: 꾹 누르는 동안만 표시 */
+  const rh = root.querySelector('#role-hold');
+  if (rh){
+    const show = e => { e.preventDefault(); rh.classList.add('show'); vib(14); };
+    const hide = () => rh.classList.remove('show');
+    rh.onpointerdown = show;
+    rh.onpointerup = rh.onpointerleave = rh.onpointercancel = hide;
+    rh.oncontextmenu = e => e.preventDefault();
+  }
 }
 
 async function act(a, d){
@@ -1920,10 +2501,19 @@ async function act(a, d){
   /* ── 진행 도구 ── */
   case 'tool-start': {
     if (!S.isHost) return toast('진행 도구는 진행자 기기에서 열어주세요');
-    const g = G(S.gameId);
-    if (g.mode === 'team' && (S.room.teams?.count || 0) < 2)
-      return toast('팀전이에요 — 대기실에서 팀을 먼저 나눠주세요');
-    startDeckTool(); break;
+    const g = G(S.gameId), n = players().length;
+    if (g.tool === 'deck'){
+      if (g.mode === 'team' && (S.room.teams?.count || 0) < 2)
+        return toast('팀전이에요 — 대기실에서 팀을 먼저 나눠주세요');
+      startDeckTool();
+    }
+    else if (g.tool === 'noise'){ if (n < 2) return toast('2명 이상 필요해요'); startNoiseTool(); }
+    else if (g.tool === 'cup'){   if (n < 2) return toast('2명 이상 필요해요'); startCupTool(); }
+    else if (g.tool === 'act'){   if (n < 2) return toast('2명 이상 필요해요'); startActTool(); }
+    else if (g.tool === 'smile'){ if (n < 3) return toast('3명 이상 필요해요'); startSmileTool(); }
+    else if (g.tool === 'watch') startWatchTool();
+    else if (g.tool === 'mafia') startMafiaTool();
+    break;
   }
   case 'pl-mode': S.play.mode = d.v; render(); break;
   case 'pl-sec':  S.play.sec = Number(d.v); render(); break;
@@ -1956,10 +2546,163 @@ async function act(a, d){
     render(); break;
   }
   case 'pl-save': deckToScore(); break;
+
+  /* ── 멕썸노이즈 · 컵 레이스 (race-* 공유) ── */
+  case 'no-brief': case 'no-reroll': {
+    const p = S.play;
+    p.sen = jo(pname(p.order[p.turn]), '이', '가') + ' ' + noiseSentence();
+    p.phase = 'brief'; vib(8); render(true); break;
+  }
+  case 'race-run': {
+    S.play.phase = 'run'; SFX.go(); vib(20);
+    render(true); swBegin(); break;
+  }
+  case 'race-end': {
+    const p = S.play; stopPlayTimer();
+    const ok = d.v === '1';
+    p.rec[p.order[p.turn]] = ok ? Math.round((p.elapsed || 0) * 10) / 10 : null;
+    p.phase = 'turnEnd';
+    ok ? SFX.ok() : SFX.end(); vib(ok ? [20,40,20] : 30);
+    render(true); break;
+  }
+  case 'race-next': {
+    const p = S.play;
+    if (p.turn >= p.order.length - 1){ p.phase = 'done'; confetti(70); }
+    else { p.turn++; p.phase = 'ready'; }
+    render(true); break;
+  }
+  case 'race-save': {
+    const p = S.play;
+    toScore([...p.order].sort((a,b) => (p.rec[a] ?? 1e9) - (p.rec[b] ?? 1e9)), 'solo');
+    break;
+  }
+
+  /* ── 연기 대결 ── */
+  case 'ac-reroll': actDraw(); vib(8); render(true); break;
+  case 'ac-next': {
+    const p = S.play;
+    if (p.turn >= p.order.length - 1) p.phase = 'done';
+    else { p.turn++; actDraw(); }
+    render(true); break;
+  }
+  case 'ac-score': { stopPlayTimer(); S.play = null; act('score-start', {}); break; }
+
+  /* ── 스마일~! ── */
+  case 'sm-sul': {
+    const p = S.play;
+    p.sul = d.pid;
+    p.pool = players().map(([pid]) => pid).filter(x => x !== d.pid);
+    p.shots = 10; p.sel = []; p.phase = 'run';
+    SFX.go(); render(true); break;
+  }
+  case 'sm-shot': {
+    const p = S.play;
+    if (p.shots > 0){ p.shots--; SFX.tick(); vib(10); }
+    if (p.shots <= 0){ p.phase = 'judge'; p.sel = []; SFX.end(); }
+    render(true); break;
+  }
+  case 'sm-judge': S.play.phase = 'judge'; S.play.sel = []; render(true); break;
+  case 'sm-back':  S.play.phase = 'run'; render(true); break;
+  case 'sm-sel': {
+    const p = S.play, i = p.sel.indexOf(d.pid);
+    i < 0 ? p.sel.push(d.pid) : p.sel.splice(i, 1);
+    render(true); break;
+  }
+  case 'sm-apply': {
+    const p = S.play;
+    p.log.push({ r:p.log.length + 1, sul:p.sul, caught:[...p.sel] });
+    if (p.sel.length === 1){
+      const nx = p.sel[0];
+      p.sul = nx;
+      p.pool = players().map(([pid]) => pid).filter(x => x !== nx);
+    }else if (p.sel.length > 1){
+      p.pool = [...p.sel];      // 걸린 사람들끼리 재진행 (술래 유지)
+    }                            // 0명 → 같은 술래·같은 대상 다시
+    p.shots = 10; p.sel = []; p.round++; p.phase = 'run';
+    render(true); break;
+  }
+  case 'sm-done': S.play.phase = 'done'; render(true); break;
+  case 'sm-score': { stopPlayTimer(); S.play = null; act('score-start', {}); break; }
+
+  /* ── 안 봤어도 들키지마 ── */
+  case 'wa-sec': {
+    const p = S.play;
+    if (p.running) return toast('타이머를 멈추고 바꿔주세요');
+    p.sec = Number(d.v); p.left = p.sec; p.over = false;
+    render(true); break;
+  }
+  case 'wa-toggle': {
+    const p = S.play;
+    if (p.running){ stopPlayTimer(); p.running = false; render(true); }
+    else { if (p.left <= 0){ p.left = p.sec; p.over = false; } watchTimerStart(); }
+    break;
+  }
+  case 'wa-reset': {
+    const p = S.play;
+    stopPlayTimer(); p.running = false; p.over = false; p.left = p.sec;
+    render(true); break;
+  }
+  case 'wa-coin': {
+    const p = S.play, dv = Number(d.v);
+    p.coins[d.pid] = Math.max(0, (p.coins[d.pid] || 0) + dv);
+    if (dv > 0) SFX.ok(); vib(8);
+    render(true); break;
+  }
+  case 'wa-save': {
+    const p = S.play;
+    toScore(players().map(([pid]) => pid).sort((a,b) => (p.coins[b]||0) - (p.coins[a]||0)), 'solo');
+    break;
+  }
+
+  /* ── 상황극 마피아 ── */
+  case 'mf-cnt': S.play.cnt = Math.max(1, S.play.cnt + Number(d.v)); render(true); break;
+  case 'mf-tog': S.play[d.v] = !S.play[d.v]; render(true); break;
+  case 'mf-sit': {
+    const p = S.play; let s;
+    do { s = MAFIA_SITS[(Math.random()*MAFIA_SITS.length)|0].n; } while (s === p.sit && MAFIA_SITS.length > 1);
+    p.sit = s; render(true); break;
+  }
+  case 'mf-deal': {
+    const p = S.play;
+    let pool = players().map(([pid]) => pid);
+    if (!p.incHost) pool = pool.filter(x => x !== S.pid);
+    if (pool.length < 3) return toast('역할을 받을 사람이 3명 이상 필요해요');
+    if (p.cnt >= pool.length) return toast('마피아 수가 너무 많아요');
+    shuffle(pool);
+    const sit = MAFIA_SITS.find(x => x.n === p.sit) || MAFIA_SITS[0];
+    const chars = shuffle([...sit.chars]);
+    const roles = {};
+    pool.forEach((pid,i) => { roles[pid] = { team: i < p.cnt ? 'mafia' : 'civil', job:'', char:chars[i % chars.length] }; });
+    const civ = pool.slice(p.cnt);
+    if (p.pol && civ.length)     roles[civ[0]].job = '경찰';
+    if (p.doc && civ.length > 1) roles[civ[1]].job = '의사';
+    S.room.mafia = { round:now(), sit:sit.n, roles };
+    pushHostState();
+    p.phase = 'dealt'; p.show = false;
+    confetti(50); render(true); break;
+  }
+  case 'mf-show': S.play.show = !S.play.show; render(true); break;
+  case 'mf-redeal': {
+    if (!confirm('역할을 새로 나눠줄까요?')) return;
+    S.play.phase = 'setup'; render(true); break;
+  }
+  case 'mf-clear': {
+    if (!confirm('역할을 회수하고 게임을 끝낼까요?')) return;
+    S.room.mafia = null; pushHostState();
+    S.play.phase = 'setup'; render(true);
+    toast('역할을 회수했어요'); break;
+  }
+  case 'mf-open': S.gameId = 'mafia'; startMafiaTool(); break;
+  case 'go-role': go('role'); break;
+
   case 'pl-quit': {
     const p = S.play;
-    const mid = p && (p.phase === 'run' || p.turn > 0 || Object.keys(p.results || {}).length > 0);
-    if (mid && !confirm('진행 중인 게임을 그만둘까요? 지금까지 결과는 사라져요.')) return;
+    if (p?.kind === 'mafia'){ stopPlayTimer(); S.play = null; go('game'); break; }   // 역할은 방에 유지
+    const prog = p && ((p.phase === 'run' && p.kind !== 'watch') || (p.turn || 0) > 0
+      || Object.keys(p.results || {}).length > 0 || Object.keys(p.rec || {}).length > 0
+      || Object.values(p.coins || {}).some(v => v > 0) || (p.log || []).length > 0
+      || (p.kind === 'watch' && p.left < p.sec));
+    if (prog && !confirm('진행 중인 게임을 그만둘까요? 지금까지 결과는 사라져요.')) return;
     stopPlayTimer(); S.play = null; go('game'); break;
   }
 
