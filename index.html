@@ -655,7 +655,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.4.1';
+const APP_VERSION = 'v0.5.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -745,7 +745,7 @@ const WORD_DECKS = {
 };
 const DECK_KEYS = Object.keys(WORD_DECKS);
 
-/* 받침에 따라 조사 선택: jo('현민','이','가') → 현민이 */
+/* 받침에 따라 조사 선택: jo('수박','을','를') → 수박을 / jo('사과','을','를') → 사과를 */
 function jo(w, a, b){
   const s = String(w), c = s.charCodeAt(s.length - 1);
   if (c < 0xAC00 || c > 0xD7A3) return s + b;
@@ -1241,7 +1241,48 @@ function leaveRoom(){
 const players = () => Object.entries(S.room?.players || {}).sort((a,b) => (a[1].joinedAt||0) - (b[1].joinedAt||0));
 const pname = pid => S.room?.players?.[pid]?.name || '?';
 const myName = () => pname(S.pid);
-const isOn = p => (now() - (p.seen || 0)) < 70000;
+const isOn = p => !!p.bot || (now() - (p.seen || 0)) < 70000;   // 봇은 항상 접속중 취급
+
+/* ── 테스트 봇 ─────────────────────────────────────────────
+   혼자서 게임 도구를 돌려보려면 사람이 더 필요하다.
+   ⚠️ 봇도 실제 players 노드에 쓴다(pid가 'bot_'으로 시작).
+      로컬에만 두면 다음 스냅샷에서 지워진다(호스트가 players를 서버 값으로 덮어쓰므로).
+      이렇게 하면 기존 코드(팀 편성·역할 배정·순위)가 전부 그대로 동작한다. */
+/* ⚠️ 봇 이름에 사람 이름을 쓰지 말 것. 실존 인물과 겹쳐 오해를 산다.
+   누가 봐도 가짜인 동물 이름만 쓴다. */
+const BOT_NAMES = ['펭귄','다람쥐','너구리','수달','판다','햄스터','고양이','토끼','여우','곰','오리','참새'];
+const isBot = pid => String(pid).startsWith('bot_');
+const botCount = () => players().filter(([pid]) => isBot(pid)).length;
+
+function addBots(n){
+  const used = players().map(([,p]) => p.name);
+  const upd = {};
+  for (let i = 0; i < n; i++){
+    const pid = 'bot_' + uid();
+    const name = BOT_NAMES.find(x => !used.includes(x)) || ('봇' + (((Math.random()*900)|0) + 100));
+    used.push(name);
+    const rec = { name, joinedAt: now() + i, seen: now(), bot: true };
+    S.room.players[pid] = rec;              // 낙관적 로컬 반영(오프라인에서도 보이게)
+    upd['players/' + pid] = rec;
+  }
+  update(roomRef(S.code), upd).catch(()=>{});
+}
+
+function clearBots(){
+  const upd = {};
+  Object.keys(S.room.players || {}).filter(isBot).forEach(k => {
+    delete S.room.players[k]; upd['players/' + k] = null;
+  });
+  const as = S.room.teams?.assign;
+  if (as) Object.keys(as).filter(isBot).forEach(k => delete as[k]);
+  if (S.room.mafia?.roles) Object.keys(S.room.mafia.roles).filter(isBot).forEach(k => delete S.room.mafia.roles[k]);
+  Object.keys(S.room.rotation || {}).forEach(g => {
+    S.room.rotation[g] = (S.room.rotation[g] || []).filter(x => !isBot(x));
+  });
+  if (Object.keys(upd).length) update(roomRef(S.code), upd).catch(()=>{});
+  pushHostState();
+  return Object.keys(upd).length;
+}
 
 function calcPoints(){
   const pts = {};
@@ -1648,7 +1689,8 @@ function vLobby(){
       ${av(pid, p.name)}
       <div class="pl-n">${h(p.name)}
         ${pid===S.pid ? '<span class="chip hot">나</span>' : ''}
-        ${(p.host || pid===S.room.host) ? '<span class="chip">진행자</span>' : ''}</div>
+        ${(p.host || pid===S.room.host) ? '<span class="chip">진행자</span>' : ''}
+        ${p.bot ? '<span class="chip elec">🧪 테스트</span>' : ''}</div>
       ${isOn(p) ? '' : '<div class="dot-off" title="접속 끊김"></div>'}
       <div class="pl-pt">${fmtPt(pts[pid]||0)}<small>점</small></div>
       ${S.isHost && pid!==S.pid ? `<button class="pl-x" data-act="kick" data-pid="${pid}">✕</button>` : ''}
@@ -1694,6 +1736,16 @@ function vLobby(){
       </button>` : ''}
 
     ${installBannerHtml()}
+    ${S.isHost && ps.length < 3 ? `
+      <button class="instbn" style="background:linear-gradient(150deg,rgba(61,224,168,.15),var(--surf));border-color:rgba(61,224,168,.32)"
+        data-act="bot-add" data-n="3">
+        <div class="instbn-ic" style="background:rgba(61,224,168,.2)">🧪</div>
+        <div style="flex:1;min-width:0">
+          <div class="instbn-t">혼자 테스트해보기</div>
+          <div class="instbn-s">가짜 참가자 3명을 넣어 게임 도구를 돌려볼 수 있어요</div>
+        </div>
+        <div class="g-ar">›</div>
+      </button>` : ''}
     <div class="sec">참가자 <span class="n">${ps.length}</span></div>
     <div class="plist">${plist}</div>
 
@@ -2438,6 +2490,17 @@ function vSettings(){
         <button class="btn gh sm" data-act="reset-scores" style="width:100%">점수 전체 초기화</button>
         <button class="btn gh sm" data-act="reset-rot" style="width:100%">술래·출제자 순번 초기화</button>
       </div>
+    </div>
+    <div class="card">
+      <div class="sec" style="margin:0 0 11px">🧪 테스트 봇 <span class="n">${botCount()}명</span></div>
+      <p class="note" style="margin-bottom:11px">혼자서 게임 도구를 시험해볼 때 쓰는 가짜 참가자예요.
+        팀 편성·역할 배정·순위까지 실제와 똑같이 동작합니다.</p>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn sm" data-act="bot-add" data-n="1">+1명</button>
+        <button class="btn sm" data-act="bot-add" data-n="3">+3명</button>
+        <button class="btn sm" data-act="bot-add" data-n="5">+5명</button>
+      </div>
+      <button class="btn gh sm" data-act="bot-clear" style="width:100%">봇 전부 내보내기</button>
     </div>` : ''}
     <div class="card">
       <div class="sec" style="margin:0 0 11px">방</div>
@@ -2547,6 +2610,20 @@ async function act(a, d){
     break;
   }
   case 'share': shareRoom(); break;
+
+  case 'bot-add': {
+    if (!S.isHost) return;
+    if (players().length + Number(d.n) > 12) return toast('참가자는 12명까지만요');
+    addBots(Number(d.n)); confetti(30); render(true);
+    toast(`테스트 참가자 ${d.n}명이 들어왔어요`);
+    break;
+  }
+  case 'bot-clear': {
+    if (!S.isHost) return;
+    const n = clearBots(); render(true);
+    toast(n ? `테스트 참가자 ${n}명을 내보냈어요` : '내보낼 봇이 없어요');
+    break;
+  }
 
   case 'install': {
     if (_installEvt){
