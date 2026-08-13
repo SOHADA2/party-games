@@ -735,7 +735,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.9.1';
+const APP_VERSION = 'v0.10.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1445,6 +1445,157 @@ const MAFIA_SITS = [
 ];
 
 /* ══════════════════════════════════════════════
+   🔎 크라임씬 — 사건 확장 데이터
+   위 MAFIA_SITS의 배역(알리바이·비밀·연기팁·대사)을 그대로 재사용하고,
+   여기에 「사건 개요 · 장소별 증거 · 배역별 관계/동기/범인일 때의 흔적」만 얹는다.
+   ⚠️ victim 으로 지정한 배역은 피해자라서 배정에서 빠진다.
+   ⚠️ trace = 그 사람이 범인일 때만 현장에 추가되는 결정적 증거.
+══════════════════════════════════════════════ */
+const CRIME_EXT = {
+  '왕궁 연회': {
+    victim:'왕',
+    brief:'연회가 한창이던 밤, 왕이 술잔을 비우고 쓰러졌다. 독이었다. 연회장의 문은 안쪽에서 잠겨 있었고, 그 안에 있던 것은 우리뿐이다.',
+    found:'왕은 상석에서 숨졌다. 잔에서는 쓴 아몬드 냄새가 났고, 손톱 밑에 붉은 실오라기가 끼어 있었다.',
+    places:[
+      { n:'연회장 상석', ev:[
+        '왕의 잔 바닥에 흰 앙금이 가라앉아 있다. 물에 잘 안 녹는 독이다.',
+        '상석 아래에 깨진 잔 조각. 원래 잔은 두 개였던 것 같다.'] },
+      { n:'주방', ev:[
+        '술항아리 하나가 열린 채였고 국자가 사라졌다.',
+        '조리대에 물을 부은 자국. 그날 술은 유난히 묽었다고 한다.'] },
+      { n:'서재', ev:[
+        '국고 장부가 펼쳐져 있다. 최근 지출 항목 하나가 칼로 긁혀 지워졌다.',
+        '아직 마르지 않은 편지. 수신인 부분만 찢겨 나갔다.'] },
+      { n:'정문과 회랑', ev:[
+        '근위병 교대 기록에 스무 걸음쯤의 공백이 있다. 아무도 없던 시간이다.',
+        '회랑 창가에 마른 진흙 발자국. 정원 쪽에서 들어온 것이다.'] },
+      { n:'왕의 침소', ev:[
+        '머리맡에 마시다 만 약사발. 왕은 최근 몸이 좋지 않았다.',
+        '서랍이 열려 있고 왕의 인장이 없어졌다.'] },
+    ],
+    ext:{
+      '왕비':{ rel:'왕의 정비', mot:'왕이 새 후궁을 들이려 했다. 자리를 잃을 참이었다.',
+        trace:'상석 옆 방석 밑에서 왕비의 향낭이 나왔다. 향 속에 마른 독초 가루가 섞여 있다.' },
+      '왕자':{ rel:'왕의 장남', mot:'왕위를 아우에게 넘긴다는 소문을 들었다.',
+        trace:'발코니 난간에서 왕자의 반지가 발견됐다. 안쪽에 흰 가루가 묻어 있다.' },
+      '재상':{ rel:'왕의 오른팔', mot:'국고를 빼돌린 것이 곧 발각될 참이었다.',
+        trace:'서재 화로에서 반쯤 탄 문서. 재상의 인장과 「처분」이라는 글자가 남았다.' },
+      '근위대장':{ rel:'왕의 경호 책임자', mot:'지난달 크게 문책받고 파직 직전이었다.',
+        trace:'회랑 갑옷함에서 왕의 것과 같은 무늬의 잔이 하나 더 나왔다.' },
+      '궁중 요리사':{ rel:'20년간 왕의 상을 차렸다', mot:'왕이 자기 아들을 옥에 가뒀다.',
+        trace:'주방 뒷문 항아리 밑에서 사라진 국자가 나왔다. 손잡이에 요리사의 표식이 있다.' },
+      '광대':{ rel:'왕을 웃기는 자', mot:'왕이 광대의 혀를 자르겠다고 농담처럼 말했다.',
+        trace:'광대의 방울 지팡이 속이 비어 있다. 안쪽에 흰 가루가 남았다.' },
+      '시녀장':{ rel:'왕비를 모시는 사람', mot:'왕이 시녀장의 딸을 후궁으로 삼으려 했다.',
+        trace:'시녀장의 앞치마 주머니에서 찢긴 편지 조각. 「오늘 밤」이라는 글자가 보인다.' },
+      '외국 사신':{ rel:'이웃 나라의 사절', mot:'왕이 사신의 나라에 전쟁을 선포하려 했다.',
+        trace:'발코니 화분에서 이 나라에 없는 씨앗이 나왔다. 사신의 고향에서 나는 것이다.' },
+      '악사':{ rel:'궁정 악사', mot:'왕이 악사의 스승을 처형했다.',
+        trace:'악기 상자의 이중 바닥에서 빈 약병이 나왔다.' },
+      '기사단장':{ rel:'왕의 검', mot:'반역 제안을 거절했지만, 알려지면 함께 죽는다.',
+        trace:'검집 안쪽에 접힌 서약서. 반역 가담자 명단이고 맨 위가 기사단장이다.' },
+      '공주':{ rel:'왕의 막내딸', mot:'왕이 정략혼을 강요했다. 사랑하는 사람이 따로 있다.',
+        trace:'공주의 여행 가방에서 없어진 왕의 인장이 나왔다.' },
+    }
+  },
+
+  '심야의 크루즈': {
+    victim:'부자 승객',
+    brief:'출항 사흘째 새벽, 선미에서 부자 승객이 바다로 떨어져 숨졌다. 사고로 보기엔 흔적이 이상하다.',
+    found:'난간 안쪽에 몸싸움 자국이 있고, 피해자의 손톱 밑에 남의 살점이 끼어 있었다.',
+    places:[
+      { n:'선미 갑판', ev:[
+        '난간 페인트가 길게 긁혀 있다. 누군가 매달렸다 놓친 자국이다.',
+        '갑판에 진주 단추 하나가 떨어져 있다. 승무원 제복 것은 아니다.'] },
+      { n:'특실', ev:[
+        '금고가 열려 있고 현금 다발이 사라졌다.',
+        '탁자에 잔이 두 개. 한쪽에만 립스틱 자국이 있다.'] },
+      { n:'주방과 식료품 창고', ev:[
+        '고기 손질용 칼 하나가 제자리에 없다.',
+        '창고 손잡이에 아주 옅은 핏자국.'] },
+      { n:'카지노', ev:[
+        '피해자가 써준 차용증이 여러 장. 서명 필체가 제각각이다.',
+        '카드 한 벌 뒷면에 손톱으로 낸 표식이 있다.'] },
+      { n:'기관실', ev:[
+        '비상 사다리에 젖은 발자국. 위로 올라간 방향이다.',
+        '구석에 젖은 작업복이 처박혀 있다.'] },
+    ],
+    ext:{
+      '선장':{ rel:'배의 책임자', mot:'피해자가 선장의 밀수를 눈치채고 신고하겠다고 했다.',
+        trace:'조타실 해도 밑에서 피해자의 금고 열쇠가 나왔다.' },
+      '재즈 가수':{ rel:'매일 밤 그의 테이블에서 노래했다', mot:'피해자가 계약을 미끼로 계속 추근댔다.',
+        trace:'무대 뒤 의상에서 진주 단추 하나가 떨어져 나간 자리가 발견됐다.' },
+      '갑판원':{ rel:'그의 짐을 날랐다', mot:'피해자가 팁 대신 모욕을 주고 침을 뱉었다.',
+        trace:'갑판원 사물함에서 젖은 장갑이 나왔다. 손바닥에 페인트가 묻어 있다.' },
+      '요리사':{ rel:'그의 특별식을 만들었다', mot:'피해자가 음식에 트집을 잡아 해고시키려 했다.',
+        trace:'없어진 손질용 칼이 요리사의 침대 밑에서 나왔다.' },
+      '도박사':{ rel:'매일 밤 같은 판에 앉았다', mot:'피해자에게 갚을 수 없는 빚을 졌다.',
+        trace:'도박사의 주머니에서 피해자 서명의 차용증이 나왔다. 방금 찢으려 한 자국이 있다.' },
+      '사진사':{ rel:'그를 여러 번 찍었다', mot:'피해자가 사진 원판을 사서 없애겠다며 협박했다.',
+        trace:'암실 현상액 통에서 녹아버린 필름 한 롤이 나왔다. 그 시각 선미를 찍은 것이다.' },
+      '승무원':{ rel:'그의 방을 매일 정리했다', mot:'피해자가 도둑 누명을 씌워 해고 직전이었다.',
+        trace:'특실 마스터키 대여 기록에서 그 시각 한 줄이 지워져 있었다.' },
+      '마술사':{ rel:'그의 요청으로 특실 공연을 했다', mot:'피해자가 가짜 신분을 알아채고 신고하겠다고 했다.',
+        trace:'마술 도구 상자 이중 바닥에서 특실 금고의 현금 띠지가 나왔다.' },
+      '노부인':{ rel:'예전부터 그를 알았다', mot:'수십 년 전 그가 노부인의 가족을 파산시켰다.',
+        trace:'노부인의 지팡이 끝에 난간 페인트가 묻어 있다.' },
+      '기관사':{ rel:'그와 마주친 적이 거의 없다', mot:'피해자가 배의 결함을 알고 선사에 알리려 했다. 그러면 책임은 기관사에게 온다.',
+        trace:'젖은 작업복 안주머니에서 기관사의 이름표가 나왔다.' },
+      '신혼여행객':{ rel:'옆 특실에 묵었다', mot:'피해자가 예약을 산 사실을 알고 폭로하겠다고 했다.',
+        trace:'옆방 발코니 난간에서 두 사람분의 젖은 손자국이 나왔다.' },
+    }
+  },
+
+  '예능 촬영장': {
+    victim:'PD',
+    brief:'생방송 30분 전, PD가 부조정실에서 쓰러진 채 발견됐다. 뒤통수에 둔기에 맞은 자국이 있었다.',
+    found:'부조정실 문은 안에서 잠겨 있지 않았고, 그 시간 복도 CCTV는 각도가 틀어져 있었다.',
+    places:[
+      { n:'부조정실', ev:[
+        '모니터 케이블이 뽑혀 있다. 누군가 급히 빠져나갔다.',
+        '큐시트 여백에 「이번 주까지」라고 눌러쓴 메모.'] },
+      { n:'대기실', ev:[
+        '큐카드가 손으로 찢겨 있다. 가위 자국이 아니다.',
+        '커피가 두 잔. 한 잔은 손도 대지 않았다.'] },
+      { n:'분장실', ev:[
+        '거울에 지웠다 남은 글씨 자국. 「말하면」까지 읽힌다.',
+        '도구함에서 묵직한 삼각대 받침이 나왔다. 최근에 닦은 티가 난다.'] },
+      { n:'음향 부스', ev:[
+        '대기실 마이크가 켜진 채였다. 30분 분량이 녹음돼 있다.',
+        '녹음 파일 하나가 삭제된 기록이 남아 있다.'] },
+      { n:'주차장', ev:[
+        'PD의 차 타이어가 칼로 그어져 있다.',
+        'CCTV가 그 시간대만 벽 쪽을 향해 돌아가 있었다.'] },
+    ],
+    ext:{
+      '메인 MC':{ rel:'이 프로의 얼굴', mot:'PD가 하차를 통보했다. 다음 주가 마지막이었다.',
+        trace:'대기실 쓰레기통에서 찢긴 하차 통보서가 나왔다. 지문이 MC의 것이다.' },
+      '보조 MC':{ rel:'2인자', mot:'메인 자리를 약속받았는데 PD가 말을 바꿨다.',
+        trace:'보조 MC의 가방에서 부조정실 예비 열쇠가 나왔다.' },
+      '메인 작가':{ rel:'PD와 5년을 같이 했다', mot:'PD가 대본 조작의 책임을 작가에게 떠넘기려 했다.',
+        trace:'작가실 컴퓨터에서 그 시각 삭제된 대본 파일이 복구됐다. 조작 지시가 적혀 있다.' },
+      '카메라 감독':{ rel:'현장을 다 찍는 사람', mot:'PD가 촬영분 유출을 눈치채고 고발하려 했다.',
+        trace:'카메라 감독의 외장 하드에서 유출용으로 정리된 미공개 영상이 나왔다.' },
+      '게스트 가수':{ rel:'오늘 처음 온 손님', mot:'PD가 립싱크 사실을 생방송에서 폭로하겠다고 했다.',
+        trace:'분장실 거울 뒤에서 가수의 인이어가 나왔다. 부조정실에서 잃어버린 것이다.' },
+      '코디':{ rel:'출연자 의상 담당', mot:'PD가 협찬 의상을 빼돌린 걸 알고 경찰에 넘긴다고 했다.',
+        trace:'의상 커버 안쪽에 삼각대 받침만 한 자국과 기름때가 남아 있다.' },
+      '막내 스태프':{ rel:'모두의 심부름꾼', mot:'PD가 사람들 앞에서 반복해 모욕했다.',
+        trace:'막내의 앞치마 주머니에서 CCTV 각도 조절용 육각 렌치가 나왔다.' },
+      '분장사':{ rel:'모두의 얼굴을 만진다', mot:'PD가 사생활 유출의 출처를 알아냈다고 했다.',
+        trace:'분장 브러시 통 바닥에서 지워진 글씨와 같은 색 립펜슬이 나왔다.' },
+      '방청객 대표':{ rel:'원래 여기 있으면 안 되는 사람', mot:'PD가 위조 입장을 적발해 고소하려 했다.',
+        trace:'주차장 배수구에서 위조 방청권 뭉치와 커터칼이 나왔다.' },
+      '음향 감독':{ rel:'모든 소리를 듣는다', mot:'PD가 몰래 녹음한 사실을 알고 고발하려 했다.',
+        trace:'삭제된 녹음 파일이 음향 감독의 개인 계정에 백업돼 있었다.' },
+      '섭외 담당':{ rel:'출연자를 꽂는 사람', mot:'PD가 뒷돈 수수 정황을 잡고 감사에 넘기려 했다.',
+        trace:'섭외 담당의 통화 기록에서 그 시각 부조정실 내선으로 건 흔적이 나왔다.' },
+    }
+  },
+};
+const CRIME_CASES = Object.keys(CRIME_EXT);
+
+/* ══════════════════════════════════════════════
    게임 레지스트리 — 여기에 한 줄 추가하면 앱 전체에 반영됨
 ══════════════════════════════════════════════ */
 const GAMES = [
@@ -1507,34 +1658,37 @@ const GAMES = [
 · 제한 시간 안에 맞춘 개수가 많은 팀 순.`
   },
   {
-    id:'mafia', name:'상황극 마피아', emoji:'🎭', color:'#FF5C7C', mode:'solo', weight:1.5,
-    role:'사회자', tag:'개인전 · 사회자 필요', tool:'mafia', toolLabel:'🎭 역할 나눠주기 (각자 폰)',
+    id:'mafia', name:'크라임씬 — 추리 상황극', emoji:'🔎', color:'#FF5C7C', mode:'solo', weight:2,
+    role:null, tag:'각자 폰 · 아무도 탈락 안 함', tool:'mafia', toolLabel:'🔎 사건 시작하기',
     rules:
-`마피아 게임 + 상황극.
+`살인 사건이 일어났고, 이 안에 범인이 있다. 각자 배역을 맡아 연기하며 진범을 찾는 게임.
 
 <b>★ 가장 중요한 규칙</b>
-· <b>시민은 거짓말할 수 없다.</b> 자기 배역과 알리바이는 반드시 사실대로 말해야 한다.
-· <b>마피아만 거짓말할 수 있다.</b>
-· 그래서 서로의 말이 어긋나는 지점에 범인이 있다.
-· 말투·태도·연기는 누구나 자유롭다. 거짓말 금지는 <b>배역과 알리바이</b>에만 적용된다.
+· <b>용의자는 거짓말할 수 없다.</b> 배역·동기·알리바이를 물으면 사실대로 답해야 한다.
+· <b>범인 한 명만 거짓말할 수 있다.</b> 알리바이도 동기도 지어낼 수 있다.
+· 단 <b>비밀</b>과 <b>자기가 찾은 증거</b>는 누구든 숨겨도 된다. 말할 의무는 없다.
+· 그래서 진술이 어긋나는 지점에 범인이 있다.
 
-<b>준비</b>
-· 사회자가 배경 상황을 고르고 「역할 나눠주기」를 누른다.
-· 각자 자기 폰에서 배역 · 알리바이 · 연기 팁 · 대사를 확인한다.
-· 정체(마피아/시민)는 꾹 누르고 있는 동안만 보이므로 남에게 들키지 않는다.
+<b>받는 것</b>
+· 배역과 성격 · 피해자와의 관계 · <b>동기</b>(숨기고 싶지만 사실) · 알리바이
+· 비밀(들키면 곤란한 것) · 연기 팁과 대사 — 연기가 처음이어도 읽기만 하면 된다.
+· 범인만 「내가 범인이다」와 <b>현장에 남긴 흔적</b>을 함께 받는다.
 
 <b>진행</b>
-· 첫 낮: 한 명씩 자기 배역과 알리바이를 소개한다.
-· 어긋나는 진술을 찾아 토론한다. (같은 장소에 두 사람이 있었다는데 한쪽이 부인한다면?)
-· 밤: 마피아가 한 명을 지목한다. 조사·보호 능력자도 각자 지목한다.
-· 아침: 사라진 사람을 발표하고 다시 토론 → 투표로 한 명을 지목한다.
+· 사건 브리핑 → 각자 배역 확인
+· <b>조사</b> — 한 사람이 현장 한 곳씩. 찾은 증거는 <b>본인 폰에만</b> 보인다.
+· <b>토론</b> — 알아낸 것을 이야기한다. 숨겨도 되지만, 말한다면 사실대로.
+· 조사와 토론을 2~3번 반복 → 최종 변론 → 투표
 
-<b>승리</b>
-· 마피아가 전부 밝혀지면 시민 승리.
-· 마피아 수가 나머지와 같아지면 마피아 승리.
+<b>승패</b>
+· 최다 득표자가 범인이면 <b>용의자 승리</b>.
+· 아무도 못 맞히거나 표가 갈리면 <b>범인 승리</b>.
+
+<b>이 게임의 장점</b>
+· 아무도 탈락하지 않는다. 끝까지 전원이 연기하고 추리한다.
 
 <b>순위</b>
-· 승리 진영 전원이 상위. 그 안에서 MVP를 앞순위로.`
+· 범인이 이기면 범인이 1등. 잡히면 범인을 지목한 사람들이 상위.`
   },
   {
     id:'watch', name:'안 봤어도 들키지마', emoji:'🎬', color:'#FFB84D', mode:'solo', weight:1.5,
@@ -2177,127 +2331,77 @@ function watchTimerStart(){
 function startMafiaTool(){
   S.play = { gameId:S.gameId, kind:'mafia',
     phase: S.room.mafia ? 'dealt' : 'setup',
-    // 앱이 진행을 대신하므로 진행자도 기본으로 플레이한다(v0.8.0 이후)
-    cnt:suggestMafia(players().length), cntAuto:true, pol:true, doc:false, incHost:true,
-    sit:MAFIA_SITS[(Math.random()*MAFIA_SITS.length)|0].n, show:false, _t:null };
+    incHost:true,                                   // 앱이 진행을 맡으므로 진행자도 플레이
+    sit: CRIME_CASES[(Math.random()*CRIME_CASES.length)|0], show:false, _t:null };
   go('play');
 }
-/* ⚠️ 기준은 「전체 인원」이 아니라 「실제 역할을 받는 인원(pool)」이다.
-   통상 비율: 3~6명=1 · 7~9명=2 · 10명 이상=3.
-   마피아가 많으면 첫 투표 한 번 삐끗할 때 바로 끝나버린다. */
-function suggestMafia(pool){ return pool <= 6 ? 1 : pool <= 9 ? 2 : 3; }
-/* 구성이 성립하는지 판정 — 설정 화면에 그대로 보여준다 */
-function mafiaBalance(pool, cnt){
-  if (pool < 3)          return { ok:false, lv:'no',   msg:'역할 받을 사람이 3명 이상 필요해요' };
-  if (cnt < 1)           return { ok:false, lv:'no',   msg:'범인이 최소 1명은 있어야 해요' };
-  if (cnt * 2 >= pool)   return { ok:false, lv:'no',   msg:'범인이 절반 이상이라 시작하자마자 끝나요' };
-  if (cnt > pool / 3)    return { ok:true,  lv:'warn', msg:'범인이 조금 많아요 — 한두 라운드에 끝날 수 있어요' };
-  if (pool < 5)          return { ok:true,  lv:'warn', msg:'인원이 적어 아주 빨리 끝나요 — 5명 이상을 권해요' };
-  return { ok:true, lv:'good', msg:'균형이 좋아요' };
+/* 용의자 수가 성립하는지 — 범인 1명 + 용의자 최소 3명 */
+function crimeBalance(pool){
+  if (pool < 4)  return { ok:false, lv:'no',   msg:'용의자가 4명 이상 필요해요 (범인 1 + 용의자 3)' };
+  if (pool < 5)  return { ok:true,  lv:'warn', msg:'4명이면 아주 짧게 끝나요 — 5명 이상을 권해요' };
+  if (pool > 11) return { ok:false, lv:'no',   msg:'이 사건은 최대 11명까지예요' };
+  return { ok:true, lv:'good', msg:'좋은 인원이에요' };
 }
 
-/* ══ 마피아 게임 루프 — 앱이 사회자 역할을 대신한다 ══════════
-   낮(토론) → 투표(처형) → 밤(마피아·조사·보호) → 아침(결과) → 반복
-   ⚠️ 쓰기 주체 분리:
-      호스트  : pushMafia()로 phase/round/alive/log/checkRes/winner
-      참가자  : 자기 행동만 acts/{round}/{slot}, votes/{round}/{내pid}
-   이렇게 안 나누면 서로 덮어쓴다. */
+/* ══ 🔎 크라임씬 진행 루프 — 앱이 진행을 전부 맡는다 ═══════════
+   브리핑 → [조사 → 토론] × N → 최종 변론 → 투표 → 판정
+   ⚠️ 아무도 탈락하지 않는다. 끝까지 전원이 연기하고 추리한다.
+   ⚠️ 쓰기 주체 분리(마피아 때와 동일 원칙):
+      호스트 : pushMafia()로 phase/round/result
+      참가자 : 자기 조사만 searched/{round}/{내pid}, 투표는 votes/{내pid}
+   ⚠️ 내부 노드 이름은 과거 호환 때문에 여전히 room.mafia 다(동기화 배선 공유). */
 function pushMafia(patch){
   if (!S.isHost || !S.code) return;
   update(ref(db, `${ROOT}/rooms/${S.code}/mafia`), patch).catch(()=>{});
 }
 const MF = () => S.room?.mafia || null;
-const mfAlive = () => { const m = MF(); if (!m) return [];
-  return Object.keys(m.roles || {}).filter(p => m.alive?.[p] && S.room.players[p]); };
-const mfIsAlive = pid => !!MF()?.alive?.[pid];
-const mfActs  = () => { const m = MF(); return (m?.acts  || {})[m?.round] || {}; };
-const mfVotes = () => { const m = MF(); return (m?.votes || {})[m?.round] || {}; };
-/* 능력 보유자가 살아있을 때만 그 단계를 기다린다 */
-const mfHolder = job => { const m = MF(); if (!m) return null;
-  return mfAlive().find(p => m.roles[p]?.job === job) || null; };
-const mfCop = () => { const m = MF(); const sd = MAFIA_SITS.find(x => x.n === m?.sit); return sd ? mfHolder(sd.cop.name) : null; };
-const mfDoc = () => { const m = MF(); const sd = MAFIA_SITS.find(x => x.n === m?.sit); return sd ? mfHolder(sd.doc.name) : null; };
-
-function mfWinner(m){
-  const alive = Object.keys(m.roles || {}).filter(p => m.alive?.[p] && S.room.players[p]);
-  const maf = alive.filter(p => m.roles[p].team === 'mafia').length;
-  const civ = alive.length - maf;
-  if (maf === 0) return 'civil';
-  if (maf >= civ) return 'mafia';
-  return null;
+const cSuspects = () => { const m = MF(); if (!m) return [];
+  return Object.keys(m.roles || {}).filter(p => S.room.players[p]); };
+const cSearched = () => { const m = MF(); return (m?.searched || {})[m?.round] || {}; };
+const cVotes = () => MF()?.votes || {};
+/* 지금까지 이 사람이 찾아낸 증거 (라운드 전체) */
+function cMyFinds(pid){
+  const m = MF(); if (!m) return [];
+  const out = [];
+  Object.entries(m.searched || {}).forEach(([r, byPid]) => {
+    const idx = byPid[pid];
+    if (idx != null && m.places[idx]) out.push({ r:Number(r), place:m.places[idx] });
+  });
+  return out.sort((a,b) => a.r - b.r);
 }
 
-/* 참가자: 내 밤 행동 / 투표 제출 */
-function mfSubmitAct(slot, target){
+/* 참가자: 조사 / 투표 제출 */
+function cSubmitSearch(placeIdx){
   const m = MF(); if (!m) return;
-  set(ref(db, `${ROOT}/rooms/${S.code}/mafia/acts/${m.round}/${slot}`), target).catch(()=>{});
-  m.acts = m.acts || {}; m.acts[m.round] = { ...(m.acts[m.round] || {}), [slot]:target };
+  set(ref(db, `${ROOT}/rooms/${S.code}/mafia/searched/${m.round}/${S.pid}`), placeIdx).catch(()=>{});
+  m.searched = m.searched || {};
+  m.searched[m.round] = { ...(m.searched[m.round] || {}), [S.pid]:placeIdx };
   SFX.ok(); vib(16); render(true);
 }
-function mfSubmitVote(target){
+function cSubmitVote(target){
   const m = MF(); if (!m) return;
-  set(ref(db, `${ROOT}/rooms/${S.code}/mafia/votes/${m.round}/${S.pid}`), target).catch(()=>{});
-  m.votes = m.votes || {}; m.votes[m.round] = { ...(m.votes[m.round] || {}), [S.pid]:target };
+  set(ref(db, `${ROOT}/rooms/${S.code}/mafia/votes/${S.pid}`), target).catch(()=>{});
+  m.votes = { ...(m.votes || {}), [S.pid]:target };
   SFX.ok(); vib(16); render(true);
 }
 
-/* 호스트: 밤 결과 정산 */
-function mfResolveNight(){
-  const m = MF(); const r = m.round, a = mfActs();
-  const saved = a.save && a.save === a.kill;
-  const dead = (a.kill && !saved) ? a.kill : null;
-  if (dead) m.alive[dead] = 0;
-  if (a.check) {
-    m.checkRes = m.checkRes || {};
-    m.checkRes[r] = { target:a.check, res: m.roles[a.check]?.team === 'mafia' ? 'mafia' : 'civil' };
-  }
-  m.log = [...(m.log || []), { r, type: dead ? 'kill' : (a.kill ? 'save' : 'quiet'), pid: dead || a.kill || null }];
-  m.winner = mfWinner(m);
-  m.round = r + 1;
-  m.phase = m.winner ? 'ended' : 'day';
-  pushMafia({ alive:m.alive, checkRes:m.checkRes || {}, log:m.log,
-    winner:m.winner || null, round:m.round, phase:m.phase });
-  dead ? SFX.end() : SFX.go();
-  vib([40,60,40]);
-  if (m.winner) confetti(90);
-  render(true);
-}
-
-/* 호스트: 투표 정산 (동점이면 아무도 처형하지 않는다) */
-function mfResolveVote(){
-  const m = MF(); const r = m.round, v = mfVotes();
+/* 호스트: 최종 판정 — 최다 득표자가 범인이면 용의자 승, 동점이면 범인 승 */
+function cResolveVote(){
+  const m = MF(); const v = m.votes || {};
   const tally = {};
   Object.values(v).forEach(t => { if (t) tally[t] = (tally[t] || 0) + 1; });
   let top = null, max = 0, tie = false;
   Object.entries(tally).forEach(([p,c]) => {
     if (c > max){ max = c; top = p; tie = false; } else if (c === max) tie = true;
   });
-  const exiled = (!top || tie) ? null : top;
-  if (exiled) m.alive[exiled] = 0;
-  m.log = [...(m.log || []), { r, type: exiled ? 'exile' : 'tie', pid: exiled }];
-  m.winner = mfWinner(m);
-  m.phase = m.winner ? 'ended' : 'night';
-  pushMafia({ alive:m.alive, log:m.log, winner:m.winner || null, phase:m.phase });
-  exiled ? SFX.end() : SFX.pass();
-  vib([40,60,40]);
-  if (m.winner) confetti(90);
+  const accused = (!top || tie) ? null : top;
+  const caught = !!accused && accused === m.culprit;
+  m.result = { accused, caught, tie:(!accused), tally };
+  m.phase = 'ended';
+  pushMafia({ result:m.result, phase:'ended' });
+  caught ? SFX.ok() : SFX.end();
+  vib([40,60,40]); confetti(90);
   render(true);
-}
-
-/* 마지막 사건을 한 줄로 */
-function mfLastEvent(){
-  const m = MF(); const L = (m?.log || []);
-  if (!L.length) return null;
-  const e = L[L.length - 1];
-  const nm = e.pid ? pname(e.pid) : '';
-  const mafiaNm = m.mafiaName || '마피아';
-  if (e.type === 'kill')  return { ic:'🌑', t:`간밤에 ${jo(nm,'이','가')} 사라졌습니다`, s:`${nm} — ${m.roles[e.pid]?.char || ''}` };
-  if (e.type === 'save')  return { ic:'💫', t:'간밤에 아무 일도 없었습니다', s:'누군가 지켜낸 모양입니다' };
-  if (e.type === 'quiet') return { ic:'🌙', t:'조용한 밤이었습니다', s:'' };
-  if (e.type === 'exile') return { ic:'⚖️', t:`${jo(nm,'이','가')} 지목되었습니다`,
-    s:`${m.roles[e.pid]?.char || ''} · ${m.roles[e.pid]?.team === 'mafia' ? '🔪 ' + mafiaNm + '였습니다!' : '🕊 시민이었습니다…'}` };
-  if (e.type === 'tie')   return { ic:'🤝', t:'표가 갈려 아무도 지목되지 않았습니다', s:'' };
-  return null;
 }
 
 /* ══════════════════════════════════════════════
@@ -2324,7 +2428,7 @@ function renderSig(){
     S.view, S.gameId, S.online, S.isHost, S.code,
     r ? Object.entries(r.players).map(([k,p]) => [k, p.name, isOn(p)?1:0, (p.host||k===r.host)?1:0]) : 0,
     r?.teams || 0, r?.scores || 0, r?.rotation || 0, r?.mafia || 0,
-    S.draft?.order || 0, S._lastPick || 0, S._hunch || 0,
+    S.draft?.order || 0, S._lastPick || 0,
     // ⚠️ 타이머의 left/elapsed(매 틱 변화)는 넣지 않는다 — 재렌더 폭주가 된다.
     //    타이머 숫자는 각 도구의 인터벌이 DOM을 직접 갱신한다.
     S.play ? [S.play.kind, S.play.phase, S.play.turn ?? 0, S.play.di ?? 0,
@@ -2492,20 +2596,20 @@ function vLobby(){
 
     ${S.room.mafia?.roles?.[S.pid] ? (() => {
       const _m = S.room.mafia, _ph = _m.phase || 'day';
-      const _lbl = { day:'☀️ 낮 — 토론 중', vote:'🗳 투표하세요!', night:'🌙 밤 — 행동할 차례', ended:'🏁 게임 종료' }[_ph];
-      const _urg = _ph === 'vote' || _ph === 'night';
+      const _lbl = { brief:'📋 사건 브리핑', search:'🔦 조사할 곳을 고르세요!', talk:'💬 토론 중',
+                     final:'⚖️ 최종 변론', vote:'🗳 범인을 지목하세요!', ended:'🏁 사건 종료' }[_ph] || '';
+      const _urg = _ph === 'search' || _ph === 'vote';
       return `<button class="g" style="${gcVars(_urg ? '#FFB84D' : '#FF5C7C')};margin-bottom:10px" data-act="go-role">
-        <div class="g-ic">🎭</div>
-        <div class="g-b"><div class="g-n">${_urg ? _lbl : '내 비밀 역할'}</div>
-          <div class="g-m"><span>${_urg ? '탭해서 지목하세요' : h(_lbl)}</span>
-          ${mfIsAlive(S.pid) ? '' : '<span class="chip">💀 탈락</span>'}</div></div>
+        <div class="g-ic">🔎</div>
+        <div class="g-b"><div class="g-n">${_urg ? _lbl : '내 배역 · 사건 수첩'}</div>
+          <div class="g-m"><span>${_urg ? '탭해서 고르세요' : h(_lbl)}</span></div></div>
         <div class="g-ar">›</div>
       </button>`; })() : ''}
     ${S.isHost && S.room.mafia ? `
       <button class="g" style="${gcVars('#FF5C7C')};margin-bottom:10px" data-act="mf-open">
         <div class="g-ic">🗂</div>
-        <div class="g-b"><div class="g-n">상황극 마피아 진행 중</div>
-          <div class="g-m"><span>배경 — ${h(S.room.mafia.sit||'')}</span></div></div>
+        <div class="g-b"><div class="g-n">사건 진행 중</div>
+          <div class="g-m"><span>${h(S.room.mafia.sit||'')} · 진행 중</span></div></div>
         <div class="g-ar">›</div>
       </button>` : ''}
 
@@ -3035,280 +3139,260 @@ function vWatch(){
 /* ── 상황극 마피아 (사회자 도구) ── */
 function vMafiaTool(){
   const p = S.play;
-  let pool = players().map(([pid]) => pid);
-  if (!p.incHost) pool = pool.filter(x => x !== S.pid);
-  const sd = MAFIA_SITS.find(x => x.n === p.sit) || MAFIA_SITS[0];
-  const bal = mafiaBalance(pool.length, p.cnt);
+  const cs = CRIME_EXT[p.sit] || CRIME_EXT[CRIME_CASES[0]];
 
-  if (p.phase === 'setup') return `
-    <div class="gh" style="${gcVars('#FF5C7C')};padding:18px">
-      <div class="gh-em">🎭</div>
-      <div class="gh-n" style="font-size:18px;padding-right:0">역할 나눠주기</div>
-      <p class="note" style="margin-top:7px;position:relative">각자 자기 폰(대기실)에서 비밀 역할을 확인하게 됩니다</p>
-    </div>
-
-    <div class="sec">배경 상황</div>
-    <div class="card">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="flex:1;font-weight:900;font-size:18px;letter-spacing:-.03em">${h(sd.n)}</div>
-        <button class="btn sm" data-act="mf-sit">🎲 바꾸기</button>
+  /* ── 설정 ── */
+  if (p.phase === 'setup'){
+    let pool = players().map(([pid]) => pid);
+    if (!p.incHost) pool = pool.filter(x => x !== S.pid);
+    const bal = crimeBalance(pool.length);
+    return `
+      <div class="gh" style="${gcVars('#FF5C7C')};padding:18px">
+        <div class="gh-em">🔎</div>
+        <div class="gh-n" style="font-size:18px;padding-right:0">사건 고르기</div>
+        <p class="note" style="margin-top:7px;position:relative">각자 폰으로 배역·동기·알리바이를 받고, 증거를 모아 범인을 찾습니다</p>
       </div>
-      <p class="story">${h(sd.intro)}</p>
-      <div class="rolelist">
-        <div class="rolerow"><span class="chip rose">${h(sd.mafia.name)}</span><span>${h(sd.mafia.desc)}</span></div>
-        ${p.pol ? `<div class="rolerow"><span class="chip elec">${h(sd.cop.name)}</span><span>${h(sd.cop.desc)}</span></div>` : ''}
-        ${p.doc ? `<div class="rolerow"><span class="chip mint">${h(sd.doc.name)}</span><span>${h(sd.doc.desc)}</span></div>` : ''}
-      </div>
-    </div>
 
-    <div class="sec">구성 <span class="n">역할 받을 사람 ${pool.length}명</span></div>
-    <div class="card">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:800">${h(sd.mafia.name)} 수</div>
-          <div class="note" style="font-size:11.5px">${pool.length}명 기준 권장 ${suggestMafia(pool.length)}명</div>
+      <div class="sec">사건</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div style="flex:1;font-weight:900;font-size:18px;letter-spacing:-.03em">${h(p.sit)}</div>
+          <button class="btn sm" data-act="mf-sit">🎲 바꾸기</button>
         </div>
-        <button class="stepbtn" data-act="mf-cnt" data-v="-1">−</button>
-        <div style="font-weight:900;font-size:22px;min-width:26px;text-align:center">${p.cnt}</div>
-        <button class="stepbtn" data-act="mf-cnt" data-v="1">＋</button>
+        <p class="story">${h(cs.brief)}</p>
+        <div class="rolelist">
+          <div class="rolerow"><span class="chip rose">피해자</span><span>${h(cs.victim)}</span></div>
+          <div class="rolerow"><span class="chip">현장</span><span>${cs.places.map(x => h(x.n)).join(' · ')}</span></div>
+        </div>
       </div>
-      <div class="balbox ${bal.lv}">
-        <b>${bal.lv==='good'?'✓':bal.lv==='warn'?'⚠️':'✕'} ${h(bal.msg)}</b>
-        <span>${h(sd.mafia.name)} ${p.cnt}명 · 시민 ${Math.max(0,pool.length-p.cnt)}명${
-          p.pol||p.doc ? ' (' + [p.pol?h(sd.cop.name):null, p.doc?h(sd.doc.name):null].filter(Boolean).join('·') + ' 포함)' : ''}</span>
-      </div>
-      <div class="catgrid">
-        <button class="cat ${p.pol?'on':''}" data-act="mf-tog" data-v="pol"><span class="e">🔍</span><span>${h(sd.cop.name)}</span></button>
-        <button class="cat ${p.doc?'on':''}" data-act="mf-tog" data-v="doc"><span class="e">💉</span><span>${h(sd.doc.name)}</span></button>
-      </div>
-      <div style="height:10px"></div>
-      <button class="cat ${p.incHost?'on':''}" data-act="mf-tog" data-v="incHost" style="width:100%">
-        <span class="e">🙋</span><span>나도 참가하기</span>
-        <span class="c">${p.incHost?'참가':'구경'}</span></button>
-      <p class="note" style="margin-top:9px">앱이 진행을 맡으니 진행자도 플레이할 수 있어요.
-        ${p.incHost ? '<b style="color:var(--amber)">참가 중에는 정체 보기가 잠깁니다.</b>' : '구경만 하면 전원의 정체를 볼 수 있어요.'}</p>
-    </div>
 
-    <div style="height:14px"></div>
-    <div class="stack">
-      <button class="btn pri" data-act="mf-deal" ${bal.ok?'':'disabled'}>
-        ${bal.ok ? '🎭 역할 나눠주기' : h(bal.msg)}</button>
-      <button class="btn gh" data-act="pl-quit">나가기</button>
-    </div>`;
+      <div class="sec">인원 <span class="n">${pool.length}명</span></div>
+      <div class="card">
+        <div class="balbox ${bal.lv}">
+          <b>${bal.lv==='good'?'✓':bal.lv==='warn'?'⚠️':'✕'} ${h(bal.msg)}</b>
+          <span>범인 1명 · 나머지 ${Math.max(0,pool.length-1)}명은 무고한 용의자예요.
+            아무도 탈락하지 않고 끝까지 함께합니다.</span>
+        </div>
+        <button class="cat ${p.incHost?'on':''}" data-act="mf-tog" data-v="incHost" style="width:100%">
+          <span class="e">🙋</span><span>나도 참가하기</span>
+          <span class="c">${p.incHost?'참가':'구경'}</span></button>
+        <p class="note" style="margin-top:9px">앱이 진행을 맡으니 진행자도 용의자가 될 수 있어요.
+          ${p.incHost ? '<b style="color:var(--amber)">참가 중에는 정답 보기가 잠깁니다.</b>' : '구경만 하면 범인과 모든 증거를 볼 수 있어요.'}</p>
+      </div>
 
-  /* ── 진행 중 (앱이 사회자 역할) ── */
-  const m = S.room.mafia || { roles:{} };
-  const rows = Object.entries(m.roles || {}).filter(([pid]) => S.room.players[pid]);
-  const mafiaNm = m.mafiaName || '마피아';
-  const alive = mfAlive();
-  const ph = m.phase || 'day';
-  const ev = mfLastEvent();
-  const acts = mfActs(), votes = mfVotes();
-  const cop = mfCop(), doc = mfDoc();
-  const mafAlive = alive.filter(x => m.roles[x].team === 'mafia');
-  const iAmPlaying = !!m.roles[S.pid];          // 진행자가 플레이 중이면 정체 열람 금지
+      <div style="height:14px"></div>
+      <div class="stack">
+        <button class="btn pri" data-act="mf-deal" ${bal.ok?'':'disabled'}>
+          ${bal.ok ? '🔎 사건 시작 — 배역 나눠주기' : h(bal.msg)}</button>
+        <button class="btn gh" data-act="pl-quit">나가기</button>
+      </div>`;
+  }
+
+  /* ── 진행 중 ── */
+  const M = S.room.mafia || { roles:{} };
+  const rows = Object.entries(M.roles || {}).filter(([pid]) => S.room.players[pid]);
+  const ph = M.phase || 'brief';
+  const iAmPlaying = !!M.roles[S.pid];
   const canSee = p.show && !iAmPlaying;
+  const searched = cSearched(), votes = cVotes();
+  const phTag = { brief:'📋 브리핑', search:'🔦 조사', talk:'💬 토론',
+                  final:'⚖️ 최종 변론', vote:'🗳 투표', ended:'🏁 종료' }[ph] || '';
 
-  const phTag = { day:'☀️ 낮 · 토론', vote:'🗳 투표 중', night:'🌙 밤', ended:'🏁 종료' }[ph] || '';
-
-  /* 단계별 컨트롤 */
   let ctrl = '';
-  if (ph === 'day'){
+  if (ph === 'brief'){
     ctrl = `<div class="stack">
-        <button class="btn pri" data-act="mf-vote">🗳 투표 시작</button>
-        <button class="btn" data-act="mf-night">🌙 투표 없이 바로 밤으로</button>
+        <button class="btn pri" data-act="cr-search">🔦 1차 조사 시작</button>
       </div>
       <p class="note" style="text-align:center;margin-top:10px">
-        ${m.round === 1 ? '첫 라운드예요 — 한 명씩 배역과 알리바이를 소개하게 하세요' : '토론이 끝나면 투표를 시작하세요'}</p>`;
+        사건 개요를 읽어주고, 각자 폰에서 배역을 확인하게 하세요</p>`;
+  }
+  else if (ph === 'search'){
+    const done = Object.keys(searched).filter(x => M.roles[x]).length;
+    ctrl = `<div class="card">
+        <div class="sec" style="margin:0 0 10px">조사 현황 <span class="n">${done} / ${rows.length}</span></div>
+        ${rows.map(([pid]) => `
+          <div class="tscore" style="--tc:${searched[pid]!=null?'var(--mint)':'var(--dim2)'};margin-bottom:6px">
+            <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pname(pid), 'sm')} ${h(pname(pid))}</div>
+            <span class="chip ${searched[pid]!=null?'mint':''}">${
+              searched[pid]!=null ? '✓ ' + h(M.places[searched[pid]].n) : '고르는 중'}</span>
+          </div>`).join('')}
+        <p class="note" style="margin-top:10px">찾아낸 증거는 <b>본인 폰에만</b> 보입니다. 말할지 말지는 각자 선택이에요.</p>
+      </div>
+      <div class="stack"><button class="btn pri" data-act="cr-talk">💬 토론 시작</button></div>`;
+  }
+  else if (ph === 'talk'){
+    ctrl = `<div class="stack">
+        <button class="btn pri" data-act="cr-search">🔦 ${(M.round||1) + 1}차 조사</button>
+        <button class="btn" data-act="cr-final">⚖️ 최종 변론으로</button>
+      </div>
+      <p class="note" style="text-align:center;margin-top:10px">
+        보통 2~3차까지 조사하고 투표합니다 · 지금 ${M.round||1}차</p>`;
+  }
+  else if (ph === 'final'){
+    ctrl = `<div class="card"><p class="story">한 사람씩 마지막 변론을 합니다.
+        "나는 범인이 아니다"를 자기 배역으로 설득하세요.</p></div>
+      <div class="stack"><button class="btn pri" data-act="cr-vote">🗳 투표 시작</button></div>`;
   }
   else if (ph === 'vote'){
-    const voted = Object.keys(votes).filter(x => mfIsAlive(x)).length;
+    const voted = Object.keys(votes).filter(x => M.roles[x]).length;
     const tally = {};
     Object.values(votes).forEach(t => { if (t) tally[t] = (tally[t] || 0) + 1; });
     const sorted = Object.entries(tally).sort((a,b) => b[1] - a[1]);
-    ctrl = `
-      <div class="card">
-        <div class="sec" style="margin:0 0 10px">투표 현황 <span class="n">${voted} / ${alive.length}</span></div>
+    ctrl = `<div class="card">
+        <div class="sec" style="margin:0 0 10px">투표 <span class="n">${voted} / ${rows.length}</span></div>
         ${sorted.length ? sorted.map(([pid,c]) => `
           <div class="tscore" style="--tc:${avColor(pid)};margin-bottom:6px">
-            <div class="n">${h(pname(pid))}</div>
-            <div class="v">${c}<small>표</small></div>
+            <div class="n">${h(pname(pid))}</div><div class="v">${c}<small>표</small></div>
           </div>`).join('') : '<p class="note">아직 아무도 투표하지 않았어요</p>'}
       </div>
       <div class="stack">
-        <button class="btn pri" data-act="mf-exile">⚖️ 투표 마감 — 결과 공개</button>
-        <button class="btn gh" data-act="mf-backday">← 토론으로 돌아가기</button>
-      </div>`;
-  }
-  else if (ph === 'night'){
-    const need = [
-      { ok:!!acts.kill,  ic:'🔪', nm:mafiaNm, who:mafAlive.map(x => pname(x)).join(', ') },
-      cop ? { ok:!!acts.check, ic:'🔍', nm:sd.cop.name, who:pname(cop) } : null,
-      doc ? { ok:!!acts.save,  ic:'💉', nm:sd.doc.name, who:pname(doc) } : null,
-    ].filter(Boolean);
-    const allIn = need.every(x => x.ok);
-    ctrl = `
-      <div class="card">
-        <div class="sec" style="margin:0 0 10px">행동 현황</div>
-        ${need.map(x => `
-          <div class="tscore" style="--tc:${x.ok?'var(--mint)':'var(--dim2)'};margin-bottom:6px">
-            <div class="n" style="padding-left:7px">${x.ic} ${h(x.nm)}
-              <div class="note" style="font-size:11.5px">${h(x.who)}</div></div>
-            <span class="chip ${x.ok?'mint':''}">${x.ok?'✓ 완료':'대기 중'}</span>
-          </div>`).join('')}
-        <p class="note" style="margin-top:10px">각자 자기 폰에서 지목하면 여기 체크됩니다</p>
-      </div>
-      <div class="stack">
-        <button class="btn pri" data-act="mf-morning">☀️ 아침 밝히기${allIn?'':' (미완료 무시)'}</button>
+        <button class="btn pri" data-act="cr-reveal">🔍 투표 마감 — 진상 공개</button>
+        <button class="btn gh" data-act="cr-final">← 변론으로 돌아가기</button>
       </div>`;
   }
   else if (ph === 'ended'){
-    const win = m.winner === 'mafia';
+    const r = M.result || {};
+    const cul = M.culprit;
     ctrl = `
-      <div class="pickres" style="${win?'background:linear-gradient(150deg,rgba(255,92,124,.2),rgba(255,92,124,.06));border-color:rgba(255,92,124,.4)':''}">
-        <div class="pickres-l">게임 종료</div>
-        <div class="pickres-v" style="${win?'background:linear-gradient(135deg,#FF5C7C,#FF8F5C);-webkit-background-clip:text;background-clip:text':''}">
-          ${win ? '🔪 ' + h(mafiaNm) + ' 승리' : '🕊 시민 승리'}</div>
+      <div class="pickres" style="${r.caught?'':'background:linear-gradient(150deg,rgba(255,92,124,.2),rgba(255,92,124,.06));border-color:rgba(255,92,124,.4)'}">
+        <div class="pickres-l">${r.tie ? '표가 갈렸습니다' : (r.caught ? '범인을 잡았습니다' : '범인이 빠져나갔습니다')}</div>
+        <div class="pickres-v" style="${r.caught?'':'background:linear-gradient(135deg,#FF5C7C,#FF8F5C);-webkit-background-clip:text;background-clip:text'}">
+          ${r.caught ? '🕵️ 용의자 승리' : '🔪 범인 승리'}</div>
+      </div>
+      <div class="evbox">
+        <div class="ev-ic">🔪</div>
+        <div><div class="ev-t">진범은 ${h(pname(cul))} — ${h(M.roles[cul]?.char||'')}</div>
+        <div class="ev-s">${h(M.roles[cul]?.trace||'')}</div></div>
       </div>
       <div class="card">
-        <div class="sec" style="margin:0 0 10px">전체 정체 공개</div>
-        ${rows.map(([pid,r]) => `
-          <div class="tscore" style="--tc:${r.team==='mafia'?'var(--rose)':avColor(pid)};margin-bottom:6px;${mfIsAlive(pid)?'':'opacity:.5'}">
+        <div class="sec" style="margin:0 0 10px">전원 공개</div>
+        ${rows.map(([pid,rr]) => `
+          <div class="tscore" style="--tc:${pid===cul?'var(--rose)':avColor(pid)};margin-bottom:6px">
             <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pname(pid), 'sm')}
-              <div style="min-width:0"><div>${h(pname(pid))}${mfIsAlive(pid)?'':' <span class="chip">탈락</span>'}</div>
-                <div class="note" style="font-size:11.5px">${h(r.char)}</div></div></div>
-            <span class="chip ${r.team==='mafia'?'rose':(r.job?'elec':'mint')}">${
-              r.team==='mafia' ? '🔪 '+h(mafiaNm) : (r.job ? h(r.job) : '🕊 시민')}</span>
+              <div style="min-width:0"><div>${h(pname(pid))}</div>
+                <div class="note" style="font-size:11.5px">${h(rr.char)} · ${h(rr.mot||'')}</div></div></div>
+            <span class="chip ${pid===cul?'rose':'mint'}">${pid===cul?'🔪 범인':'🕊 무고'}</span>
           </div>`).join('')}
       </div>
       <div class="stack">
-        <button class="btn pri" data-act="mf-score">🏆 순위 입력하기</button>
-        <button class="btn" data-act="mf-redeal">🔄 새 판 시작</button>
-        <button class="btn dan" data-act="mf-clear">🧹 역할 회수 — 종료</button>
+        <button class="btn pri" data-act="cr-score">🏆 순위 입력하기</button>
+        <button class="btn" data-act="mf-redeal">🔄 새 사건 시작</button>
+        <button class="btn dan" data-act="mf-clear">🧹 정리 — 종료</button>
       </div>`;
   }
 
   return `
     <div class="gh" style="${gcVars('#FF5C7C')};padding:18px">
-      <div class="gh-em">🎭</div>
-      <div class="gh-n" style="font-size:19px;padding-right:0">${h(m.sit||'')}</div>
+      <div class="gh-em">🔎</div>
+      <div class="gh-n" style="font-size:19px;padding-right:0">${h(M.sit||'')}</div>
       <div class="gh-m">
         <span class="chip rose">${phTag}</span>
-        <span class="chip">${m.round}일차</span>
-        <span class="chip">생존 ${alive.length}명</span>
+        <span class="chip">${M.round||1}차</span>
+        <span class="chip">용의자 ${rows.length}명</span>
       </div>
     </div>
 
-    ${ev ? `<div class="evbox">
-      <div class="ev-ic">${ev.ic}</div>
-      <div><div class="ev-t">${h(ev.t)}</div>${ev.s?`<div class="ev-s">${h(ev.s)}</div>`:''}</div>
-    </div>` : `<div class="card"><p class="story big">${h(m.intro||'')}</p>
-      <p class="note" style="margin-top:10px">📢 소리 내어 읽어주세요</p></div>`}
+    ${ph === 'brief' ? `<div class="card">
+      <p class="story big">${h(M.brief||'')}</p>
+      <p class="story" style="margin-top:10px;color:var(--dim)">${h(M.found||'')}</p>
+      <p class="note" style="margin-top:10px">📢 소리 내어 읽어주세요</p></div>` : ''}
 
     ${ph !== 'ended' ? `<div class="truthbox">
-      <div class="th">✋ 시민은 거짓말할 수 없습니다</div>
-      <p>배역과 알리바이는 사실대로. 오직 <b style="color:var(--rose)">${h(mafiaNm)}</b>만 거짓말할 수 있어요.
-      그래서 말이 어긋나는 사람이 범인입니다.</p>
+      <div class="th">✋ 용의자는 거짓말할 수 없습니다</div>
+      <p>배역·동기·알리바이는 사실대로. 오직 <b style="color:var(--rose)">범인 한 명</b>만 거짓말할 수 있어요.
+      단 <b>비밀</b>은 누구든 숨겨도 됩니다.</p>
     </div>` : ''}
 
     ${ctrl}
 
     ${ph !== 'ended' ? `
-      <div class="sec">생존자 <span class="n">${alive.length}명</span></div>
+      <div class="sec">현장 <span class="n">${(M.places||[]).length}곳</span></div>
       ${iAmPlaying
-        ? `<div class="balbox warn" style="margin-bottom:10px"><b>🔒 정체 보기 잠김</b>
-             <span>당신도 참가 중이라 다른 사람의 정체를 볼 수 없어요</span></div>`
+        ? `<div class="balbox warn" style="margin-bottom:10px"><b>🔒 정답 보기 잠김</b>
+             <span>당신도 용의자라 범인과 증거를 볼 수 없어요</span></div>`
         : `<button class="btn gh sm" data-act="mf-show" style="width:100%;margin-bottom:10px">
-             ${p.show?'🙈 정체 가리기':'👁 정체 보기 (구경 중이라 가능)'}</button>`}
-      ${rows.map(([pid,r]) => `
-        <div class="tscore" style="--tc:${canSee&&r.team==='mafia'?'var(--rose)':avColor(pid)};${mfIsAlive(pid)?'':'opacity:.42'}">
-          <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pname(pid), 'sm')}
-            <div style="min-width:0"><div>${h(pname(pid))}${mfIsAlive(pid)?'':' <span class="chip">탈락</span>'}</div>
-              <div class="note" style="font-size:11.5px">${h(r.char)}</div></div></div>
-          ${canSee
-            ? `<span class="chip ${r.team==='mafia'?'rose':(r.job?'elec':'mint')}">${
-                r.team==='mafia' ? '🔪 '+h(mafiaNm) : (r.job ? h(r.job) : '🕊 시민')}</span>`
-            : '<span class="chip">비밀</span>'}
-        </div>`).join('')}
-      <div style="height:14px"></div>
+             ${p.show?'🙈 정답 가리기':'👁 범인·증거 보기 (구경 중이라 가능)'}</button>`}
+      ${canSee ? `<div class="card">
+        <div class="balbox no"><b>🔪 범인 — ${h(pname(M.culprit))}</b>
+          <span>${h(M.roles[M.culprit]?.char||'')} · ${h(M.roles[M.culprit]?.mot||'')}</span></div>
+        ${(M.places||[]).map(pl => `<div style="margin-bottom:10px">
+          <div style="font-weight:800;font-size:13.5px;margin-bottom:5px">📍 ${h(pl.n)}</div>
+          ${pl.ev.map(e => `<div class="sumrow" style="font-size:12.5px;font-weight:600">${h(e)}</div>`).join('')}
+        </div>`).join('')}</div>` : ''}
+      <div style="height:8px"></div>
       <div class="stack">
-        <button class="btn gh sm" data-act="mf-redeal" style="width:100%">🔄 처음부터 다시 나눠주기</button>
-        <button class="btn gh sm" data-act="pl-quit" style="width:100%">나가기 (게임 유지)</button>
+        <button class="btn gh sm" data-act="mf-redeal" style="width:100%">🔄 처음부터 다시</button>
+        <button class="btn gh sm" data-act="pl-quit" style="width:100%">나가기 (사건 유지)</button>
       </div>` : ''}`;
 }
 
-/* ── 참가자 행동 패널 — 앱이 밤/투표를 직접 받는다 ── */
+/* ── 참가자 행동 패널 — 조사 / 투표 ─────────────────────────
+   ⚠️ 항상 보이는 영역은 전원 동일해야 한다(정체 누수 방지).
+      범인 여부는 아래 홀드 박스 안에서만 드러난다. */
 function mfActionPanel(m, my){
-  const sd = MAFIA_SITS.find(x => x.n === m.sit) || MAFIA_SITS[0];
-  const ph = m.phase || 'day', mafiaNm = m.mafiaName || '마피아';
-  const alive = mfAlive(), acts = mfActs(), votes = mfVotes();
-  const dead = !mfIsAlive(S.pid);
+  const ph = m.phase || 'brief';
+  const suspects = cSuspects();
+  const searched = cSearched(), votes = cVotes();
+  const finds = cMyFinds(S.pid);
 
   const box = (cls, head, body) =>
     `<div class="actbox ${cls}"><div class="ah">${head}</div>${body}</div>`;
-  const picker = (act, cur, list) => `<div class="pgrid">${list.map(pid => `
-      <button class="pbtn ${String(cur)===pid?'on':''}" data-act="${act}" data-pid="${pid}">
-        ${av(pid, pname(pid), 'sm')}<span>${h(pname(pid))}</span>
-        ${String(cur)===pid?'<span class="ck">✓</span>':''}
-      </button>`).join('')}</div>`;
 
-  const isCop = my.job === sd.cop.name, isDoc = my.job === sd.doc.name;
-  const isMaf = my.team === 'mafia';
-  const mates = alive.filter(x => x !== S.pid && m.roles[x]?.team === 'mafia');
-
-  /* ⚠️ 조사 결과는 낮에도 계속 보여야 한다 — 정작 써먹는 시점이 토론 중이다.
-     직전 밤(round-1) 결과를 단계와 무관하게 붙인다. */
-  const cr = (m.checkRes || {})[m.round - 1];
-  const resNote = (isCop && cr)
-    ? `<p class="astep res">🔍 지난밤 조사 — <b>${h(pname(cr.target))}</b> :
-        <b style="color:${cr.res==='mafia'?'var(--rose)':'var(--mint)'}">${
-          cr.res==='mafia' ? '🔪 '+h(mafiaNm)+'입니다!' : '🕊 시민입니다'}</b></p>` : '';
-  const mateNote = (isMaf && mates.length)
-    ? `<p class="astep">동료 ${h(mafiaNm)} — <b style="color:var(--rose)">${mates.map(x=>h(pname(x))).join(', ')}</b></p>` : '';
+  /* 지금까지 내가 찾은 증거 — 단계와 무관하게 계속 보여준다 */
+  const findList = finds.length ? `<div class="infoblk" style="margin-bottom:12px">
+      <div class="hd">🔦 내가 찾아낸 증거 — 말할지는 내 선택</div>
+      ${finds.map(f => `<div style="margin-bottom:9px">
+        <div style="font-weight:800;font-size:13px;color:var(--amber)">${f.r}차 · 📍 ${h(f.place.n)}</div>
+        ${f.place.ev.map(e => `<div class="astep" style="margin:5px 0 0">· ${h(e)}</div>`).join('')}
+      </div>`).join('')}
+      <p class="note" style="margin-top:6px">숨겨도 반칙이 아닙니다. 단 <b>말한다면 사실대로</b>.</p>
+    </div>` : '';
 
   if (ph === 'ended'){
-    const win = m.winner === 'mafia';
-    const iWon = (my.team === 'mafia') === win;
-    return box(win?'lie':'', `${win?'🔪 '+h(mafiaNm):'🕊 시민'} 승리`,
+    const r = m.result || {};
+    const iCul = m.culprit === S.pid;
+    const iWon = iCul ? !r.caught : r.caught;
+    return box(r.caught?'':'lie', r.caught ? '🕵️ 용의자 승리' : '🔪 범인 승리',
       `<p class="astep" style="font-size:15px;font-weight:800;color:${iWon?'var(--mint)':'var(--dim)'}">
-        ${iWon ? '🎉 우리 편이 이겼습니다!' : '아쉽지만 졌습니다…'}</p>`);
+        ${iWon ? '🎉 이겼습니다!' : '아쉽지만 졌습니다…'}</p>
+       <p class="astep" style="margin-bottom:0">진범은 <b>${h(pname(m.culprit))}</b> — ${h(m.roles[m.culprit]?.char||'')}</p>`);
   }
-  if (dead) return box('', '💀 탈락했습니다',
-    `<p class="astep">이제 말할 수 없습니다. 조용히 지켜봐 주세요.</p>`);
 
-  /* ⚠️ 낮·투표는 전원 같은 화면이어야 한다. 색이나 문구가 팀마다 다르면
-     흘끗 봐도 정체가 드러난다. 동료·조사 결과는 홀드 박스 안에서만 보여준다. */
-  if (ph === 'day') return box('', '☀️ 낮 — 토론 시간',
-    `<p class="astep" style="margin-bottom:0">${m.round === 1
-      ? '자기 배역과 알리바이를 소개하세요. 아래에 다 적혀 있습니다.'
-      : '누가 수상한지 이야기하세요. 사회자가 투표를 시작할 때까지.'}</p>`);
+  if (ph === 'brief') return findList + box('', '📋 사건 브리핑',
+    `<p class="astep" style="margin-bottom:0">진행자가 사건을 읽어줍니다.
+      그동안 아래에서 내 배역·동기·알리바이를 확인하세요.</p>`);
+
+  if (ph === 'search'){
+    const mine = searched[S.pid];
+    return findList + box('cop', `🔦 ${m.round||1}차 조사 — 어디를 살펴볼까요?`,
+      (mine != null
+        ? `<p class="astep">✓ <b>${h(m.places[mine].n)}</b>을(를) 조사했습니다. 위에서 결과를 확인하세요.</p>`
+        : `<p class="astep">한 곳만 고를 수 있습니다. 찾은 증거는 나만 보여요.</p>`)
+      + `<div class="pgrid">${(m.places||[]).map((pl,i) => `
+          <button class="pbtn ${mine===i?'on':''}" data-act="cr-search-pick" data-i="${i}">
+            <span>📍 ${h(pl.n)}</span>${mine===i?'<span class="ck">✓</span>':''}
+          </button>`).join('')}</div>`);
+  }
+
+  if (ph === 'talk') return findList + box('', '💬 토론 시간',
+    `<p class="astep" style="margin-bottom:0">${(m.round||1) === 1
+      ? '한 사람씩 배역·동기·알리바이를 밝히세요. 그다음 찾은 증거를 이야기합니다.'
+      : '알아낸 증거를 맞춰보고 어긋나는 진술을 찾으세요.'}</p>`);
+
+  if (ph === 'final') return findList + box('vote', '⚖️ 최종 변론',
+    `<p class="astep" style="margin-bottom:0">내가 범인이 아닌 이유를 자기 배역으로 설득하세요.</p>`);
 
   if (ph === 'vote'){
     const mine = votes[S.pid];
-    return box('vote', '🗳 투표 — 누가 수상한가요?',
-      (mine ? `<p class="astep">✓ <b>${h(pname(mine))}</b>님에게 투표했습니다. 바꾸려면 다시 고르세요.</p>` : '')
-      + picker('mf-vote-pick', mine, alive.filter(x => x !== S.pid)));
+    return findList + box('vote', '🗳 범인은 누구일까요?',
+      (mine ? `<p class="astep">✓ <b>${h(pname(mine))}</b>님을 지목했습니다. 바꾸려면 다시 고르세요.</p>` : '')
+      + `<div class="pgrid">${suspects.filter(x => x !== S.pid).map(pid => `
+          <button class="pbtn ${String(mine)===pid?'on':''}" data-act="cr-vote-pick" data-pid="${pid}">
+            ${av(pid, pname(pid), 'sm')}<span>${h(pname(pid))}</span>
+            ${String(mine)===pid?'<span class="ck">✓</span>':''}
+          </button>`).join('')}</div>`);
   }
-
-  /* 밤 — 모두 동시에 자기 폰을 보므로 화면이 달라도 되지만,
-     시민에게도 같은 모양의 「메모」 지목판을 줘서 겉모습을 맞춘다. */
-  if (isMaf) return box('lie', '🌙 밤 — 오늘 없앨 사람은?',
-    (mates.length ? `<p class="astep">동료 — <b style="color:var(--rose)">${mates.map(x=>h(pname(x))).join(', ')}</b> · 상의해서 한 명만</p>` : '')
-    + (acts.kill ? `<p class="astep">✓ <b>${h(pname(acts.kill))}</b>님을 지목했습니다.</p>` : '')
-    + picker('mf-act-kill', acts.kill, alive.filter(x => m.roles[x]?.team !== 'mafia')));
-
-  if (isCop) return box('cop', `🔍 ${h(sd.cop.name)} — 알아볼 사람은?`,
-    resNote
-    + (acts.check ? `<p class="astep">✓ <b>${h(pname(acts.check))}</b>님을 조사합니다. 결과는 아침에.</p>` : '')
-    + picker('mf-act-check', acts.check, alive.filter(x => x !== S.pid)));
-
-  if (isDoc) return box('doc', `💉 ${h(sd.doc.name)} — 오늘 지킬 사람은?`,
-    (acts.save ? `<p class="astep">✓ <b>${h(pname(acts.save))}</b>님을 지킵니다.</p>` : '')
-    + picker('mf-act-save', acts.save, alive));
-
-  return box('', '🌙 밤 — 오늘 가장 의심스러운 사람은?',
-    `<p class="astep">내 메모입니다. 아무에게도 전송되지 않아요.</p>`
-    + picker('mf-hunch', S._hunch, alive.filter(x => x !== S.pid)));
+  return findList;
 }
 
 /* ── 내 역할 (참가자 각자 폰) ── */
@@ -3319,25 +3403,24 @@ function vRole(){
       <div class="empty-t">배정된 역할이 없어요</div>
       <div class="note">진행자가 역할을 나눠주면 대기실에 알림이 떠요</div>
     </div>`;
-  const mafiaNm = m.mafiaName || '마피아';
-  const _mates = mfAlive().filter(x => x !== S.pid && m.roles[x]?.team === 'mafia');
-  const _cr = (m.checkRes || {})[(m.round || 1) - 1];
-  const _isCop = !!my.job && my.job !== '' && _cr && (MAFIA_SITS.find(x=>x.n===m.sit)?.cop.name === my.job);
+  const iCulprit = m.culprit === S.pid;
   return `
     <div class="gh" style="${gcVars('#FF5C7C')};padding:20px">
       <div class="gh-em">🎭</div>
       <div class="gh-n" style="font-size:17px;padding-right:0">${h(m.sit||'')}</div>
     </div>
-    <div class="card"><p class="story">${h(m.intro||'')}</p></div>
+    <div class="card"><p class="story">${h(m.brief||'')}</p>
+      <p class="story" style="margin-top:9px;color:var(--dim)">${h(m.found||'')}</p>
+      <p class="note" style="margin-top:9px">🔪 피해자 — ${h(m.victim||'')}</p></div>
 
     ${mfActionPanel(m, my)}
 
     <!-- ⚠️ 항상 보이는 영역은 전원 동일해야 한다. 팀에 따라 색·문구가 달라지면
          옆에서 화면만 흘끗 봐도 정체가 드러난다. 팀 정보는 전부 홀드 박스 안으로. -->
     <div class="truthbox">
-      <div class="th">✋ 배역과 알리바이는 사실대로</div>
-      <p>단 <b style="color:var(--rose)">범인은 거짓말을 할 수 있습니다.</b>
-      그리고 아래 <b>비밀</b>은 누구든 숨겨도 됩니다 — 말할 의무는 없어요.</p>
+      <div class="th">✋ 배역·동기·알리바이는 사실대로</div>
+      <p>단 <b style="color:var(--rose)">범인 한 명만 거짓말을 할 수 있습니다.</b>
+      아래 <b>비밀</b>과 <b>찾은 증거</b>는 누구든 숨겨도 돼요 — 말할 의무는 없습니다.</p>
     </div>
 
     <div class="sec">내 배역 <span class="n">공개해도 됨</span></div>
@@ -3346,8 +3429,17 @@ function vRole(){
       ${my.charDesc ? `<p class="story" style="margin:0">${h(my.charDesc)}</p>` : ''}
     </div>
 
+    ${my.rel ? `<div class="infoblk">
+      <div class="hd">🔗 피해자와의 관계</div>
+      <div class="bd">${h(my.rel)}</div>
+    </div>` : ''}
+    ${my.mot ? `<div class="infoblk" style="background:rgba(255,92,124,.08);border-color:rgba(255,92,124,.3)">
+      <div class="hd" style="color:var(--rose)">💢 나의 동기 — 숨기고 싶지만 사실입니다</div>
+      <div class="bd">${h(my.mot)}</div>
+      <p class="note" style="margin-top:7px">들키면 크게 의심받습니다. 하지만 <b>물어보면 사실대로</b> 답해야 해요.</p>
+    </div>` : ''}
     ${my.alibi ? `<div class="infoblk">
-      <div class="hd">📍 나의 알리바이 — 그날 밤 나는</div>
+      <div class="hd">📍 나의 알리바이 — 그 시각 나는</div>
       <div class="bd">${h(my.alibi)}</div>
     </div>` : ''}
     ${my.secret ? `<div class="infoblk secret-blk">
@@ -3369,24 +3461,25 @@ function vRole(){
       <div class="hint">🔒 꾹 누르고 있는 동안만 보여요</div>
       <div class="secret">
         <div class="note">나의 정체</div>
-        <div class="role-team" style="color:${my.team==='mafia'?'var(--rose)':(my.job?'#B8AEFF':'var(--mint)')}">
-          ${my.team==='mafia' ? '🔪 ' + h(mafiaNm) : (my.job ? h(my.job) : '🕊 시민')}</div>
+        <div class="role-team" style="color:${iCulprit?'var(--rose)':'var(--mint)'}">
+          ${iCulprit ? '🔪 내가 범인이다' : '🕊 나는 무고하다'}</div>
         <div style="margin-top:10px;font-weight:700;font-size:13.5px;line-height:1.6;color:#DAD4EE;word-break:keep-all">
-          ${my.team==='mafia' ? h(m.mafiaDesc || '밤마다 한 명을 지목해 없앤다.')
-            : (my.jobDesc ? h(my.jobDesc) : '특별한 능력은 없다. 대신 말과 눈치로 범인을 찾아내야 한다.')}
+          ${iCulprit
+            ? '당신이 죽였습니다. 끝까지 들키지 않으면 이깁니다.'
+            : '당신은 아무 짓도 하지 않았습니다. 진범을 찾아내야 이깁니다.'}
         </div>
-        ${my.team==='mafia' && _mates.length ? `<div style="margin-top:10px;font-size:13.5px;font-weight:800;color:#FFB0BC">
-          동료 — ${_mates.map(x=>h(pname(x))).join(', ')}</div>` : ''}
-        ${(_cr && _isCop) ? `<div style="margin-top:10px;padding:9px 11px;border-radius:10px;background:rgba(0,0,0,.3);
-          font-size:13px;font-weight:800;line-height:1.55">🔍 지난밤 조사 — ${h(pname(_cr.target))} :
-          <span style="color:${_cr.res==='mafia'?'var(--rose)':'var(--mint)'}">${
-            _cr.res==='mafia' ? '🔪 '+h(mafiaNm)+'입니다!' : '🕊 시민입니다'}</span></div>` : ''}
+        ${iCulprit && my.trace ? `<div style="margin-top:10px;padding:10px 12px;border-radius:11px;
+          background:rgba(0,0,0,.32);font-size:13px;line-height:1.6;font-weight:700;color:#FFB0BC;text-align:left">
+          ⚠️ 현장에 이런 흔적을 남겼습니다<br>
+          <span style="color:#DAD4EE;font-weight:600">${h(my.trace)}</span><br>
+          <span style="color:var(--dim2);font-weight:600;font-size:12px">누군가 이걸 찾아내면 끝입니다. 미리 변명을 준비하세요.</span>
+        </div>` : ''}
         <div style="margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.12);
           font-size:13px;line-height:1.6;font-weight:800;word-break:keep-all;
-          color:${my.team==='mafia'?'#FFB0BC':'#8FEFC6'}">
-          ${my.team==='mafia'
-            ? '🎭 당신만 거짓말할 수 있습니다.<br><span style="font-weight:600;color:#DAD4EE">위 알리바이를 그대로 써도 되고, 지어내도 됩니다. 같은 편은 밤에 눈을 떴을 때 확인하세요.</span>'
-            : '✋ 당신은 거짓말할 수 없습니다.<br><span style="font-weight:600;color:#DAD4EE">배역과 알리바이는 반드시 사실대로. 말투와 태도만 자유롭게 연기하세요.</span>'}
+          color:${iCulprit?'#FFB0BC':'#8FEFC6'}">
+          ${iCulprit
+            ? '🎭 당신만 거짓말할 수 있습니다.<br><span style="font-weight:600;color:#DAD4EE">알리바이도 동기도 지어내도 됩니다. 증거를 찾으면 감춰도 됩니다.</span>'
+            : '✋ 당신은 거짓말할 수 없습니다.<br><span style="font-weight:600;color:#DAD4EE">배역·동기·알리바이는 반드시 사실대로. 비밀과 찾은 증거만 숨길 수 있습니다.</span>'}
         </div>
       </div>
     </div>
@@ -3397,6 +3490,10 @@ function vRole(){
 function vScore(){
   const g = G(S.gameId); if (!g) return '';
   const d = S.draft;
+  if (!d) return `<div class="empty"><div class="empty-e">🏁</div>
+    <div class="empty-t">입력할 순위가 없어요</div>
+    <div class="note">게임을 마치고 다시 시도해 주세요</div></div>
+    <button class="btn" data-act="go-board" style="margin-top:14px">🏆 종합 순위 보기</button>`;
   const isTeam = d.mode === 'team';
   const teams = S.room.teams || {count:0,assign:{}};
 
@@ -3872,75 +3969,83 @@ async function act(a, d){
   }
 
   /* ── 상황극 마피아 ── */
-  case 'mf-cnt': S.play.cnt = Math.max(1, S.play.cnt + Number(d.v)); S.play.cntAuto = false; render(true); break;
   case 'mf-tog': {
     S.play[d.v] = !S.play[d.v];
-    // 참가 인원이 바뀌면(진행자 참가/구경) 손대지 않은 범인 수는 권장값을 따라간다
-    if (d.v === 'incHost' && S.play.cntAuto !== false)
-      S.play.cnt = suggestMafia(players().length - (S.play.incHost ? 0 : 1));
     render(true); break;
   }
   case 'mf-sit': {
-    const p = S.play; let s;
-    do { s = MAFIA_SITS[(Math.random()*MAFIA_SITS.length)|0].n; } while (s === p.sit && MAFIA_SITS.length > 1);
-    p.sit = s; render(true); break;
+    const p = S.play; let s2;
+    do { s2 = CRIME_CASES[(Math.random()*CRIME_CASES.length)|0]; } while (s2 === p.sit && CRIME_CASES.length > 1);
+    p.sit = s2; render(true); break;
   }
   case 'mf-deal': {
     const p = S.play;
     let pool = players().map(([pid]) => pid);
     if (!p.incHost) pool = pool.filter(x => x !== S.pid);
-    const bal = mafiaBalance(pool.length, p.cnt);
+    const bal = crimeBalance(pool.length);
     if (!bal.ok) return toast(bal.msg);
     shuffle(pool);
-    const sit = MAFIA_SITS.find(x => x.n === p.sit) || MAFIA_SITS[0];
-    const chars = shuffle([...sit.chars]);
+    const cs  = CRIME_EXT[p.sit];
+    const sit = MAFIA_SITS.find(x => x.n === p.sit);
+    // 피해자 배역은 빼고 섞는다
+    const chars = shuffle(sit.chars.filter(c => c.n !== cs.victim));
     const roles = {};
-    pool.forEach((pid,i) => {
+    pool.forEach((pid, i) => {
       const c = chars[i % chars.length];
-      roles[pid] = { team: i < p.cnt ? 'mafia' : 'civil', job:'', jobDesc:'',
-        char:c.n, charDesc:c.d, alibi:c.a || '', tip:c.t || '', lines:c.l || [], secret:c.s || '' };
+      const e = cs.ext[c.n] || {};
+      roles[pid] = { char:c.n, charDesc:c.d, alibi:c.a || '', tip:c.t || '',
+        lines:c.l || [], secret:c.s || '',
+        rel:e.rel || '', mot:e.mot || '', trace:e.trace || '' };
     });
-    const civ = pool.slice(p.cnt);
-    if (p.pol && civ.length){     roles[civ[0]].job = sit.cop.name;  roles[civ[0]].jobDesc = sit.cop.desc; }
-    if (p.doc && civ.length > 1){ roles[civ[1]].job = sit.doc.name;  roles[civ[1]].jobDesc = sit.doc.desc; }
-    // 세계관 명칭을 함께 저장 — 참가자 폰이 MAFIA_SITS를 다시 찾지 않아도 되게
-    const alive = {}; pool.forEach(pid => { alive[pid] = 1; });
-    S.room.mafia = { round:1, phase:'day', sit:sit.n, intro:sit.intro,
-      mafiaName:sit.mafia.name, mafiaDesc:sit.mafia.desc,
-      roles, alive, acts:{}, votes:{}, checkRes:{}, log:[], winner:null };
+    const culprit = pool[0];                       // 이미 섞였으므로 첫 사람이 범인
+    // 범인의 흔적을 현장 한 곳에 몰래 끼워 넣는다
+    const places = cs.places.map(pl => ({ n:pl.n, ev:[...pl.ev] }));
+    const hide = (Math.random() * places.length) | 0;
+    if (roles[culprit].trace) places[hide].ev.push(roles[culprit].trace);
+    S.room.mafia = { round:1, phase:'brief', sit:cs.victim ? p.sit : p.sit,
+      victim:cs.victim, brief:cs.brief, found:cs.found,
+      roles, culprit, places, searched:{}, votes:{}, result:null };
     set(ref(db, `${ROOT}/rooms/${S.code}/mafia`), S.room.mafia).catch(()=>{});
     p.phase = 'dealt'; p.show = false;
     confetti(50); render(true); break;
   }
   case 'mf-show': S.play.show = !S.play.show; render(true); break;
 
-  /* 진행 컨트롤 (사회자) */
-  case 'mf-vote':    S.room.mafia.phase = 'vote';  pushMafia({ phase:'vote' });  SFX.go(); render(true); break;
-  case 'mf-backday': S.room.mafia.phase = 'day';   pushMafia({ phase:'day' });   render(true); break;
-  case 'mf-night':   S.room.mafia.phase = 'night'; pushMafia({ phase:'night' }); SFX.end(); render(true); break;
-  case 'mf-exile':   mfResolveVote(); break;
-  case 'mf-morning': mfResolveNight(); break;
-  case 'mf-score': {
-    const m = S.room.mafia;
-    const winTeam = m.winner;
-    const ordered = [
-      ...Object.keys(m.roles).filter(p => S.room.players[p] && m.roles[p].team === winTeam),
-      ...Object.keys(m.roles).filter(p => S.room.players[p] && m.roles[p].team !== winTeam),
-    ];
+  /* 진행 컨트롤 (진행자) */
+  case 'cr-search': {
+    const M = S.room.mafia;
+    // 브리핑 직후면 1차, 토론 중이면 다음 차수
+    if (M.phase === 'talk') M.round = (M.round || 1) + 1;
+    M.phase = 'search';
+    pushMafia({ phase:'search', round:M.round });
+    SFX.go(); render(true); break;
+  }
+  case 'cr-talk':  S.room.mafia.phase = 'talk';  pushMafia({ phase:'talk' });  SFX.go();  render(true); break;
+  case 'cr-final': S.room.mafia.phase = 'final'; pushMafia({ phase:'final' }); render(true); break;
+  case 'cr-vote':  S.room.mafia.phase = 'vote';  pushMafia({ phase:'vote' });  SFX.go();  render(true); break;
+  case 'cr-reveal': cResolveVote(); break;
+  case 'cr-score': {
+    const M = S.room.mafia, r = M.result || {};
+    const cul = M.culprit;
+    // 범인이 이기면 범인이 1등, 잡히면 범인을 지목한 사람들이 위로
+    const voters = Object.entries(M.votes || {});
+    const right = voters.filter(([, t]) => t === cul).map(([v]) => v);
+    const wrong = voters.filter(([, t]) => t !== cul).map(([v]) => v);
+    const rest  = Object.keys(M.roles).filter(x => S.room.players[x]
+      && x !== cul && !right.includes(x) && !wrong.includes(x));
+    const order = r.caught ? [...right, ...rest, ...wrong, cul]
+                           : [cul, ...right, ...rest, ...wrong];
     stopPlayTimer(); S.play = null;
-    S.draft = { gameId:'mafia', mode:'solo', order:ordered,
-      weight:G('mafia')?.weight ?? 1, assign:{} };
+    S.draft = { gameId:S.gameId, mode:'solo', order:order.filter(x => S.room.players[x]),
+      weight:G(S.gameId)?.weight ?? 1, assign:{} };
     go('score');
-    toast('승리 진영이 위로 정렬됐어요 — MVP를 앞으로 옮겨주세요');
+    toast(r.caught ? '범인을 맞춘 사람이 위로 정렬됐어요' : '범인이 1등입니다');
     break;
   }
 
-  /* 참가자 행동 */
-  case 'mf-act-kill':  mfSubmitAct('kill',  d.pid); break;
-  case 'mf-act-check': mfSubmitAct('check', d.pid); break;
-  case 'mf-act-save':  mfSubmitAct('save',  d.pid); break;
-  case 'mf-vote-pick': mfSubmitVote(d.pid); break;
-  case 'mf-hunch': S._hunch = (S._hunch === d.pid) ? null : d.pid; vib(8); render(true); break;
+  /* 참가자 */
+  case 'cr-search-pick': cSubmitSearch(Number(d.i)); break;
+  case 'cr-vote-pick':   cSubmitVote(d.pid); break;
   case 'mf-redeal': {
     if (!confirm('역할을 새로 나눠줄까요?')) return;
     S.play.phase = 'setup'; render(true); break;
