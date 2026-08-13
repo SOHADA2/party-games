@@ -10,7 +10,10 @@
 <title>숙소에서 하기 좋은 게임 모음</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
+<!-- ⚠️ iOS는 apple-touch-icon에 SVG를 지원하지 않는다. 반드시 PNG. -->
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="숙소 게임">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
@@ -569,6 +572,34 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .role-team{font-size:30px;font-weight:900;margin-top:6px;letter-spacing:-.03em}
 
 /* ══════════════════════════════════════════════════════════
+   앱 설치 (PWA)
+══════════════════════════════════════════════════════════ */
+.instbn{
+  position:relative;display:flex;align-items:center;gap:13px;width:100%;padding:14px;
+  border-radius:var(--r-l);text-align:left;margin-bottom:12px;
+  background:linear-gradient(150deg,rgba(124,107,255,.17),var(--surf));
+  border:1px solid rgba(124,107,255,.34);box-shadow:var(--sh1),var(--lift);
+  transition:transform .14s var(--spring);
+}
+.instbn:active{transform:scale(.985)}
+.instbn-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;
+  font-size:22px;background:rgba(124,107,255,.2);flex:none}
+.instbn-t{font-weight:800;font-size:15px;letter-spacing:-.025em}
+.instbn-s{font-size:12px;color:var(--dim2);margin-top:3px;word-break:keep-all;line-height:1.45}
+.instbn-x{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:8px;
+  display:grid;place-items:center;color:var(--dim2);font-size:12px}
+
+.iosov{position:fixed;inset:0;z-index:190;display:grid;place-items:center;padding:22px;
+  background:rgba(6,5,12,.9);animation:fadeIn .2s ease}
+.iosbox{background:var(--surf);border:1px solid var(--line2);border-radius:var(--r-xl);
+  padding:24px 22px;width:100%;max-width:400px;box-shadow:var(--sh3)}
+.iosstep{display:flex;gap:12px;align-items:flex-start;margin-bottom:16px}
+.iosnum{width:26px;height:26px;border-radius:9px;flex:none;display:grid;place-items:center;
+  font-weight:900;font-size:13px;background:var(--hero);color:#1A0F06}
+.iosstep .tx{font-size:14.5px;font-weight:700;line-height:1.55;word-break:keep-all}
+.iosstep .tx b{color:var(--amber)}
+
+/* ══════════════════════════════════════════════════════════
    피드백
 ══════════════════════════════════════════════════════════ */
 #toast{
@@ -624,7 +655,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.4.0';
+const APP_VERSION = 'v0.4.1';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1029,6 +1060,59 @@ function confetti(n = 90){
     if (alive) raf = requestAnimationFrame(loop);
     else { fxc.clearRect(0,0,innerWidth,innerHeight); fx.style.display = 'none'; }
   })(t0);
+}
+
+/* ══════════════════════════════════════════════
+   앱 설치 (PWA)
+   - 안드로이드/크롬: beforeinstallprompt를 잡아뒀다가 앱 안 버튼으로 띄운다
+   - iOS 사파리: 설치 API가 없어 「공유 → 홈 화면에 추가」 안내만 가능
+══════════════════════════════════════════════ */
+let _installEvt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);   // iPadOS
+const instOff = () => { try{ return localStorage.getItem('pg_install_off') === '1'; }catch{ return false; } };
+
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); _installEvt = e; render(true); });
+addEventListener('appinstalled', () => {
+  _installEvt = null; toast('설치 완료! 이제 홈 화면에서 열 수 있어요'); confetti(50); render(true);
+});
+
+function installBannerHtml(){
+  if (isStandalone() || instOff()) return '';
+  if (!_installEvt && !isIOS()) return '';          // 설치 불가 환경이면 아예 안 띄운다
+  return `<button class="instbn" data-act="install">
+      <div class="instbn-ic">📲</div>
+      <div class="instbn-b" style="flex:1;min-width:0">
+        <div class="instbn-t">앱으로 설치하기</div>
+        <div class="instbn-s">주소창 없이 전체화면 · 와이파이 끊겨도 열려요</div>
+      </div>
+      <div class="g-ar">›</div>
+      <span class="instbn-x" data-act="install-off">✕</span>
+    </button>`;
+}
+
+function showIosInstall(){
+  const ov = document.createElement('div');
+  ov.className = 'iosov';
+  ov.innerHTML = `<div class="iosbox">
+      <div style="font-size:34px;text-align:center;margin-bottom:8px">📲</div>
+      <div style="font-weight:900;font-size:19px;text-align:center;letter-spacing:-.03em;margin-bottom:20px">
+        홈 화면에 추가하기</div>
+      <div class="iosstep"><div class="iosnum">1</div>
+        <div class="tx">아래쪽 <b>공유 버튼 <span style="font-size:16px">⬆️</span></b> 를 누르세요</div></div>
+      <div class="iosstep"><div class="iosnum">2</div>
+        <div class="tx">목록을 내려서 <b>「홈 화면에 추가」</b> 를 누르세요</div></div>
+      <div class="iosstep"><div class="iosnum">3</div>
+        <div class="tx">오른쪽 위 <b>「추가」</b> 를 누르면 끝!</div></div>
+      <p class="note" style="text-align:center;margin:18px 0 16px">
+        ⚠️ 사파리에서만 됩니다. 카카오톡 안에서 열었다면<br>먼저 <b style="color:var(--dim)">사파리로 열기</b>를 해주세요.</p>
+      <button class="btn pri" id="ios-ok">알겠어요</button>
+    </div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  ov.querySelector('#ios-ok').onclick = close;
+  ov.onclick = e => { if (e.target === ov) close(); };
 }
 
 /* 화면 꺼짐 방지 */
@@ -1531,6 +1615,7 @@ function vHome(){
     ${last ? `<button class="btn gh" data-act="rejoin" style="margin:20px 0 0">
         ↩︎ ${h(last.name||'')}(으)로 ${h(last.code)}번 방 다시 들어가기</button>` : ''}
 
+    ${installBannerHtml()}
     <div class="sec">시작하기</div>
     <div class="card">
       <input class="inp" id="in-name" maxlength="8" placeholder="닉네임 (최대 8자)" value="${h(last?.name || '')}">
@@ -1608,6 +1693,7 @@ function vLobby(){
         <div class="g-ar">›</div>
       </button>` : ''}
 
+    ${installBannerHtml()}
     <div class="sec">참가자 <span class="n">${ps.length}</span></div>
     <div class="plist">${plist}</div>
 
@@ -2402,7 +2488,10 @@ async function rollReveal(label, pool, finalPid){
    이벤트
 ══════════════════════════════════════════════ */
 function bind(root){
-  root.querySelectorAll('[data-act]').forEach(el => { el.onclick = () => act(el.dataset.act, el.dataset); });
+  // stopPropagation: 버튼 안에 또 다른 data-act(예: 설치 배너의 ✕)가 있을 때 둘 다 발동하는 것 방지
+  root.querySelectorAll('[data-act]').forEach(el => {
+    el.onclick = e => { e.stopPropagation(); act(el.dataset.act, el.dataset); };
+  });
 
   const ci = root.querySelector('#in-code');
   if (ci){
@@ -2458,6 +2547,23 @@ async function act(a, d){
     break;
   }
   case 'share': shareRoom(); break;
+
+  case 'install': {
+    if (_installEvt){
+      _installEvt.prompt();
+      const r = await _installEvt.userChoice.catch(() => null);
+      _installEvt = null;
+      if (r?.outcome !== 'accepted') toast('나중에 크롬 메뉴에서도 설치할 수 있어요');
+      render(true);
+    }else{
+      showIosInstall();
+    }
+    break;
+  }
+  case 'install-off': {
+    try{ localStorage.setItem('pg_install_off','1'); }catch{}
+    render(true); break;
+  }
 
   case 'kick': {
     if (!S.isHost) return;

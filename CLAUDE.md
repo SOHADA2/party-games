@@ -5,7 +5,7 @@
 
 - **저장소**: https://github.com/SOHADA2/party-games (public)
 - **라이브**: https://sohada2.github.io/party-games/
-- **현재 버전**: v0.4.0 (`index.html`의 `APP_VERSION`)
+- **현재 버전**: v0.4.1 (`index.html`의 `APP_VERSION`)
 
 ---
 
@@ -26,13 +26,30 @@
 | 파일 | 역할 |
 |---|---|
 | `index.html` | 앱 전체 (디자인 토큰 + CSS + 게임 레지스트리 + 동기화 + 렌더) |
-| `manifest.json` / `icon.svg` | PWA — 홈 화면 추가 시 앱처럼 실행 |
+| `manifest.json` / `icon.svg` / `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | PWA — 홈 화면 추가 시 앱처럼 실행 |
 | `sw.js` | 앱 셸 network-first + **폰트 CDN 캐시-우선**. Firebase 요청은 절대 가로채지 않음 |
 | `serve.mjs` | 로컬 테스트 서버 (배포물 아님) |
 
 폰트는 **Pretendard Variable 동적 서브셋**(jsdelivr CDN). 숙소 와이파이가 끊겨도
-`sw.js`의 `ASSET_CACHE`에 한 번 받아두면 유지된다. ⚠️ `sw.js`의 캐시 이름(`party-shell-v2`
-/`party-asset-v2`)을 바꾸면 옛 캐시가 정리된다 — 캐시 전략을 고칠 때 **버전을 올릴 것**.
+`sw.js`의 `ASSET_CACHE`에 한 번 받아두면 유지된다. ⚠️ `sw.js`의 캐시 이름(`party-shell-v3`
+/`party-asset-v3`)을 바꾸면 옛 캐시가 정리된다 — 셸 목록/캐시 전략을 고칠 때 **버전을 올릴 것**.
+
+### PWA 아이콘 ★함정
+- ⚠️ **iOS는 `apple-touch-icon`에 SVG를 지원하지 않는다.** PNG가 없으면 아이폰 홈 화면 아이콘이
+  페이지 스크린샷/빈 사각형으로 깨진다. → `apple-touch-icon.png`(180×180) 필수.
+- 안드로이드/크롬은 manifest의 SVG도 받지만, **maskable 대응을 위해 PNG 192/512를 같이** 둔다.
+- PNG는 `icon.svg`에서 생성한다(이 PC에 cairosvg 없음 → **Edge 헤드리스로 렌더 후 Pillow로 축소**):
+  ```
+  # 512px로 렌더할 임시 html(img를 512×512로) → --window-size=512,512 --screenshot
+  # 이후 Pillow LANCZOS로 192 / 180 생성
+  ```
+- 아이콘을 바꾸면 **PNG 3개를 다시 생성**하고 `sw.js` 캐시 버전도 올릴 것.
+
+### 앱 설치 유도 (`installBannerHtml`)
+홈·대기실 상단에 「📲 앱으로 설치하기」 배너. 크롬은 `beforeinstallprompt`를 잡아뒀다가 띄우고,
+iOS는 설치 API가 없어 `showIosInstall()` 안내 모달(공유 → 홈 화면에 추가)을 띄운다.
+이미 설치됨(`isStandalone`)·설치 불가 환경·✕로 끈 경우(`pg_install_off`)엔 아예 렌더하지 않는다.
+⚠️ 배너 ✕는 버튼 **안에** 있어서, `bind()`의 `stopPropagation()`이 없으면 설치 팝업까지 같이 뜬다.
 
 ---
 
@@ -316,6 +333,21 @@ PWA(홈 화면 추가·앱 셸 캐시), 화면 꺼짐 방지(Wake Lock).
 ## 세션 작업 이력
 
 > 새 세션은 이 섹션을 읽어 최근 맥락 파악. 작업 완료 후 갱신할 것.
+
+### v0.4.1 (2026-08-13) — 📲 PWA 아이콘 수정 + 앱 설치 유도
+
+사장님이 크롬의 "앱으로 설치" 안내를 보고 질문 → 점검 중 **아이폰 아이콘이 깨지는 것**을 발견해 수정.
+
+- 🐛 **iOS 아이콘 깨짐**: `apple-touch-icon`을 SVG로 걸어놨는데 iOS는 SVG를 지원하지 않는다.
+  → `icon.svg`를 Edge 헤드리스로 512px 렌더 후 Pillow로 축소해 `apple-touch-icon.png`(180)·
+  `icon-192.png`·`icon-512.png` 생성. manifest에 PNG(any+maskable) 추가, `apple-mobile-web-app-title` 지정.
+  마스커블 안전영역 검사(주사위가 중앙 80% 원 안) 통과.
+- 📲 **앱 설치 배너**: 홈·대기실에 「앱으로 설치하기」. 크롬은 `beforeinstallprompt`를 잡아 앱 안에서
+  띄우고, iOS는 「공유 → 홈 화면에 추가」 3단계 안내 모달. 설치됨/불가/✕끔 상태는 렌더 안 함.
+- 🐛 **중첩 data-act 버그**: 배너 ✕가 부모 버튼 안에 있어 클릭 시 설치 팝업까지 같이 떴다.
+  → `bind()`에 `stopPropagation()` 추가(전역 적용, 다른 곳도 버블링 의존 없음).
+- `sw.js` 셸 캐시에 PNG 3개 추가 + 캐시 버전 v2→v3.
+- 검증: 배너 표시/✕(프롬프트 미발동)/본체 클릭(프롬프트 1회)/설치 후 숨김/설치불가 환경 숨김.
 
 ### v0.4.0 (2026-08-13) — 🎮 나머지 6개 게임 진행 도구 전부 구현
 

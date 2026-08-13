@@ -1,8 +1,9 @@
 // 숙소 게임 — 앱 셸 + 폰트 캐시 (숙소 와이파이가 불안정해도 앱이 제대로 열리게)
-const SHELL_CACHE = 'party-shell-v2';
-const ASSET_CACHE = 'party-asset-v2';
+const SHELL_CACHE = 'party-shell-v3';
+const ASSET_CACHE = 'party-asset-v3';
 const KEEP = [SHELL_CACHE, ASSET_CACHE];
-const SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
+const SHELL = ['./', './index.html', './manifest.json', './icon.svg',
+               './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 // 캐시-우선으로 붙잡아 둘 외부 호스트 (폰트만. Firebase는 절대 캐시하지 않음)
 const ASSET_HOSTS = ['cdn.jsdelivr.net'];
