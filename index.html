@@ -611,6 +611,98 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 }
 /* 좁은 화면(=대부분 폰)에서는 오로라 레이어를 2겹으로 줄여 합성 비용을 낮춘다 */
 @media (max-width:600px){ .aur.c{display:none} }
+
+/* ══════════════════════════════════════════════════════════
+   큰 화면 (태블릿을 상 위에 세워두고 다 같이 본다) ★
+   ─────────────────────────────────────────────────────────
+   숙소에서 실제로 쓰는 방식: 진행자가 태블릿 하나를 가운데 두고 모두가 그걸 본다.
+   폰을 30cm에서 보는 크기로는 60~100cm 떨어진 사람이 못 읽는다 → 「다 같이 보는 것」만 키운다.
+
+   ⚠️ .priv 는 절대 키우지 않는다 — **딱 한 사람만** 봐야 하는 정보다.
+      · 몸으로 말해요의 제시어      = 설명자 1명만. 맞히는 팀이 보면 그 순간 게임이 끝난다
+      · 멕썸노이즈 진행 중 하단 미션 = 술래가 화면 앞에서 뛰고 있는 상태라 눈에 띄면 안 된다
+      반대로 **멕썸노이즈 brief 화면의 미션 문장은 크게 띄운다** — 술래 빼고 다 같이 읽는
+      화면이고, 바로 앞 단계에서 앱이 「술래는 뒤돌아 눈 감기」를 시켜두기 때문이다.
+      → 새 화면을 추가할 때 「지금 이 화면을 몇 명이 봐야 하는가?」를 먼저 묻는다.
+        전원/전원-1 = 그냥 둔다(커진다) · 딱 1명 = .priv 를 붙인다.
+
+   ⚠️ 가로 폭만으로 켜면 안 된다 — 폰 가로 모드(예: 926×428)가 걸려서
+      작은 화면에 거대한 글씨가 뜬다. 그래서 높이 조건을 같이 건다.
+      (태블릿 가로 1024×768 · 세로 820×1180 은 통과, 폰 가로는 높이에서 걸린다.)
+══════════════════════════════════════════════════════════ */
+@media (min-width:760px) and (min-height:640px){
+  #app{max-width:880px}
+  main{padding:26px 26px calc(48px + var(--sb))}
+
+  /* 헤더 · 구획 */
+  .hd-t{font-size:21px}
+  .hd-code{font-size:18px}
+  .sec{font-size:15px}
+
+  /* 방 코드 — 다 같이 보고 입력하는 것이라 클수록 좋다 */
+  .rc-v{font-size:82px}
+  .rc-lbl{font-size:13px}
+  .rc-hint{font-size:15px}
+
+  /* 게임 목록 · 규칙 (다 같이 읽는다) */
+  .g-n{font-size:19px}
+  .g-m{font-size:14px}
+  .rules{font-size:17px;line-height:1.9}
+
+  /* 진행 중 — 제시어 카드 / 타이머 / 스톱워치 */
+  .wcard{min-height:280px;padding:52px 26px}
+  .wtxt{font-size:74px}
+  .wtxt.long{font-size:52px}
+  .wtxt.xlong{font-size:38px}
+  .wcat{font-size:15px;margin-bottom:18px}
+  .wletter{font-size:17px;padding:8px 18px;margin-bottom:18px}
+  .turnhd .t{font-size:24px}
+  .turnhd .r{font-size:16px}
+  .tbar{height:14px}
+  .tsec{font-size:58px}
+  .thit{font-size:20px}
+  .bignum{font-size:96px}
+  .bigbtn{font-size:26px;padding:32px 12px;border-radius:26px}
+
+  /* 결과 · 점수판 · 순위 */
+  .pickres-v{font-size:56px}
+  .pickres-l{font-size:14px}
+  .tscore{padding:20px}
+  .tscore .n{font-size:21px}
+  .tscore .v{font-size:34px}
+  .sumrow{font-size:17px;padding:13px 16px}
+  .lb-n{font-size:19px}
+  .lb-p{font-size:26px}
+  .pod-n{font-size:17px}
+  .pod-p{font-size:26px}
+  .pod.p1 .pod-p{font-size:34px}
+  .rslot{padding:17px}
+  .rno{width:40px;height:40px;font-size:18px;border-radius:13px}
+
+  /* ★ 특정인만 보는 것은 폰 크기 그대로 둔다 */
+  .wcard.priv{min-height:200px;padding:40px 18px;max-width:420px;margin-left:auto;margin-right:auto}
+  .priv .wtxt{font-size:38px}
+  .priv .wtxt.long{font-size:27px}
+  .priv .wtxt.xlong{font-size:21px}
+  .priv .wcat{font-size:11.5px;margin-bottom:14px}
+  .priv .wletter{font-size:12.5px;padding:5px 12px;margin-bottom:14px}
+  .note.priv{font-size:12.5px}
+}
+
+/* 가로로 세워둔 태블릿(1024×768 등)은 **세로가 모자란다.**
+   공용 화면은 스크롤하면 안 되므로(뒤에서 보는 사람은 스크롤을 못 한다) 한 화면에 넣는다. */
+@media (min-width:760px) and (min-height:640px) and (max-height:860px){
+  main{padding:16px 26px calc(30px + var(--sb))}
+  .wcard{min-height:200px;padding:34px 24px}
+  .wtxt{font-size:58px}
+  .wtxt.long{font-size:43px}
+  .wtxt.xlong{font-size:32px}
+  .wcat{margin-bottom:12px}
+  .tsec{font-size:46px}
+  .bignum{font-size:74px}
+  .bigbtn{font-size:22px;padding:24px 12px}
+  .rc-v{font-size:64px}
+}
 </style>
 </head>
 <body>
@@ -639,7 +731,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.13.0';
+const APP_VERSION = 'v0.14.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1797,8 +1889,8 @@ function vDeck(){
         border:1px solid rgba(255,184,77,.3);margin-bottom:14px">
         <div style="font-size:34px;margin-bottom:10px">📱</div>
         <div style="font-weight:800;font-size:15px;line-height:1.6;word-break:keep-all">
-          설명할 사람이 폰을 받으세요<br>
-          <span style="color:var(--dim);font-weight:600;font-size:13.5px">나머지는 화면을 보면 안 됩니다</span>
+          설명할 사람만 화면을 보세요<br>
+          <span style="color:var(--dim);font-weight:600;font-size:13.5px">맞히는 팀은 보면 안 됩니다 — 화면을 돌려 잡으세요</span>
         </div>
       </div>
 
@@ -1826,7 +1918,7 @@ function vDeck(){
         <div class="thit">맞춘 개수 ${hit}</div>
       </div>
 
-      <div class="wcard">
+      <div class="wcard priv">
         <div>
           ${p.mode==='oneword' && p.letters[t]
             ? `<div class="wletter">🗣 우리 글자 「${h(p.letters[t])}」</div>`
@@ -1922,7 +2014,7 @@ function vNoise(){
       <div class="wcat">경과 시간</div>
       <div class="bignum" id="sw-sec">${fmtSw(p.elapsed||0)}</div>
     </div></div>
-    <p class="note" style="text-align:center;margin:0 0 14px">미션 — ${h(p.sen)}<br>(술래에게 보여주지 마세요)</p>
+    <p class="note priv" style="text-align:center;margin:0 0 14px">미션 — ${h(p.sen)}<br>(술래에게 보여주지 마세요)</p>
     <div class="wbtns">
       <button class="bigbtn pass" data-act="race-end" data-v="0">🙅 포기</button>
       <button class="bigbtn ok" data-act="race-end" data-v="1">🎉 성공!</button>
