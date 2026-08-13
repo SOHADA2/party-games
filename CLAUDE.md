@@ -5,7 +5,7 @@
 
 - **저장소**: https://github.com/SOHADA2/party-games (public)
 - **라이브**: https://sohada2.github.io/party-games/
-- **현재 버전**: v0.1.0 (`index.html`의 `APP_VERSION`)
+- **현재 버전**: v0.2.0 (`index.html`의 `APP_VERSION`)
 
 ---
 
@@ -25,10 +25,14 @@
 
 | 파일 | 역할 |
 |---|---|
-| `index.html` | 앱 전체 (CSS + 게임 레지스트리 + 동기화 + 렌더) |
+| `index.html` | 앱 전체 (디자인 토큰 + CSS + 게임 레지스트리 + 동기화 + 렌더) |
 | `manifest.json` / `icon.svg` | PWA — 홈 화면 추가 시 앱처럼 실행 |
-| `sw.js` | 앱 셸 캐시 (network-first + 오프라인 폴백) |
+| `sw.js` | 앱 셸 network-first + **폰트 CDN 캐시-우선**. Firebase 요청은 절대 가로채지 않음 |
 | `serve.mjs` | 로컬 테스트 서버 (배포물 아님) |
+
+폰트는 **Pretendard Variable 동적 서브셋**(jsdelivr CDN). 숙소 와이파이가 끊겨도
+`sw.js`의 `ASSET_CACHE`에 한 번 받아두면 유지된다. ⚠️ `sw.js`의 캐시 이름(`party-shell-v2`
+/`party-asset-v2`)을 바꾸면 옛 캐시가 정리된다 — 캐시 전략을 고칠 때 **버전을 올릴 것**.
 
 ---
 
@@ -144,6 +148,34 @@ crumble-bot이 `/crumble`을 쓰는 것과 같은 패턴. RTDB 규칙이 공개�
 
 ---
 
+## 디자인 시스템 ★
+
+**컨셉 = 심야 파티 / 네온 사인.** 잉크빛 자정 배경 + 코랄→앰버 히어로 그라데이션 +
+게임별 고유 액센트. 술 마시며 봐도 읽히게 대비·글자 크기를 크게 잡았다.
+
+- **전부 `:root` CSS 변수로 통제**한다. 색을 하드코딩하지 말고 토큰을 쓰거나 토큰을 추가할 것.
+  - 배경 `--ink/--ink2` · 표면 `--surf/--surf2/--surf3` · 선 `--line/--line2`
+  - 글자 `--tx/--dim/--dim2` · 액센트 `--hot/--amber/--elec/--mint/--rose/--sky`
+  - `--hero` (메인 그라데이션) · `--sh1~3` (그림자) · `--lift` (카드 위쪽 1px 하이라이트)
+  - 반경 `--r-s/m/l/xl` · 이징 `--ease`(감속) `--spring`(탄성)
+- **깊이 표현**: 카드는 `box-shadow: var(--sh1), var(--lift)`. `--lift`가 위에서 빛 받은 느낌을 만든다.
+- **누름 반응**: 모든 인터랙티브 요소에 `transform:scale(.97~.98)` + `--spring`.
+- **배경**: `.bg`의 오로라 3개는 `transform`만 애니메이션(리페인트 없음) + `.grain` SVG 노이즈.
+  `filter:blur()`는 모바일에서 비싸서 **안 쓴다** — 부드러움은 radial-gradient 자체로 낸다.
+- **`prefers-reduced-motion`** 존중(모든 애니메이션 무력화).
+
+### ⚠️ `color-mix()` 쓰지 말 것
+게임별 액센트 틴트는 **`gcVars(hex)`** 헬퍼가 `--gc/--gcSoft/--gcLine/--gcGlow`를 rgba로 계산해
+인라인 스타일로 내려준다. `color-mix()`는 구형 사파리에서 통째로 무효가 되어 색이 날아간다.
+새 액센트 틴트가 필요하면 `gcVars`에 변수를 추가할 것.
+
+### 연출
+- `confetti(n)` — 캔버스 파티클. 방 생성 / 팀 편성 / 순위 저장 시 발동.
+- `rollReveal(label, pool, finalPid)` — **역할 뽑기 슬롯머신**. 이름을 점점 느리게 순환시키다
+  당첨자에서 멈추고 컨페티. 숙소에서 다 같이 폰 하나 쳐다보는 순간이라 연출 가치가 큼.
+  ⚠️ 결과(`finalPid`)는 **애니메이션 전에 이미 확정**돼 있다. 연출이 결과를 바꾸지 않는다.
+- 진입 애니: 리스트 항목에 `animation-delay:${i*40}ms` 스태거.
+
 ## 게임 추가하기
 
 `index.html`의 **`GAMES` 배열에 항목 하나만 추가**하면 목록·규칙·역할 뽑기·순위 입력·리더보드에
@@ -172,12 +204,13 @@ crumble-bot이 `/crumble`을 쓰는 것과 같은 패턴. RTDB 규칙이 공개�
 
 | 블록 | 내용 |
 |---|---|
-| `<style>` | CSS 변수(`--bg`/`--ac` 등) → 공통 → 화면별. 다크 + 웜 골드 톤 |
+| `<style>` | 디자인 토큰(`:root`) → 배경 레이어 → 헤더 → 공통 → 화면별 |
 | 설정 | `APP_VERSION` · `ROOT='party'` · `firebaseConfig` · `RANK_POINTS` · 색 팔레트 |
 | `GAMES` | **게임 레지스트리** (7종) |
 | 상태 | `S` 객체 (view/code/pid/isHost/room/draft/…) |
 | 동기화 | `pushHostState` · `subscribe` · `startHeartbeat` · `createRoom` / `joinRoom` / `rejoin` / `leaveRoom` |
 | 계산 | `calcPoints` · `playedGames` · `pickRole`(중복 방지) · `makeTeams` |
+| 연출 | `confetti` · `rollReveal` · `gcVars`(액센트 rgba) · `av`(아바타) |
 | 렌더 | `render()` → `vHome`/`vLobby`/`vGames`/`vGame`/`vScore`/`vBoard`/`vSettings` |
 | 이벤트 | `bind()` + `act(a, dataset)` — `data-act` 위임 방식 |
 
@@ -217,6 +250,29 @@ PWA(홈 화면 추가·앱 셸 캐시), 화면 꺼짐 방지(Wake Lock).
 ## 세션 작업 이력
 
 > 새 세션은 이 섹션을 읽어 최근 맥락 파악. 작업 완료 후 갱신할 것.
+
+### v0.2.0 (2026-08-13) — 🎨 디자인 전면 재작업
+
+사장님: "라이브 들어갔는데 디자인이 좀 별로야, 엄청나게 퀄리티 있게." → v0.1.0의 색·타이포·간격이
+제각각이라 정체성을 **「심야 파티 / 네온 사인」** 하나로 잡고 재설계. **로직은 그대로, 표현만 교체.**
+
+- **디자인 토큰 체계 도입**(위 「디자인 시스템」 섹션) — 잉크빛 자정 배경 + 코랄→앰버 히어로,
+  게임 7종 각각 고유 액센트 컬러 부여(`GAMES[].color` 신설).
+- **폰트 Pretendard Variable**(동적 서브셋 CDN) — 한글 굵기·자간이 확 정리됨. `sw.js`가 캐시.
+- **배경**: 오로라 3겹(transform만 애니메이션) + SVG 그레인 노이즈. `filter:blur()` 미사용.
+- **화면별 재설계**: 홈 히어로 + **4칸 코드 입력 박스**(투명 input 오버레이 방식) /
+  대기실 방코드 히어로 카드 / 게임 카드 액센트 바+틴트 아이콘 / 게임 상세 히어로 배너 /
+  **리더보드 시상대(1·2·3위 단상)** / 빈 상태 디자인.
+- **연출 신설**: `confetti()` 캔버스 파티클, **`rollReveal()` 역할 뽑기 슬롯머신**(이름 순환 →
+  감속 → 당첨 팝 + 컨페티 + 햅틱), 리스트 스태거 진입, 누름 스프링.
+- **`color-mix()` 제거 → `gcVars()` rgba 계산**으로 교체. 구형 사파리에서 게임 액센트가 통째로
+  날아가는 것을 방지(⚠️ 재발 주의).
+- **`sw.js` v2**: 폰트 CDN 캐시-우선 추가, Firebase 요청은 가로채지 않도록 명시적 제외,
+  캐시 이름 v2로 올려 옛 캐시 정리.
+- **`.gitignore`**: 검증 하네스용 `_*.html` 추가. ⚠️ **gitignore는 줄 끝 인라인 주석을 지원하지 않는다**
+  (`_*.html  # 설명` 은 패턴 일부로 먹힘) — 주석은 반드시 별도 줄에.
+- 검증: `node --check` 통과 · **390/360px 고정폭 iframe 하네스**로 실제 레이아웃 확인
+  (헤드리스 `--window-size`만으로는 우측 잘림 아티팩트가 생겨 판단 불가) · 6화면 렌더 확인.
 
 ### v0.1.0 (2026-08-13) — 프로젝트 신설 + 백본 구현 + GitHub 세팅
 

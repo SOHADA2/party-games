@@ -12,5 +12,6 @@ desktop.ini
 # 로그 / 임시
 *.log
 _tmp*
-_demo.html
 _scratch*
+# 검증용 임시 하네스 (_demo.html / _frame.html 등)
+_*.html
