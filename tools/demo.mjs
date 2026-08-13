@@ -1,9 +1,8 @@
 /* 검증용 사본(_demo.html)을 만든다 — Firebase 쓰기를 막고 시나리오를 주입한다.
  *
- *   node tools/demo.mjs tools/scenarios/crime.js            → _demo.html
- *   node tools/demo.mjs tools/scenarios/crime-e2e.js _t.html
+ *   node tools/demo.mjs tools/scenarios/smoke-e2e.js _s.html
  *
- * 그다음 serve.mjs 를 띄우고  http://localhost:8080/_demo.html?demo=1&v=grill  식으로 연다.
+ * 그다음 serve.mjs 를 띄우고  http://localhost:8080/_s.html?demo=1  식으로 연다.
  *
  * ⚠️ 왜 이 도구가 필요한가
  *   검증 스크립트가 **진짜 RTDB에 방을 만들어 버린 사고**가 있었다(유령 방 4821).
