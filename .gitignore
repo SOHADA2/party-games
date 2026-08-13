@@ -1,0 +1,16 @@
+# 의존성 / 빌드 (현재 없음, 나중 대비)
+node_modules/
+dist/
+
+# 에디터 / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 로그 / 임시
+*.log
+_tmp*
+_demo.html
+_scratch*

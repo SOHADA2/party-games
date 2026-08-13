@@ -1,0 +1,15 @@
+{
+  "name": "숙소에서 하기 좋은 게임 모음",
+  "short_name": "숙소 게임",
+  "description": "친구들과 숙소에서 하는 게임 진행 · 순위 도구",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12101a",
+  "theme_color": "#12101a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

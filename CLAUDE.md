@@ -1,0 +1,234 @@
+# 숙소에서 하기 좋은 게임 모음 (party-games)
+
+친구들과 숙소(펜션·MT)에서 하는 **오프라인 게임의 진행·순위 도구**.
+게임 자체는 현실에서 하고, 폰은 방 코드 접속 · 역할 뽑기 · 순위 입력 · 종합 리더보드만 담당한다.
+
+- **저장소**: https://github.com/SOHADA2/party-games (public)
+- **라이브**: https://sohada2.github.io/party-games/
+- **현재 버전**: v0.1.0 (`index.html`의 `APP_VERSION`)
+
+---
+
+## ⚠️ 새 세션 / 다른 컴퓨터에서 시작할 때
+
+1. **`git pull` 먼저.** 여러 기기에서 `main`에 직접 푸시하는 방식이라, 안 하면 충돌한다.
+2. 이 문서 아래 **「세션 이력」** 을 읽고 현재 상태·미해결 항목을 파악한다.
+3. 작업 후 **버전 올리고**(`APP_VERSION`) **세션 이력 갱신**하고 푸시한다.
+
+---
+
+## 기술 스택 / 구조
+
+- **순수 HTML/CSS/JS 단일 파일** (`index.html`) — 프레임워크·빌드 없음. aram과 같은 방식.
+- Firebase Realtime Database (CDN v11.0.0, ES module import)
+- 배포: GitHub Pages (`main` 브랜치 자동 배포, 1~3분)
+
+| 파일 | 역할 |
+|---|---|
+| `index.html` | 앱 전체 (CSS + 게임 레지스트리 + 동기화 + 렌더) |
+| `manifest.json` / `icon.svg` | PWA — 홈 화면 추가 시 앱처럼 실행 |
+| `sw.js` | 앱 셸 캐시 (network-first + 오프라인 폴백) |
+| `serve.mjs` | 로컬 테스트 서버 (배포물 아님) |
+
+---
+
+## 배포
+
+```bash
+git add -A && git commit -m "..." && git push origin main
+```
+
+→ GitHub Pages 자동 빌드. 확인:
+
+```bash
+gh run list --repo SOHADA2/party-games --limit 3
+curl -s https://sohada2.github.io/party-games/ | grep -o "APP_VERSION = '[^']*'"
+```
+
+⚠️ **캐시 주의**: `sw.js`가 앱 셸을 캐싱한다. network-first라 보통 즉시 반영되지만,
+안 바뀌면 시크릿 창 또는 새로고침 2번.
+
+---
+
+## 로컬 테스트
+
+```bash
+node serve.mjs        # http://localhost:8080
+node serve.mjs 8123   # 포트 지정
+```
+
+같은 와이파이의 폰에서는 서버가 출력하는 `http://<PC IP>:포트` 로 접속.
+⚠️ **`file://` 로 직접 열지 말 것** — 서비스워커·일부 기능이 동작하지 않는다.
+
+---
+
+## 검증 레시피 (커밋 전 필수)
+
+1. **문법**: 인라인 `<script type="module">` 추출 → `node --check`
+   ```bash
+   python -c "
+   import re,os
+   s=open('index.html',encoding='utf-8').read()
+   for i,b in enumerate(re.findall(r'<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)</script>', s)):
+       p=os.path.join(os.environ['TEMP'],'pg_%d.mjs'%i); open(p,'w',encoding='utf-8').write(b); print(p)
+   "
+   node --check "%TEMP%\pg_0.mjs"
+   ```
+   ⚠️ `node --check`는 **미선언 식별자(런타임 ReferenceError)를 못 잡는다.** 반드시 브라우저로도 띄울 것.
+
+2. **시각 검증 (이 PC = Edge 헤드리스)**
+   - 출력 png는 **Temp**에 (스크래치패드는 쓰기 거부 0x5)
+   - `serve.mjs` 띄우고 `http://localhost:PORT` 로 접속 (file:// 아님)
+   ```bash
+   msedge --headless=new --disable-gpu --no-sandbox --user-data-dir=<tmp> \
+     --virtual-time-budget=5000 --screenshot=<Temp>/x.png --window-size=420,1500 \
+     "http://localhost:8123/"
+   ```
+   ⚠️ 모바일 폭 스샷의 **우측 잘림은 헤드리스 캡처 아티팩트**(실제 오버플로 아님).
+
+3. **화면별 검증용 데모 주입**: 방을 실제로 만들지 않고 각 화면을 찍으려면,
+   `index.html` 사본(`_demo.html`, gitignore됨)을 만들어 `watchConnection(); render();` 뒤에
+   `S.room`/`S.view`를 채우는 블록을 끼워 넣고 `?demo=1&v=lobby` 식으로 연다.
+   **검증 후 사본은 삭제**.
+
+---
+
+## 동기화 모델 — 호스트가 진실원 ★핵심
+
+방 코드로 여러 폰이 접속하지만, **점수·팀·순번의 기준은 호스트(진행자) 기기**다.
+
+- **호스트**: 로컬 `S.room`을 고치고 즉시 렌더 → `pushHostState()`로 RTDB write-through
+  (실패해도 무시). 서버 스냅샷에서는 **`players`만 병합**해서 받는다(다른 사람 입장 감지).
+- **참가자**: 서버 스냅샷을 그대로 반영. 자기 `players/{pid}` 노드만 쓴다.
+
+→ **숙소 인터넷이 끊겨도 호스트 화면에서 진행·점수 입력이 그대로 되고,
+복구되면 다음 쓰기 때 권위 필드 전체를 다시 밀어 자동으로 맞춰진다.**
+
+⚠️ 이 구조 때문에 **호스트가 앱을 닫으면 기준 기기가 사라진다.** 설정 화면에 경고 있음.
+⚠️ 권위 필드(`teams`/`scores`/`rotation`/`status`)를 참가자가 쓰게 만들면 이 모델이 깨진다.
+
+---
+
+## 데이터 구조
+
+Firebase RTDB — **aram 프로젝트 재사용**(`aramchaos-ca022`), `party` 노드로 격리.
+crumble-bot이 `/crumble`을 쓰는 것과 같은 패턴. RTDB 규칙이 공개라 인증 불필요.
+
+```
+/party/rooms/{4자리코드}
+  createdAt, touchedAt, host, status
+  players/{pid}   : { name, joinedAt, seen }        // seen = 20초 하트비트, 70초 넘으면 오프라인 표시
+  teams           : { count, assign:{pid:팀번호} }
+  scores/{sid}    : { gameId, mode, order[], weight, assign, at }
+  rotation/{게임id}: [pid...]                        // 이미 술래/출제자 한 사람
+```
+
+- `order` = 순위 배열 (개인전 = pid, 팀전 = 팀 인덱스)
+- **점수는 저장하지 않고 매번 계산**(`calcPoints`) → 배점(weight)을 바꾸면 과거 기록에도 즉시 반영
+- 팀전 기록은 **그 시점 `assign`을 스냅샷으로 함께 저장** → 나중에 팀을 다시 짜도 과거 점수가 안 깨짐
+- 방 코드: 4자리 숫자. **12시간 이상 손대지 않은 방은 재사용**(`newCode()`)
+- `pid`는 세션마다 새로 발급. `localStorage.partygames_session`에 `{code,pid,isHost,name}` 저장 → 재접속 복구
+
+---
+
+## 점수 체계
+
+```
+1등 10 · 2등 7 · 3등 5 · 4등 3 · 5등 2 · 이하 1     (RANK_POINTS / rankPt)
+× 게임별 배점(weight)
+팀전 = 팀 순위 점수를 팀원 전원에게 동일 지급
+```
+
+게임마다 점수 단위가 다르므로(코인/맞춘 개수/승패) **전부 "그 판의 순위"로 환산**해서 합산한다.
+이 설계 덕분에 게임을 몇 개를 추가하든 리더보드가 안 깨진다.
+
+---
+
+## 게임 추가하기
+
+`index.html`의 **`GAMES` 배열에 항목 하나만 추가**하면 목록·규칙·역할 뽑기·순위 입력·리더보드에
+전부 자동 반영된다.
+
+```js
+{
+  id:'newgame',            // 고유 id (점수 기록의 키 — 나중에 바꾸면 과거 기록과 끊김)
+  name:'게임 이름',
+  emoji:'🎲',
+  mode:'solo' | 'team',
+  weight:1,                // 배점 배수
+  role:'술래' | null,      // 있으면 중복 방지 랜덤 뽑기 UI 표시
+  tag:'술래 1명',          // 목록에 뜨는 한 줄 설명
+  rules:`...`,             // <b> 태그 사용 가능 (raw 삽입 — 상수라 안전)
+  todo:'미확정 규칙 메모'   // (선택) 앱에 주황 경고 박스로 표시
+}
+```
+
+⚠️ `rules`는 `escapeHtml` 없이 삽입된다. **상수에만 쓰고 사용자 입력은 절대 넣지 말 것**
+(사용자 입력은 전부 `h()` 경유).
+
+---
+
+## 코드맵 (index.html)
+
+| 블록 | 내용 |
+|---|---|
+| `<style>` | CSS 변수(`--bg`/`--ac` 등) → 공통 → 화면별. 다크 + 웜 골드 톤 |
+| 설정 | `APP_VERSION` · `ROOT='party'` · `firebaseConfig` · `RANK_POINTS` · 색 팔레트 |
+| `GAMES` | **게임 레지스트리** (7종) |
+| 상태 | `S` 객체 (view/code/pid/isHost/room/draft/…) |
+| 동기화 | `pushHostState` · `subscribe` · `startHeartbeat` · `createRoom` / `joinRoom` / `rejoin` / `leaveRoom` |
+| 계산 | `calcPoints` · `playedGames` · `pickRole`(중복 방지) · `makeTeams` |
+| 렌더 | `render()` → `vHome`/`vLobby`/`vGames`/`vGame`/`vScore`/`vBoard`/`vSettings` |
+| 이벤트 | `bind()` + `act(a, dataset)` — `data-act` 위임 방식 |
+
+렌더는 `innerHTML` 통짜 교체 + `data-act` 이벤트 위임. 상태 바뀌면 `render()` 호출.
+
+---
+
+## 현재 상태
+
+**백본 완료** — 방 생성/참여(4자리 코드·링크 공유·세션 복구), 실시간 참가자 목록(오프라인 표시),
+팀 랜덤 편성, 게임 목록·규칙 전문, 역할 중복 방지 뽑기, 순위 입력, 종합 리더보드,
+PWA(홈 화면 추가·앱 셸 캐시), 화면 꺼짐 방지(Wake Lock).
+
+**게임 7종** (규칙은 전부 입력됨, 전용 도구는 미구현):
+멕썸노이즈 · 스마일~! · 몸으로/한글자로 말해요 · 상황극 마피아 · 안 봤어도 들키지마 · 연기 대결 · 컵 레이스
+
+### ⏭️ 다음 작업 (우선순위)
+
+1. **몸으로 말해요 제시어 덱 + 타이머 + 팀 점수판** — 앱 의존도 최고, 종이로 못 하는 것
+2. **멕썸노이즈 문장 자동생성** (주어/목적어/행동 조합)
+3. **연기 대결 대사×감정 랜덤 뽑기 + 탈락 투표**
+4. **안 봤어도 들키지마 지목 집계·코인 자동정산** (⚠️ 아래 미해결 규칙 확정 후)
+5. **마피아 비밀 역할 배정** — 방 코드가 있으니 각자 폰에 몰래 뿌리는 게 가능
+
+### ⚠️ 미해결 / 결정 대기
+
+- **「안 봤어도 들키지마」 규칙 미완**: 사장님이 준 원문이
+  `"게임 마지막에 문제를 풀었을 때 한 명도 맞추지 못한다면 출제자의 ___"` 에서 잘림.
+  출제자 페널티인지 보너스인지 확정 필요. 현재 앱에 `todo` 경고 박스로 노출 중.
+- **순위 입력은 호스트 전용**으로 막아둠(동시 입력 충돌 방지). 참가자도 넣게 할지 미결정.
+- **스마일~! 카메라**: 웹은 줌 배율 제어가 기기마다 안 먹으므로 "클로즈업 배율" 조건을 앱이 강제 못 한다.
+  기본 카메라 앱으로 찍고 앱은 카운터/술래 지정만 하는 현재 방식 유지 권장.
+- 실기기(폰) 실사용 미검증 — 실제 숙소에서 한 번 돌려보고 조작감·글자 크기 조정 필요.
+
+---
+
+## 세션 작업 이력
+
+> 새 세션은 이 섹션을 읽어 최근 맥락 파악. 작업 완료 후 갱신할 것.
+
+### v0.1.0 (2026-08-13) — 프로젝트 신설 + 백본 구현 + GitHub 세팅
+
+- **기획 결정**(사장님과): 앱 vs 웹 → **웹(PWA)** 확정. 이유 = 친구 5명에게 링크 하나로 3초 접속,
+  아이폰/안드 동시 지원, 심사 없이 즉시 배포, 비용 0. 대신 PWA로 "앱처럼" 보이게.
+- **접속 방식**: `AskUserQuestion`으로 **「처음부터 방 코드 접속」** 선택받음.
+  인터넷 끊김 리스크는 **호스트=진실원 + RTDB 미러** 구조로 방어(위 동기화 모델).
+- **범위**: **「백본만 먼저」** 선택받음 → 게임별 전용 도구는 미구현.
+- **구현**: `index.html` 단일 파일 + `manifest.json`/`icon.svg`/`sw.js`/`serve.mjs`/`README.md`.
+  게임 7종 규칙 전문 입력, 순위 포인트 환산(마리오카트식), 역할 중복 방지 로테이션.
+- **검증**: 인라인 스크립트·`sw.js`·`serve.mjs` `node --check` 통과 · manifest JSON 유효 ·
+  **Firebase `/party` 노드 REST 읽기/쓰기 실측 성공** ·
+  Edge 헤드리스로 6화면(홈/대기실/게임목록/게임상세/순위입력/리더보드) 렌더 확인.
+- **GitHub**: `SOHADA2/party-games` public 신설 + Pages 배포. `.gitignore`는 aram식
+  전체무시+화이트리스트가 아니라 **일반 방식**(node_modules/에디터/임시만 무시) → `git add -f` 불필요.
