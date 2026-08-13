@@ -650,6 +650,46 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .pbtn.on{border-color:var(--amber);background:rgba(255,184,77,.16)}
 .pbtn span:not(.ck){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pbtn .ck{margin-left:auto;color:var(--amber);font-weight:900;flex:none}
+.pbtn.used{opacity:.42;border-style:dashed}
+.pbtn.used .ck{color:var(--dim2)}
+
+/* ── 테이블 진행(진행자 폰 하나로 다 같이 본다) ──────────────
+   숙소에서 폰을 돌려보며 읽는 화면이라 글씨가 크고 여백이 넉넉해야 한다. */
+.howto{border-radius:var(--r-l);padding:15px 16px;margin-bottom:12px;
+  background:rgba(0,0,0,.26);border:1px solid var(--line2)}
+.howto>b:first-child{display:block;font-size:13.5px;font-weight:900;letter-spacing:-.02em;margin-bottom:8px}
+.howto div{font-size:13px;line-height:1.7;color:#CFC8E6;word-break:keep-all;margin-top:4px}
+
+.turnbig{border-radius:var(--r-l);padding:20px 18px;margin-bottom:12px;text-align:center;
+  background:linear-gradient(150deg,rgba(255,184,77,.17),var(--surf));
+  border:1px solid rgba(255,184,77,.36);box-shadow:var(--sh1),var(--lift)}
+.tb-l{font-size:11.5px;font-weight:800;letter-spacing:.14em;color:var(--amber);text-transform:uppercase}
+.tb-n{font-size:32px;font-weight:900;letter-spacing:-.05em;line-height:1.15;margin:7px 0 8px;word-break:keep-all}
+.tb-s{font-size:13px;line-height:1.6;color:#CFC8E6;word-break:keep-all}
+
+.readbox{border-radius:var(--r-l);padding:18px;margin-bottom:12px;
+  background:linear-gradient(150deg,rgba(61,224,168,.14),var(--surf));
+  border:1px solid rgba(61,224,168,.34);box-shadow:var(--sh1),var(--lift)}
+.rb-l{font-size:12.5px;font-weight:900;letter-spacing:-.01em;color:var(--mint);margin-bottom:12px}
+.rb-e{font-size:17px;font-weight:800;line-height:1.65;letter-spacing:-.03em;word-break:keep-all;
+  padding:12px 14px;border-radius:13px;background:rgba(0,0,0,.3);margin-bottom:8px;color:#EFEAFF}
+.rb-e:last-child{margin-bottom:0}
+
+.grillbox{border-radius:var(--r-l);padding:18px;margin-bottom:12px;
+  background:linear-gradient(150deg,rgba(255,92,124,.16),var(--surf));
+  border:1px solid rgba(255,92,124,.36);box-shadow:var(--sh1),var(--lift)}
+.gb-l{font-size:11.5px;font-weight:800;letter-spacing:.14em;color:var(--rose);text-transform:uppercase}
+.gb-n{font-size:21px;font-weight:900;letter-spacing:-.04em;margin:8px 0 12px;word-break:keep-all;line-height:1.3}
+.gb-q{font-size:17px;font-weight:800;line-height:1.6;letter-spacing:-.03em;word-break:keep-all;
+  padding:13px 15px;border-radius:13px;background:rgba(0,0,0,.3);color:#EFEAFF}
+.gb-s{font-size:12.5px;line-height:1.6;color:var(--dim);margin-top:10px;word-break:keep-all}
+
+.putdown{margin-top:10px;padding:11px 13px;border-radius:12px;text-align:center;
+  background:rgba(0,0,0,.3);border:1px dashed var(--line2);
+  font-size:13px;font-weight:700;color:#CFC8E6;word-break:keep-all;line-height:1.55}
+.myturn{margin-bottom:12px;padding:13px 15px;border-radius:var(--r-m);text-align:center;
+  background:linear-gradient(150deg,rgba(255,184,77,.2),var(--surf));border:1px solid rgba(255,184,77,.4);
+  font-size:15px;font-weight:900;letter-spacing:-.03em;color:var(--amber);word-break:keep-all}
 
 /* ══════════════════════════════════════════════════════════
    앱 설치 (PWA)
@@ -735,7 +775,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.10.0';
+const APP_VERSION = 'v0.11.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1659,36 +1699,43 @@ const GAMES = [
   },
   {
     id:'mafia', name:'크라임씬 — 추리 상황극', emoji:'🔎', color:'#FF5C7C', mode:'solo', weight:2,
-    role:null, tag:'각자 폰 · 아무도 탈락 안 함', tool:'mafia', toolLabel:'🔎 사건 시작하기',
+    role:null, tag:'폰은 배역 확인만 · 진행은 다 같이', tool:'mafia', toolLabel:'🔎 사건 시작하기',
     rules:
 `살인 사건이 일어났고, 이 안에 범인이 있다. 각자 배역을 맡아 연기하며 진범을 찾는 게임.
 
 <b>★ 가장 중요한 규칙</b>
 · <b>용의자는 거짓말할 수 없다.</b> 배역·동기·알리바이를 물으면 사실대로 답해야 한다.
 · <b>범인 한 명만 거짓말할 수 있다.</b> 알리바이도 동기도 지어낼 수 있다.
-· 단 <b>비밀</b>과 <b>자기가 찾은 증거</b>는 누구든 숨겨도 된다. 말할 의무는 없다.
+· 단 <b>비밀</b>은 누구든 숨겨도 된다. 말할 의무는 없다.
 · 그래서 진술이 어긋나는 지점에 범인이 있다.
+
+<b>★ 폰은 처음에만 본다</b>
+· 각자 폰으로 <b>자기 배역만</b> 확인하고 내려놓는다.
+· 그다음부터는 <b>진행자 폰 하나</b>만 본다. 조사도 심문도 지목도 거기서 한다.
+· 다 같이 둘러앉아 듣고 말하는 게 이 게임이다.
 
 <b>받는 것</b>
 · 배역과 성격 · 피해자와의 관계 · <b>동기</b>(숨기고 싶지만 사실) · 알리바이
 · 비밀(들키면 곤란한 것) · 연기 팁과 대사 — 연기가 처음이어도 읽기만 하면 된다.
 · 범인만 「내가 범인이다」와 <b>현장에 남긴 흔적</b>을 함께 받는다.
 
-<b>진행</b>
-· 사건 브리핑 → 각자 배역 확인
-· <b>조사</b> — 한 사람이 현장 한 곳씩. 찾은 증거는 <b>본인 폰에만</b> 보인다.
-· <b>토론</b> — 알아낸 것을 이야기한다. 숨겨도 되지만, 말한다면 사실대로.
-· 조사와 토론을 2~3번 반복 → 최종 변론 → 투표
+<b>진행 — 앱이 사회자를 맡는다</b>
+· <b>브리핑</b> — 진행자가 사건을 소리 내어 읽는다.
+· <b>자기소개</b> — 앱이 한 명씩 이름을 띄운다. 배역·관계·그 시각 어디 있었는지를 말한다.
+· <b>현장 조사</b> — 진행자 폰을 한 사람씩 넘겨받아 현장 한 곳을 고르고,
+  나온 증거를 <b>모두 앞에서 소리 내어 읽는다.</b> 기본 3곳까지.
+· <b>심문</b> — 앱이 「누가 누구에게 무엇을 물어라」를 정해준다. 조용한 사람도 말하게 된다.
+· <b>최종 변론</b> → <b>지목</b>
 
-<b>승패</b>
-· 최다 득표자가 범인이면 <b>용의자 승리</b>.
-· 아무도 못 맞히거나 표가 갈리면 <b>범인 승리</b>.
+<b>지목과 승패</b>
+· 진행자가 "하나, 둘, 셋!" 하면 <b>다 같이 손가락으로</b> 범인을 가리킨다.
+· 최다 지목이 범인이면 <b>용의자 승리</b>. 못 맞히거나 표가 갈리면 <b>범인 승리</b>.
 
 <b>이 게임의 장점</b>
 · 아무도 탈락하지 않는다. 끝까지 전원이 연기하고 추리한다.
 
 <b>순위</b>
-· 범인이 이기면 범인이 1등. 잡히면 범인을 지목한 사람들이 상위.`
+· 범인이 이기면 범인이 1등, 잡히면 꼴찌. 나머지는 활약한 순서로 진행자가 정한다.`
   },
   {
     id:'watch', name:'안 봤어도 들키지마', emoji:'🎬', color:'#FFB84D', mode:'solo', weight:1.5,
@@ -1953,11 +2000,8 @@ function subscribe(code){
     if (!v){ if (!S.isHost){ toast('방이 사라졌어요'); leaveRoom(); } return; }
     if (S.isHost){
       S.room.players = v.players || S.room.players || {};
-      // 참가자가 쓰는 밤 행동·투표만 서버에서 받아온다(나머지 mafia 필드는 호스트가 진실원)
-      if (S.room.mafia && v.mafia){
-        S.room.mafia.acts  = v.mafia.acts  || {};
-        S.room.mafia.votes = v.mafia.votes || {};
-      }
+      // 크라임씬은 진행자 폰 하나로 돌아간다 — 참가자는 mafia 노드에 아무것도 쓰지 않는다.
+      // 그래서 호스트는 여기서 mafia 를 되받지 않는다(호스트가 유일한 진실원).
     }else{
       S.room = {
         createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
@@ -2343,60 +2387,90 @@ function crimeBalance(pool){
   return { ok:true, lv:'good', msg:'좋은 인원이에요' };
 }
 
-/* ══ 🔎 크라임씬 진행 루프 — 앱이 진행을 전부 맡는다 ═══════════
-   브리핑 → [조사 → 토론] × N → 최종 변론 → 투표 → 판정
+/* ══ 🔎 크라임씬 진행 루프 — 앱이 사회자를 맡는다 ═══════════════
+   브리핑 → 자기소개 → 현장 조사 → 심문 → 최종 변론 → 손가락 지목 → 판정
    ⚠️ 아무도 탈락하지 않는다. 끝까지 전원이 연기하고 추리한다.
-   ⚠️ 쓰기 주체 분리(마피아 때와 동일 원칙):
-      호스트 : pushMafia()로 phase/round/result
-      참가자 : 자기 조사만 searched/{round}/{내pid}, 투표는 votes/{내pid}
+   ⚠️ 【테이블 중심】 참가자 폰은 자기 배역을 확인하는 용도뿐이다.
+      조사·심문·지목은 전부 진행자 폰 하나로, 모두가 같이 보고 들으며 진행한다.
+      (각자 폰만 들여다보면 숙소에 둘러앉은 의미가 없다 — 사장님 지시)
+      → 그래서 쓰기 주체가 단순하다: mafia 노드는 호스트만 쓴다.
+   ⚠️ 진행 상태: phase · order(발언 순서) · turn(현재 커서) ·
+      revealed[{p,by}](공개된 현장) · maxSearch · grill{q,t,hint} · tally{pid:표}
    ⚠️ 내부 노드 이름은 과거 호환 때문에 여전히 room.mafia 다(동기화 배선 공유). */
 function pushMafia(patch){
   if (!S.isHost || !S.code) return;
   update(ref(db, `${ROOT}/rooms/${S.code}/mafia`), patch).catch(()=>{});
 }
 const MF = () => S.room?.mafia || null;
-const cSuspects = () => { const m = MF(); if (!m) return [];
-  return Object.keys(m.roles || {}).filter(p => S.room.players[p]); };
-const cSearched = () => { const m = MF(); return (m?.searched || {})[m?.round] || {}; };
-const cVotes = () => MF()?.votes || {};
-/* 지금까지 이 사람이 찾아낸 증거 (라운드 전체) */
-function cMyFinds(pid){
+const cOrder    = () => (MF()?.order || []).filter(x => S.room.players[x]);
+const cRevealed = () => MF()?.revealed || [];
+const cTally    = () => MF()?.tally || {};
+const cSearchLeft = () => Math.max(0, (MF()?.maxSearch || 3) - cRevealed().length);
+/* 지금까지 공개된 증거 — 진행자 화면의 공용 게시판 */
+function cBoard(){
   const m = MF(); if (!m) return [];
-  const out = [];
-  Object.entries(m.searched || {}).forEach(([r, byPid]) => {
-    const idx = byPid[pid];
-    if (idx != null && m.places[idx]) out.push({ r:Number(r), place:m.places[idx] });
-  });
-  return out.sort((a,b) => a.r - b.r);
+  return cRevealed().map(r => ({ by:r.by, place:m.places[r.p] })).filter(x => x.place);
 }
 
-/* 참가자: 조사 / 투표 제출 */
-function cSubmitSearch(placeIdx){
-  const m = MF(); if (!m) return;
-  set(ref(db, `${ROOT}/rooms/${S.code}/mafia/searched/${m.round}/${S.pid}`), placeIdx).catch(()=>{});
-  m.searched = m.searched || {};
-  m.searched[m.round] = { ...(m.searched[m.round] || {}), [S.pid]:placeIdx };
-  SFX.ok(); vib(16); render(true);
-}
-function cSubmitVote(target){
-  const m = MF(); if (!m) return;
-  set(ref(db, `${ROOT}/rooms/${S.code}/mafia/votes/${S.pid}`), target).catch(()=>{});
-  m.votes = { ...(m.votes || {}), [S.pid]:target };
-  SFX.ok(); vib(16); render(true);
+/* 심문 지시 — 앱이 「누가 누구에게 물어라」를 정해준다.
+   조용한 사람도 말하게 만들고, 상황극에 구조를 준다. */
+const GRILL_Q = [
+  '그 시각에 정확히 어디 계셨습니까?',
+  '피해자와 마지막으로 이야기한 게 언제죠?',
+  '방금 그 말, 아까 하신 것과 다른데요?',
+  '피해자에게 원한이 있진 않았습니까?',
+  '당신을 본 사람이 있다면 누구일까요?',
+  '지금까지 나온 증거 중에 당신과 얽힌 게 있나요?',
+  '지금 숨기고 계신 게 있죠?',
+  '왜 하필 거기 계셨죠?',
+  '피해자에게 마지막으로 한 말은 무엇이었습니까?',
+  '당신이 범인이라면 어떻게 했을 것 같습니까?',
+];
+function cNextGrill(){
+  const m = MF(); const list = cOrder();
+  if (list.length < 2) return;
+  const q = list[(Math.random()*list.length)|0];
+  let t = q;
+  while (t === q) t = list[(Math.random()*list.length)|0];
+  m.grill = { q, t, hint: GRILL_Q[(Math.random()*GRILL_Q.length)|0] };
+  pushMafia({ grill:m.grill });
+  SFX.go(); vib(14); render(true);
 }
 
-/* 호스트: 최종 판정 — 최다 득표자가 범인이면 용의자 승, 동점이면 범인 승 */
+/* 진행자: 한 곳을 조사해 증거를 공개한다 — 지목된 사람이 폰을 받아 소리 내어 읽는다 */
+function cRevealPlace(idx){
+  const m = MF(); if (!m) return;
+  if (cRevealed().some(r => r.p === idx)) return toast('이미 조사한 곳이에요');
+  const list = cOrder();
+  const by = list.length ? list[(m.turn || 0) % list.length] : null;
+  m.revealed = [...cRevealed(), { p:idx, by }];
+  m.turn = (m.turn || 0) + 1;
+  pushMafia({ revealed:m.revealed, turn:m.turn });
+  S.play.reading = idx;
+  SFX.ok(); vib(20); render(true);
+}
+
+/* 진행자: 손가락 지목 집계 (다 같이 하나 둘 셋 하고 가리킨 수를 입력) */
+function cVoteAdj(pid, d){
+  const m = MF(); if (!m) return;
+  const t = { ...cTally() };
+  t[pid] = Math.max(0, (t[pid] || 0) + d);
+  m.tally = t;
+  pushMafia({ tally:t });
+  if (d > 0) SFX.ok();
+  vib(8); render(true);
+}
+
+/* 진행자: 최종 판정 — 최다 지목이 범인이면 용의자 승, 동점·무득표면 범인 승 */
 function cResolveVote(){
-  const m = MF(); const v = m.votes || {};
-  const tally = {};
-  Object.values(v).forEach(t => { if (t) tally[t] = (tally[t] || 0) + 1; });
+  const m = MF(); const t = cTally();
   let top = null, max = 0, tie = false;
-  Object.entries(tally).forEach(([p,c]) => {
-    if (c > max){ max = c; top = p; tie = false; } else if (c === max) tie = true;
+  Object.entries(t).forEach(([pid, c]) => {
+    if (c > max){ max = c; top = pid; tie = false; } else if (c === max && c > 0) tie = true;
   });
-  const accused = (!top || tie) ? null : top;
+  const accused = (!top || max === 0 || tie) ? null : top;
   const caught = !!accused && accused === m.culprit;
-  m.result = { accused, caught, tie:(!accused), tally };
+  m.result = { accused, caught, tie:(!accused), tally:t };
   m.phase = 'ended';
   pushMafia({ result:m.result, phase:'ended' });
   caught ? SFX.ok() : SFX.end();
@@ -2436,6 +2510,7 @@ function renderSig(){
       S.play.sec ?? 0, S.play.letters || 0, S.play.shots ?? 0, S.play.round ?? 0,
       (S.play.sel || []).join(''), S.play.coins || 0, S.play.rec || 0,
       S.play.sen || 0, S.play.card || 0, S.play.cnt ?? 0, S.play.sit || 0,
+      S.play.reading ?? -1,
       !!S.play.show, !!S.play.pol, !!S.play.doc, !!S.play.incHost,
       !!S.play.running, !!S.play.over, S.play.sul || 0,
       (S.play.pool || []).length, (S.play.log || []).length,
@@ -2596,9 +2671,10 @@ function vLobby(){
 
     ${S.room.mafia?.roles?.[S.pid] ? (() => {
       const _m = S.room.mafia, _ph = _m.phase || 'day';
-      const _lbl = { brief:'📋 사건 브리핑', search:'🔦 조사할 곳을 고르세요!', talk:'💬 토론 중',
-                     final:'⚖️ 최종 변론', vote:'🗳 범인을 지목하세요!', ended:'🏁 사건 종료' }[_ph] || '';
-      const _urg = _ph === 'search' || _ph === 'vote';
+      const _lbl = { brief:'📋 사건 브리핑', intro:'🙋 자기소개 중', search:'🔦 현장 조사 중',
+                     grill:'🔥 심문 중', final:'⚖️ 최종 변론', vote:'🗳 손가락으로 지목!',
+                     ended:'🏁 사건 종료' }[_ph] || '';
+      const _urg = _ph === 'intro' || _ph === 'grill';
       return `<button class="g" style="${gcVars(_urg ? '#FFB84D' : '#FF5C7C')};margin-bottom:10px" data-act="go-role">
         <div class="g-ic">🔎</div>
         <div class="g-b"><div class="g-n">${_urg ? _lbl : '내 배역 · 사건 수첩'}</div>
@@ -3188,68 +3264,147 @@ function vMafiaTool(){
       </div>`;
   }
 
-  /* ── 진행 중 ── */
+  /* ── 진행 중 ───────────────────────────────────────────────
+     ⚠️ 이 화면이 「테이블 위의 사건 파일」이다.
+        참가자 폰은 자기 배역만 보는 용도고, 조사·심문·지목은 전부 여기서 이뤄진다.
+        그래서 낭독용 글씨가 크고, 다음에 뭘 할지 버튼 하나로만 이어진다. */
   const M = S.room.mafia || { roles:{} };
   const rows = Object.entries(M.roles || {}).filter(([pid]) => S.room.players[pid]);
   const ph = M.phase || 'brief';
   const iAmPlaying = !!M.roles[S.pid];
   const canSee = p.show && !iAmPlaying;
-  const searched = cSearched(), votes = cVotes();
-  const phTag = { brief:'📋 브리핑', search:'🔦 조사', talk:'💬 토론',
-                  final:'⚖️ 최종 변론', vote:'🗳 투표', ended:'🏁 종료' }[ph] || '';
+  const order = cOrder(), board = cBoard(), left = cSearchLeft();
+  const maxS = M.maxSearch || 3;
+  const turnPid = order.length ? order[(M.turn || 0) % order.length] : null;
+  const phTag = { brief:'📋 사건 브리핑', intro:'🙋 자기소개', search:'🔦 현장 조사',
+                  grill:'🔥 심문', final:'⚖️ 최종 변론', vote:'🗳 지목', ended:'🏁 종료' }[ph] || '';
+
+  /* 공개된 증거 게시판 — 이 폰 하나만 보면 지금까지 나온 게 다 있다 */
+  const boardHtml = board.length ? `
+    <div class="sec">지금까지 나온 증거 <span class="n">${board.length}곳</span></div>
+    ${board.map(b => `<div class="card" style="padding:13px 15px;margin-bottom:8px">
+      <div style="font-weight:800;font-size:13.5px;color:var(--amber);margin-bottom:7px">
+        📍 ${h(b.place.n)} <span class="note" style="font-weight:600">— ${h(pname(b.by))}가 조사</span></div>
+      ${b.place.ev.map(e => `<div class="sumrow" style="font-size:13px;font-weight:600">${h(e)}</div>`).join('')}
+    </div>`).join('')}` : '';
 
   let ctrl = '';
+
   if (ph === 'brief'){
-    ctrl = `<div class="stack">
-        <button class="btn pri" data-act="cr-search">🔦 1차 조사 시작</button>
+    ctrl = `<div class="card">
+        <p class="story big">${h(M.brief||'')}</p>
+        <p class="story" style="margin-top:10px;color:var(--dim)">${h(M.found||'')}</p>
+        <p class="note" style="margin-top:10px">📢 여기까지 소리 내어 읽어주세요</p>
       </div>
-      <p class="note" style="text-align:center;margin-top:10px">
-        사건 개요를 읽어주고, 각자 폰에서 배역을 확인하게 하세요</p>`;
+      <div class="howto">
+        <b>이렇게 진행합니다</b>
+        <div>① 각자 폰에서 <b>자기 배역만</b> 확인하고 폰을 내려놓습니다</div>
+        <div>② 그다음부터는 <b>이 폰 하나</b>만 봅니다 — 조사도 심문도 지목도 여기서</div>
+        <div>③ 용의자는 배역·동기·알리바이에 <b>거짓말할 수 없습니다.</b> 범인만 할 수 있어요</div>
+      </div>
+      <div class="stack"><button class="btn pri" data-act="cr-intro">🙋 자기소개부터 시작</button></div>`;
   }
+
+  else if (ph === 'intro'){
+    const idx = M.turn || 0;
+    ctrl = idx >= order.length
+      ? `<div class="evbox"><div class="ev-ic">✅</div><div>
+           <div class="ev-t">모두 소개했습니다</div>
+           <div class="ev-s">이제 현장을 뒤질 차례예요</div></div></div>
+         <div class="stack"><button class="btn pri" data-act="cr-search">🔦 현장 조사 시작</button></div>`
+      : `<div class="turnbig">
+           <div class="tb-l">지금 차례 ${idx+1} / ${order.length}</div>
+           <div class="tb-n">${h(pname(order[idx]))}</div>
+           <div class="tb-s">내 배역 · 피해자와의 관계 · 그 시각 어디 있었는지를 말하세요<br>
+             <b>지어내면 안 됩니다</b> (범인만 예외)</div>
+         </div>
+         <div class="stack"><button class="btn pri" data-act="cr-intronext">다음 사람 →</button></div>`;
+  }
+
   else if (ph === 'search'){
-    const done = Object.keys(searched).filter(x => M.roles[x]).length;
-    ctrl = `<div class="card">
-        <div class="sec" style="margin:0 0 10px">조사 현황 <span class="n">${done} / ${rows.length}</span></div>
-        ${rows.map(([pid]) => `
-          <div class="tscore" style="--tc:${searched[pid]!=null?'var(--mint)':'var(--dim2)'};margin-bottom:6px">
-            <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pname(pid), 'sm')} ${h(pname(pid))}</div>
-            <span class="chip ${searched[pid]!=null?'mint':''}">${
-              searched[pid]!=null ? '✓ ' + h(M.places[searched[pid]].n) : '고르는 중'}</span>
-          </div>`).join('')}
-        <p class="note" style="margin-top:10px">찾아낸 증거는 <b>본인 폰에만</b> 보입니다. 말할지 말지는 각자 선택이에요.</p>
-      </div>
-      <div class="stack"><button class="btn pri" data-act="cr-talk">💬 토론 시작</button></div>`;
+    const reading = S.play.reading;
+    if (reading != null && (M.places||[])[reading]){
+      const pl = M.places[reading];
+      ctrl = `<div class="readbox">
+          <div class="rb-l">📍 ${h(pl.n)} — 찾은 사람이 소리 내어 읽으세요</div>
+          ${pl.ev.map(e => `<div class="rb-e">${h(e)}</div>`).join('')}
+        </div>
+        <p class="note" style="text-align:center;margin-bottom:10px">읽고 나면 다 같이 이야기해 보세요</p>
+        <div class="stack"><button class="btn pri" data-act="cr-readdone">다 읽었어요 →</button></div>`;
+    } else if (left <= 0){
+      ctrl = `<div class="evbox"><div class="ev-ic">🔎</div><div>
+          <div class="ev-t">조사를 다 썼습니다</div>
+          <div class="ev-s">못 뒤진 곳은 끝까지 알 수 없어요</div></div></div>
+        <div class="stack">
+          <button class="btn pri" data-act="cr-grill">🔥 심문 시작</button>
+          <button class="btn gh" data-act="cr-more">조사 한 번 더 (${maxS+1}회로)</button>
+        </div>`;
+    } else {
+      ctrl = `<div class="turnbig">
+          <div class="tb-l">조사 ${board.length + 1} / ${maxS} · 조사할 사람</div>
+          <div class="tb-n">${h(pname(turnPid))}</div>
+          <div class="tb-s">이 폰을 건네주세요. 한 곳을 골라 <b>모두 앞에서 소리 내어 읽습니다</b></div>
+        </div>
+        <div class="pgrid" style="margin-bottom:12px">
+          ${(M.places||[]).map((pl,k) => {
+            const used = cRevealed().some(r => r.p === k);
+            return `<button class="pbtn ${used?'used':''}" ${used?'disabled':''} data-act="cr-place" data-i="${k}">
+              <span>📍 ${h(pl.n)}</span>${used?'<span class="ck">✓</span>':''}</button>`;
+          }).join('')}
+        </div>
+        ${board.length ? '' : `<p class="note" style="text-align:center">
+          증거는 모두가 함께 듣습니다 — 숨길 수 없어요</p>`}`;
+    }
   }
-  else if (ph === 'talk'){
-    ctrl = `<div class="stack">
-        <button class="btn pri" data-act="cr-search">🔦 ${(M.round||1) + 1}차 조사</button>
-        <button class="btn" data-act="cr-final">⚖️ 최종 변론으로</button>
-      </div>
-      <p class="note" style="text-align:center;margin-top:10px">
-        보통 2~3차까지 조사하고 투표합니다 · 지금 ${M.round||1}차</p>`;
-  }
-  else if (ph === 'final'){
-    ctrl = `<div class="card"><p class="story">한 사람씩 마지막 변론을 합니다.
-        "나는 범인이 아니다"를 자기 배역으로 설득하세요.</p></div>
-      <div class="stack"><button class="btn pri" data-act="cr-vote">🗳 투표 시작</button></div>`;
-  }
-  else if (ph === 'vote'){
-    const voted = Object.keys(votes).filter(x => M.roles[x]).length;
-    const tally = {};
-    Object.values(votes).forEach(t => { if (t) tally[t] = (tally[t] || 0) + 1; });
-    const sorted = Object.entries(tally).sort((a,b) => b[1] - a[1]);
-    ctrl = `<div class="card">
-        <div class="sec" style="margin:0 0 10px">투표 <span class="n">${voted} / ${rows.length}</span></div>
-        ${sorted.length ? sorted.map(([pid,c]) => `
-          <div class="tscore" style="--tc:${avColor(pid)};margin-bottom:6px">
-            <div class="n">${h(pname(pid))}</div><div class="v">${c}<small>표</small></div>
-          </div>`).join('') : '<p class="note">아직 아무도 투표하지 않았어요</p>'}
-      </div>
+
+  else if (ph === 'grill'){
+    const g = M.grill;
+    ctrl = `${g ? `<div class="grillbox">
+          <div class="gb-l">🔥 심문</div>
+          <div class="gb-n">${h(pname(g.q))} <span style="color:var(--dim2)">➜</span> ${h(pname(g.t))}</div>
+          <div class="gb-q">"${h(g.hint)}"</div>
+          <div class="gb-s">그대로 물어도 되고 바꿔 물어도 됩니다.
+            ${h(pname(g.t))}님은 <b>사실대로</b> 답해야 해요 — 범인만 예외입니다.</div>
+        </div>` : `<div class="card"><p class="story">앱이 <b>누가 누구에게 물을지</b>를 정해줍니다.
+          조용한 사람도 자연스럽게 말하게 돼요.</p></div>`}
       <div class="stack">
-        <button class="btn pri" data-act="cr-reveal">🔍 투표 마감 — 진상 공개</button>
-        <button class="btn gh" data-act="cr-final">← 변론으로 돌아가기</button>
+        <button class="btn pri" data-act="cr-grillnext">🔥 ${g?'다음 심문':'첫 심문 뽑기'}</button>
+        ${left > 0 ? `<button class="btn" data-act="cr-search">🔦 현장 더 뒤지기 (${left}회 남음)</button>` : ''}
+        <button class="btn" data-act="cr-final">⚖️ 최종 변론으로</button>
       </div>`;
   }
+
+  else if (ph === 'final'){
+    ctrl = `<div class="card"><p class="story">한 사람씩 마지막 변론을 합니다.
+        "내가 범인이 아닌 이유"를 자기 배역으로 설득하세요.</p>
+        <p class="note" style="margin-top:9px">진행자가 순서대로 이름을 불러주세요 —
+        ${order.map(x => h(pname(x))).join(' · ')}</p></div>
+      <div class="stack"><button class="btn pri" data-act="cr-vote">🗳 다 같이 지목하기</button></div>`;
+  }
+
+  else if (ph === 'vote'){
+    const t = cTally();
+    const total = Object.values(t).reduce((a,b) => a + b, 0);
+    ctrl = `<div class="howto">
+        <b>다 같이 손가락으로 지목합니다</b>
+        <div>진행자가 <b>"하나, 둘, 셋!"</b> 하면 전원이 동시에 범인이라 생각하는 사람을 가리킵니다</div>
+        <div>그다음 아래에 <b>각자 받은 손가락 수</b>를 입력해 주세요</div>
+      </div>
+      ${rows.map(([pid]) => `
+        <div class="tscore" style="--tc:${avColor(pid)}">
+          <div class="n" style="display:flex;align-items:center;gap:9px">${av(pid, pname(pid), 'sm')} ${h(pname(pid))}</div>
+          <button class="stepbtn" data-act="cr-vadj" data-pid="${pid}" data-v="-1">−</button>
+          <div class="v" style="min-width:32px;text-align:center">${t[pid]||0}</div>
+          <button class="stepbtn" data-act="cr-vadj" data-pid="${pid}" data-v="1">＋</button>
+        </div>`).join('')}
+      <div style="height:14px"></div>
+      <div class="stack">
+        <button class="btn pri" data-act="cr-reveal" ${total?'':'disabled'}>
+          ${total ? '🔍 진상 공개' : '지목 수를 입력해 주세요'}</button>
+        <button class="btn gh" data-act="cr-final">← 변론으로</button>
+      </div>`;
+  }
+
   else if (ph === 'ended'){
     const r = M.result || {};
     const cul = M.culprit;
@@ -3274,6 +3429,7 @@ function vMafiaTool(){
             <span class="chip ${pid===cul?'rose':'mint'}">${pid===cul?'🔪 범인':'🕊 무고'}</span>
           </div>`).join('')}
       </div>
+      ${boardHtml}
       <div class="stack">
         <button class="btn pri" data-act="cr-score">🏆 순위 입력하기</button>
         <button class="btn" data-act="mf-redeal">🔄 새 사건 시작</button>
@@ -3287,15 +3443,10 @@ function vMafiaTool(){
       <div class="gh-n" style="font-size:19px;padding-right:0">${h(M.sit||'')}</div>
       <div class="gh-m">
         <span class="chip rose">${phTag}</span>
-        <span class="chip">${M.round||1}차</span>
         <span class="chip">용의자 ${rows.length}명</span>
+        ${ph!=='brief'&&ph!=='ended' ? `<span class="chip">조사 ${board.length}/${maxS}</span>` : ''}
       </div>
     </div>
-
-    ${ph === 'brief' ? `<div class="card">
-      <p class="story big">${h(M.brief||'')}</p>
-      <p class="story" style="margin-top:10px;color:var(--dim)">${h(M.found||'')}</p>
-      <p class="note" style="margin-top:10px">📢 소리 내어 읽어주세요</p></div>` : ''}
 
     ${ph !== 'ended' ? `<div class="truthbox">
       <div class="th">✋ 용의자는 거짓말할 수 없습니다</div>
@@ -3305,13 +3456,15 @@ function vMafiaTool(){
 
     ${ctrl}
 
+    ${ph !== 'ended' && ph !== 'brief' && S.play.reading == null ? boardHtml : ''}
+
     ${ph !== 'ended' ? `
-      <div class="sec">현장 <span class="n">${(M.places||[]).length}곳</span></div>
+      <div class="sec">참고</div>
       ${iAmPlaying
         ? `<div class="balbox warn" style="margin-bottom:10px"><b>🔒 정답 보기 잠김</b>
-             <span>당신도 용의자라 범인과 증거를 볼 수 없어요</span></div>`
+             <span>당신도 용의자라 범인과 아직 안 뒤진 현장을 볼 수 없어요</span></div>`
         : `<button class="btn gh sm" data-act="mf-show" style="width:100%;margin-bottom:10px">
-             ${p.show?'🙈 정답 가리기':'👁 범인·증거 보기 (구경 중이라 가능)'}</button>`}
+             ${p.show?'🙈 정답 가리기':'👁 범인·전체 현장 보기 (구경 중이라 가능)'}</button>`}
       ${canSee ? `<div class="card">
         <div class="balbox no"><b>🔪 범인 — ${h(pname(M.culprit))}</b>
           <span>${h(M.roles[M.culprit]?.char||'')} · ${h(M.roles[M.culprit]?.mot||'')}</span></div>
@@ -3326,27 +3479,17 @@ function vMafiaTool(){
       </div>` : ''}`;
 }
 
-/* ── 참가자 행동 패널 — 조사 / 투표 ─────────────────────────
-   ⚠️ 항상 보이는 영역은 전원 동일해야 한다(정체 누수 방지).
-      범인 여부는 아래 홀드 박스 안에서만 드러난다. */
+
+/* ── 참가자 안내 패널 ───────────────────────────────────────
+   ⚠️ 참가자 폰은 「내 배역을 확인하는 곳」일 뿐이다.
+      조사·심문·지목은 전부 진행자 폰 하나로 테이블에서 이뤄진다 —
+      각자 폰만 들여다보면 숙소에 모여 앉은 의미가 없기 때문.
+      그래서 여기엔 누르는 버튼이 없고, 지금 뭘 하면 되는지만 알려준다.
+   ⚠️ 항상 보이는 영역은 전원 동일해야 한다(정체 누수 방지). */
 function mfActionPanel(m, my){
   const ph = m.phase || 'brief';
-  const suspects = cSuspects();
-  const searched = cSearched(), votes = cVotes();
-  const finds = cMyFinds(S.pid);
-
   const box = (cls, head, body) =>
     `<div class="actbox ${cls}"><div class="ah">${head}</div>${body}</div>`;
-
-  /* 지금까지 내가 찾은 증거 — 단계와 무관하게 계속 보여준다 */
-  const findList = finds.length ? `<div class="infoblk" style="margin-bottom:12px">
-      <div class="hd">🔦 내가 찾아낸 증거 — 말할지는 내 선택</div>
-      ${finds.map(f => `<div style="margin-bottom:9px">
-        <div style="font-weight:800;font-size:13px;color:var(--amber)">${f.r}차 · 📍 ${h(f.place.n)}</div>
-        ${f.place.ev.map(e => `<div class="astep" style="margin:5px 0 0">· ${h(e)}</div>`).join('')}
-      </div>`).join('')}
-      <p class="note" style="margin-top:6px">숨겨도 반칙이 아닙니다. 단 <b>말한다면 사실대로</b>.</p>
-    </div>` : '';
 
   if (ph === 'ended'){
     const r = m.result || {};
@@ -3358,42 +3501,36 @@ function mfActionPanel(m, my){
        <p class="astep" style="margin-bottom:0">진범은 <b>${h(pname(m.culprit))}</b> — ${h(m.roles[m.culprit]?.char||'')}</p>`);
   }
 
-  if (ph === 'brief') return findList + box('', '📋 사건 브리핑',
-    `<p class="astep" style="margin-bottom:0">진행자가 사건을 읽어줍니다.
-      그동안 아래에서 내 배역·동기·알리바이를 확인하세요.</p>`);
+  /* 내 차례 알림 — 자기소개·조사는 한 명씩 도니 폰에도 띄워준다 */
+  const order = cOrder();
+  const cur = order.length ? order[(m.turn || 0) % order.length] : null;
+  const myTurn =
+    (ph === 'intro' && (m.turn || 0) < order.length && order[m.turn || 0] === S.pid) ||
+    (ph === 'search' && cur === S.pid && cSearchLeft() > 0);
+  const turnHtml = myTurn
+    ? `<div class="myturn">🙋 지금 내 차례예요 — ${ph==='intro'?'자기소개를 하세요':'진행자 폰을 받아 한 곳을 고르세요'}</div>`
+    : '';
 
-  if (ph === 'search'){
-    const mine = searched[S.pid];
-    return findList + box('cop', `🔦 ${m.round||1}차 조사 — 어디를 살펴볼까요?`,
-      (mine != null
-        ? `<p class="astep">✓ <b>${h(m.places[mine].n)}</b>을(를) 조사했습니다. 위에서 결과를 확인하세요.</p>`
-        : `<p class="astep">한 곳만 고를 수 있습니다. 찾은 증거는 나만 보여요.</p>`)
-      + `<div class="pgrid">${(m.places||[]).map((pl,i) => `
-          <button class="pbtn ${mine===i?'on':''}" data-act="cr-search-pick" data-i="${i}">
-            <span>📍 ${h(pl.n)}</span>${mine===i?'<span class="ck">✓</span>':''}
-          </button>`).join('')}</div>`);
-  }
+  const guide = {
+    brief:['📋 사건 브리핑',
+      '진행자가 사건을 읽어줍니다. 그동안 아래에서 <b>내 배역·동기·알리바이</b>를 외워두세요.'],
+    intro:['🙋 자기소개',
+      '차례가 오면 <b>내 배역 · 피해자와의 관계 · 그 시각 어디 있었는지</b>를 말합니다. 아래에 다 적혀 있어요.'],
+    search:['🔦 현장 조사',
+      '진행자 폰이 한 사람씩 돌아갑니다. 내 차례가 오면 한 곳을 골라 <b>모두 앞에서 소리 내어</b> 읽으세요.'],
+    grill:['🔥 심문',
+      '앱이 <b>누가 누구에게 물을지</b>를 정해줍니다. 지목되면 <b>사실대로</b> 답해야 해요 — 비밀만은 숨겨도 됩니다.'],
+    final:['⚖️ 최종 변론',
+      '내가 범인이 아닌 이유를 <b>자기 배역으로</b> 설득하세요.'],
+    vote:['🗳 지목',
+      '진행자가 "하나, 둘, 셋!" 하면 <b>손가락으로 범인을 가리키세요.</b> 폰으로 찍는 게 아닙니다.'],
+  }[ph] || ['🔎 진행 중', '진행자 화면을 보세요.'];
 
-  if (ph === 'talk') return findList + box('', '💬 토론 시간',
-    `<p class="astep" style="margin-bottom:0">${(m.round||1) === 1
-      ? '한 사람씩 배역·동기·알리바이를 밝히세요. 그다음 찾은 증거를 이야기합니다.'
-      : '알아낸 증거를 맞춰보고 어긋나는 진술을 찾으세요.'}</p>`);
-
-  if (ph === 'final') return findList + box('vote', '⚖️ 최종 변론',
-    `<p class="astep" style="margin-bottom:0">내가 범인이 아닌 이유를 자기 배역으로 설득하세요.</p>`);
-
-  if (ph === 'vote'){
-    const mine = votes[S.pid];
-    return findList + box('vote', '🗳 범인은 누구일까요?',
-      (mine ? `<p class="astep">✓ <b>${h(pname(mine))}</b>님을 지목했습니다. 바꾸려면 다시 고르세요.</p>` : '')
-      + `<div class="pgrid">${suspects.filter(x => x !== S.pid).map(pid => `
-          <button class="pbtn ${String(mine)===pid?'on':''}" data-act="cr-vote-pick" data-pid="${pid}">
-            ${av(pid, pname(pid), 'sm')}<span>${h(pname(pid))}</span>
-            ${String(mine)===pid?'<span class="ck">✓</span>':''}
-          </button>`).join('')}</div>`);
-  }
-  return findList;
+  return turnHtml + box(ph === 'vote' ? 'vote' : (ph === 'grill' ? 'lie' : ''), guide[0],
+    `<p class="astep" style="margin-bottom:0">${guide[1]}</p>
+     <div class="putdown">📵 확인했으면 폰을 내려놓고 <b>진행자 화면</b>을 보세요</div>`);
 }
+
 
 /* ── 내 역할 (참가자 각자 폰) ── */
 function vRole(){
@@ -3420,7 +3557,8 @@ function vRole(){
     <div class="truthbox">
       <div class="th">✋ 배역·동기·알리바이는 사실대로</div>
       <p>단 <b style="color:var(--rose)">범인 한 명만 거짓말을 할 수 있습니다.</b>
-      아래 <b>비밀</b>과 <b>찾은 증거</b>는 누구든 숨겨도 돼요 — 말할 의무는 없습니다.</p>
+      아래 <b>비밀</b>만은 누구든 숨겨도 돼요 — 말할 의무는 없습니다.
+      현장에서 나온 증거는 <b>모두가 함께 듣습니다.</b></p>
     </div>
 
     <div class="sec">내 배역 <span class="n">공개해도 됨</span></div>
@@ -3478,8 +3616,8 @@ function vRole(){
           font-size:13px;line-height:1.6;font-weight:800;word-break:keep-all;
           color:${iCulprit?'#FFB0BC':'#8FEFC6'}">
           ${iCulprit
-            ? '🎭 당신만 거짓말할 수 있습니다.<br><span style="font-weight:600;color:#DAD4EE">알리바이도 동기도 지어내도 됩니다. 증거를 찾으면 감춰도 됩니다.</span>'
-            : '✋ 당신은 거짓말할 수 없습니다.<br><span style="font-weight:600;color:#DAD4EE">배역·동기·알리바이는 반드시 사실대로. 비밀과 찾은 증거만 숨길 수 있습니다.</span>'}
+            ? '🎭 당신만 거짓말할 수 있습니다.<br><span style="font-weight:600;color:#DAD4EE">알리바이도 동기도 지어내도 됩니다. 증거가 나와도 태연하게 넘기세요.</span>'
+            : '✋ 당신은 거짓말할 수 없습니다.<br><span style="font-weight:600;color:#DAD4EE">배역·동기·알리바이는 반드시 사실대로. 비밀만 숨길 수 있습니다.</span>'}
         </div>
       </div>
     </div>
@@ -4001,51 +4139,75 @@ async function act(a, d){
     // 범인의 흔적을 현장 한 곳에 몰래 끼워 넣는다
     const places = cs.places.map(pl => ({ n:pl.n, ev:[...pl.ev] }));
     const hide = (Math.random() * places.length) | 0;
-    if (roles[culprit].trace) places[hide].ev.push(roles[culprit].trace);
-    S.room.mafia = { round:1, phase:'brief', sit:cs.victim ? p.sit : p.sit,
+    if (roles[culprit].trace){
+      const ev = places[hide].ev;
+      ev.splice((Math.random() * (ev.length + 1)) | 0, 0, roles[culprit].trace);
+    }
+    // ⚠️ order 에 pool 을 그대로 쓰면 안 된다 — pool[0]이 범인이라 순서가 정답을 흘린다.
+    const order = shuffle(pool.slice());
+    S.room.mafia = { phase:'brief', sit:p.sit,
       victim:cs.victim, brief:cs.brief, found:cs.found,
-      roles, culprit, places, searched:{}, votes:{}, result:null };
+      roles, culprit, places,
+      order, turn:0, revealed:[], maxSearch:3, grill:null, tally:{}, result:null };
     set(ref(db, `${ROOT}/rooms/${S.code}/mafia`), S.room.mafia).catch(()=>{});
     p.phase = 'dealt'; p.show = false;
     confetti(50); render(true); break;
   }
   case 'mf-show': S.play.show = !S.play.show; render(true); break;
 
-  /* 진행 컨트롤 (진행자) */
-  case 'cr-search': {
+  /* 진행 컨트롤 (진행자) — 테이블에서 진행자 폰 하나로 돌린다 */
+  case 'cr-intro': {
     const M = S.room.mafia;
-    // 브리핑 직후면 1차, 토론 중이면 다음 차수
-    if (M.phase === 'talk') M.round = (M.round || 1) + 1;
-    M.phase = 'search';
-    pushMafia({ phase:'search', round:M.round });
-    SFX.go(); render(true); break;
+    M.phase = 'intro'; M.turn = 0;
+    pushMafia({ phase:'intro', turn:0 }); SFX.go(); render(true); break;
   }
-  case 'cr-talk':  S.room.mafia.phase = 'talk';  pushMafia({ phase:'talk' });  SFX.go();  render(true); break;
+  case 'cr-intronext': {
+    const M = S.room.mafia;
+    M.turn = (M.turn || 0) + 1;
+    pushMafia({ turn:M.turn }); SFX.ok(); vib(12); render(true); break;
+  }
+  case 'cr-search': {
+    // 자기소개가 끝나면 turn === 인원수 → order[turn % n] 이 자연히 첫 사람으로 돌아온다.
+    // 심문 중 「더 뒤지기」로 돌아올 때도 순서가 이어져야 하므로 turn 은 건드리지 않는다.
+    const M = S.room.mafia;
+    M.phase = 'search'; S.play.reading = null;
+    pushMafia({ phase:'search' }); SFX.go(); render(true); break;
+  }
+  case 'cr-place': cRevealPlace(Number(d.i)); break;
+  case 'cr-readdone': S.play.reading = null; render(true); break;
+  case 'cr-more': {
+    const M = S.room.mafia;
+    M.maxSearch = (M.maxSearch || 3) + 1;
+    pushMafia({ maxSearch:M.maxSearch }); toast('조사 기회가 하나 늘었어요'); render(true); break;
+  }
+  case 'cr-grill': {
+    const M = S.room.mafia;
+    M.phase = 'grill'; S.play.reading = null;
+    pushMafia({ phase:'grill' }); SFX.go(); render(true); break;
+  }
+  case 'cr-grillnext': cNextGrill(); break;
   case 'cr-final': S.room.mafia.phase = 'final'; pushMafia({ phase:'final' }); render(true); break;
   case 'cr-vote':  S.room.mafia.phase = 'vote';  pushMafia({ phase:'vote' });  SFX.go();  render(true); break;
+  case 'cr-vadj':  cVoteAdj(d.pid, Number(d.v)); break;
   case 'cr-reveal': cResolveVote(); break;
   case 'cr-score': {
+    /* 손가락으로 지목하니 「누가 누구를 찍었는지」는 남지 않는다.
+       그래서 범인 자리만 확정하고, 나머지는 의심 많이 받은 순으로 깔아둔 뒤
+       순위 화면에서 진행자가 손으로 올리고 내린다(활약은 사람이 보고 정하는 게 맞다). */
     const M = S.room.mafia, r = M.result || {};
-    const cul = M.culprit;
-    // 범인이 이기면 범인이 1등, 잡히면 범인을 지목한 사람들이 위로
-    const voters = Object.entries(M.votes || {});
-    const right = voters.filter(([, t]) => t === cul).map(([v]) => v);
-    const wrong = voters.filter(([, t]) => t !== cul).map(([v]) => v);
-    const rest  = Object.keys(M.roles).filter(x => S.room.players[x]
-      && x !== cul && !right.includes(x) && !wrong.includes(x));
-    const order = r.caught ? [...right, ...rest, ...wrong, cul]
-                           : [cul, ...right, ...rest, ...wrong];
+    const cul = M.culprit, t = cTally();
+    const rest = Object.keys(M.roles)
+      .filter(x => S.room.players[x] && x !== cul)
+      .sort((a,b) => (t[b]||0) - (t[a]||0));
+    const ord = r.caught ? [...rest, cul] : [cul, ...rest];
     stopPlayTimer(); S.play = null;
-    S.draft = { gameId:S.gameId, mode:'solo', order:order.filter(x => S.room.players[x]),
+    S.draft = { gameId:S.gameId, mode:'solo', order:ord.filter(x => S.room.players[x]),
       weight:G(S.gameId)?.weight ?? 1, assign:{} };
     go('score');
-    toast(r.caught ? '범인을 맞춘 사람이 위로 정렬됐어요' : '범인이 1등입니다');
+    toast(r.caught ? '범인이 꼴찌예요 — 활약한 순서로 올려주세요' : '범인이 1등입니다 — 나머지는 조정하세요');
     break;
   }
 
-  /* 참가자 */
-  case 'cr-search-pick': cSubmitSearch(Number(d.i)); break;
-  case 'cr-vote-pick':   cSubmitVote(d.pid); break;
   case 'mf-redeal': {
     if (!confirm('역할을 새로 나눠줄까요?')) return;
     S.play.phase = 'setup'; render(true); break;
