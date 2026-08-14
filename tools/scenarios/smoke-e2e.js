@@ -343,12 +343,19 @@ if (new URLSearchParams(location.search).has('demo')){
     /* 모아둔 값을 골라 배분 — 도로 새 말, 윷으로 그 말 */
     act('yut-use', { i:'1' });                        // 도(1칸) 선택
     act('yut-move', { pos:'-1' });                    // 집에서 새 말
-    ck('★고른 값으로 움직인다 (도 → 1번 칸)', m().pieces[0].filter(x => x === 1).length === 4);
+    // ⚠️ 예전 검사는 4개가 한꺼번에 나오는 걸 「업기」라며 정상 취급했다 — 버그를 못 박은 검사였다.
+    //    집의 말은 하나씩만 나온다. 업기는 판 위에서 같은 칸에 겹쳤을 때만.
+    ck('★★새 말은 한 번에 하나만 나온다',
+      m().pieces[0].filter(x => x === 1).length === 1
+      && m().pieces[0].filter(x => x === -1).length === 3);
     ck('  쓴 값은 사라진다', m().pending.length === 1 && m().pending[0].n === '윷');
     ck('  남은 값이 있으면 턴이 안 넘어간다', m().turn === 0);
+    S.room.yut.pieces[0] = [1, 1, -1, -1];            // 판 위 같은 칸에 두 개(업힌 상태)
     act('yut-use', { i:'0' });
     act('yut-move', { pos:'1' });
-    ck('★같은 칸 말은 업고 함께 간다', m().pieces[0].every(x => x === 5));
+    ck('★판 위 같은 칸 말은 업고 함께 간다',
+      m().pieces[0].filter(x => x === 5).length === 2
+      && m().pieces[0].filter(x => x === -1).length === 2);
     ck('★다 쓰면 턴이 넘어간다', m().turn === 1 && m().pending.length === 0 && m().canThrow === true);
 
     /* ── 잡기 → 한 번 더 던진다 ── */
@@ -377,6 +384,12 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('★상대팀이 「잠시!」를 걸 수 있다', !!m().halt && m().halt.team === 0);
     S.pid = mine0; act('yut-halt', {}); S.pid = meWas;
     ck('★우리 팀은 「잠시!」를 못 건다 (이미 걸린 것만 남음)', m().halt.by === other);
+    // 판정 중에는 판이 잠긴다 — 핸들러와 화면 양쪽 다
+    S.room.yut.pending = [{ n:'도', v:1 }]; S.play.useIdx = 0;
+    act('yut-move', { pos:'3' });
+    ck('★★잠시! 판정 중에는 말을 못 움직인다', m().pieces[0].includes(3));
+    ck('  판정 화면의 판에 누르는 셀이 없다', !view('play').includes('data-act="yut-move"'));
+    S.room.yut.pending = [];
     act('yut-halt-ok', {});
     ck('★★인정하면 「그 팀이 고르는」 단계로 간다', !!m().pick && m().pick.team === 0);
     ck('  아직 아무 말도 안 빠졌다', m().pieces[0].filter(x => x === -1).length === 2);

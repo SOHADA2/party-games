@@ -960,7 +960,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.24.0';
+const APP_VERSION = 'v0.24.1';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1501,12 +1501,17 @@ function yutApplyThrow(r, byPid){
 /* 모아둔 값 중 하나(idx)로 그 칸(pos)의 말을 옮긴다. 같은 칸 우리 말은 업고 함께 간다. */
 function yutMoveFrom(pos, idx){
   const m = YT(); if (!m || m.phase !== 'play') return;
+  if (m.halt) return toast('✋ 잠시! 판정이 먼저예요');
   if (m.pick) return toast('되돌릴 말을 먼저 고르세요');
   const use = (m.pending || [])[idx];
   if (!use) return toast('쓸 윷 결과를 먼저 고르세요');
   const t = m.turn;
-  const mine = m.pieces[t].map((p, k) => ({ p, k })).filter(x => x.p === pos);
+  let mine = m.pieces[t].map((p, k) => ({ p, k })).filter(x => x.p === pos);
   if (!mine.length) return toast('그 칸에 우리 말이 없어요');
+  // ⚠️ 집(-1)의 말은 **한 번에 하나만** 나온다. 필터를 그대로 쓰면 집에 있는 말이
+  //    전부 잡혀서 첫 도에 4개가 통째로 나와 업힌 채 다닌다 — 잡히면 전멸이고
+  //    말을 나눠 쓰는 윷놀이의 핵심이 사라진다(리뷰에서 잡음). 업기는 **판 위에서만**.
+  if (pos === -1) mine = mine.slice(0, 1);
 
   const dest = yutMove(pos, use.v);
   let caught = 0;
@@ -3167,7 +3172,10 @@ function vYut(){
 
   /* 집을 수 있는 칸 — 평소엔 이동, 벌칙 중엔 되돌릴 말 고르기 */
   const picking = !!m.pick;
-  const hot = picking
+  // ⚠️ 잠시! 판정 화면도 이 board 를 그대로 그린다 — hot 을 비우지 않으면
+  //    판정 중에 초록 셀이 그대로 눌린다(핸들러 가드와 이중 방어).
+  const hot = m.halt ? []
+    : picking
     ? [...new Set(m.pieces[m.pick.team].filter(x => x >= 0 && x !== YUT_HOME))]
     : (use ? [...new Set(m.pieces[t].filter(x => x >= 0 && x !== YUT_HOME))] : []);
   const hotAct = picking ? 'yut-pickback' : 'yut-move';
