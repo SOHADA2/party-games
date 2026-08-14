@@ -32,12 +32,40 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('전 게임 필수 필드', GAMES.every(g => g.id && g.name && g.emoji && g.color && g.mode && g.rules));
     ck('전 게임 진행 도구 보유', GAMES.every(g => g.tool));
     ck('미완 규칙 경고(todo) 없음', GAMES.every(g => !g.todo));
+    /* ★ 설명 구조 — 하나라도 비면 상세 화면이 휑하게 뜬다 */
+    ck('★전 게임에 한 줄 요약·준비물·인원·시간',
+      GAMES.every(g => g.line && g.prep && g.minP > 0 && g.mins));
+    ck('★전 게임에 진행 단계(3개 이상)와 승패 한 줄',
+      GAMES.every(g => Array.isArray(g.how) && g.how.length >= 3 && g.win));
+    ck('  한 줄 요약이 실제로 짧다(45자 이내)', GAMES.every(g => g.line.length <= 45));
+    ck('  진행 단계도 한 줄씩(45자 이내)',
+      GAMES.every(g => g.how.every(x => x.length <= 45)));
 
     /* ── 1) 목록·상세 화면이 전 게임에서 안 죽는지 ── */
     ck('게임 목록 렌더', view('games').includes(GAMES[0].name));
-    let detailOk = true;
-    for (const g of GAMES){ S.gameId = g.id; if (!view('game').includes('규칙')) detailOk = false; }
+    let detailOk = true, structOk = true;
+    for (const g of GAMES){
+      S.gameId = g.id; const v = view('game');
+      if (!v.includes('규칙')) detailOk = false;
+      // 구조화된 설명이 실제로 화면에 나오는지 — 필드만 있고 안 그리면 소용없다
+      if (!v.includes('이렇게 진행합니다') || !v.includes(g.line) || !v.includes(g.win)
+          || !v.includes(g.minP + '명 이상')) structOk = false;
+    }
     ck('전 게임 상세 렌더', detailOk);
+    ck('★상세 화면이 구조화된 설명을 그린다', structOk);
+    ck('  자세한 규칙은 접혀 있다', view('game').includes('<details'));
+
+    /* minP 일원화 — 화면 표시와 실제 시작 조건이 같은 값이어야 한다 */
+    {
+      const g3 = GAMES.find(x => x.minP >= 3);
+      const keep = { ...S.room.players };
+      // minP 미만이 되도록 줄인다(minP 이상이면 당연히 통과라 시험이 안 된다)
+      Object.keys(S.room.players).filter(x => x !== 'h1')
+        .slice(g3.minP - 2).forEach(x => delete S.room.players[x]);
+      S.gameId = g3.id; go('game'); act('tool-start', {});
+      ck('★인원이 모자라면 도구가 안 열린다 (minP 한 곳에서 읽는다)', S.play === null);
+      S.room.players = keep;
+    }
 
     /* ── 2) 몸으로 말해요 (deck · 팀전) ── */
     S.room.teams = { count:2, assign:Object.fromEntries(P.map((p,i) => [p, i % 2])) };
@@ -108,6 +136,69 @@ if (new URLSearchParams(location.search).has('demo')){
     act('sm-done', {}); act('sm-score', {});
     ck('smile 순위 화면', S.view === 'score' && S.play === null);
     act('score-cancel', {});
+
+    /* ── 5.3) ★ 중복 방지 — 판을 거듭해도 같은 제시어가 안 나온다 ──
+       ⚠️ 셋을 따로 본다: ① 판 사이 ② 같은 판의 팀 사이 ③ 다 쓰면 자동 순환 */
+    S.room.used = {};
+    S.gameId = 'chosung'; go('game'); act('tool-start', {});
+    S.play.cats = ['movie']; S.play.n = 10;
+    act('cho-start', {});
+    const r1 = S.play.deck.slice(0, 10).map(x => x.w);
+    for (let i = 0; i < 10; i++) act('cho-hit', { pid:P[0] });
+    ck('판이 끝나면 나온 문제가 기록된다', usedWords('chosung').size === 10);
+    act('cho-save', {}); act('score-cancel', {});
+
+    act('tool-start', {}); S.play.cats = ['movie']; S.play.n = 10;
+    act('cho-start', {});
+    // ⚠️ 뽑힌 10개만 비교하면 안 된다 — 87개 풀에서는 필터가 없어도 27% 확률로
+    //    우연히 안 겹쳐서 **버그가 있는데 통과**한다(실제로 그렇게 헛통과했다).
+    //    덱 전체가 걸러졌는지를 본다.
+    ck('★★2판째 덱에 1판 문제가 하나도 없다',
+      S.play.deck.length > 0 && !S.play.deck.some(x => r1.includes(x.w)));
+    ck('  덱 크기도 그만큼 줄었다',
+      S.play.deck.length === choWords(['movie']).length - r1.length);
+
+    /* 초기화 버튼 — 「다음에 다시 시작하는」 용도 */
+    act('used-reset', {});
+    ck('★초기화하면 기록이 지워진다', usedWords('chosung').size === 0);
+    act('tool-start', {}); S.play.cats = ['movie']; S.play.n = 10;
+    act('cho-start', {});
+    ck('  초기화 후에는 전체 풀에서 다시 낸다',
+      S.play.deck.length === choWords(['movie']).length);
+    act('pl-quit', {});
+
+    /* ③ 남은 게 모자라면 자동으로 비우고 처음부터 (멈추면 안 된다) */
+    S.room.used = { chosung: choWords(['movie']).map(x => x.w).slice(0, -2) };
+    S.gameId = 'chosung'; go('game'); act('tool-start', {});
+    S.play.cats = ['movie']; S.play.n = 10;
+    act('cho-start', {});
+    ck('★모자라면 자동으로 한 바퀴 돈다', S.play.wrapped === true);
+    ck('  자동 순환 시 기록이 비워진다', usedWords('chosung').size === 0);
+    ck('  그래도 문제는 정상 출제된다', !!S.play.cur?.w && S.play.deck.length >= 10);
+    act('pl-quit', {});
+    S.room.used = {};
+
+    /* ② 같은 판에서 팀끼리 제시어가 겹치면 안 된다 (몸으로 말해요) */
+    makeTeams(2);
+    S.gameId = 'body'; go('game'); act('tool-start', {});
+    S.play.cats = ['movie']; S.play.sec = 60;
+    act('pl-start', {});
+    const deckStart = S.play.deck.map(x => x.w);
+    act('pl-begin', {});
+    const t1 = []; for (let i = 0; i < 5; i++){ t1.push(S.play.cur.w); act('pl-mark', { v:'1' }); }
+    act('pl-stop', {}); act('pl-next', {});
+    act('pl-begin', {});
+    const t2 = []; for (let i = 0; i < 5; i++){ t2.push(S.play.cur.w); act('pl-mark', { v:'1' }); }
+    act('pl-stop', {});
+    // ⚠️ 5개씩만 비교하면 우연히 안 겹쳐 통과한다 → 「덱을 앞에서부터 이어 썼는가」로 본다.
+    ck('★★같은 판에서 팀끼리 제시어가 안 겹친다',
+      new Set([...t1, ...t2]).size === t1.length + t2.length);
+    ck('★덱을 이어서 쓴다(팀마다 되감기지 않는다)',
+      t1.concat(t2).join('|') === deckStart.slice(0, 10).join('|'));
+    act('pl-next', {});
+    ck('deck 판 종료 시에도 기록된다', usedWords('body').size >= 10);
+    act('pl-save', {}); act('score-cancel', {});
+    S.room.used = {};
 
     /* ── 5.4) 덱 카테고리의 use 태그 ──
        ⚠️ 두 게임이 같은 덱을 쓰지만 요구가 정반대다. 태그가 새면
