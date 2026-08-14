@@ -300,6 +300,99 @@ if (new URLSearchParams(location.search).has('demo')){
     S.room.used = {};
     }
 
+    /* ── 5.45) 🎲 훈민정음 윷놀이 ──
+       ⚠️ v0.13.0 이후 처음으로 **참가자가 방 노드에 쓰는** 게임이다.
+          쓰기 주체가 섞이면 던진 결과가 조용히 사라진다(v0.8.0 마피아 때 겪음). */
+    {
+    makeTeams(2);
+    S.gameId = 'yut'; go('game'); act('tool-start', {});
+    ck('yut 진입', S.play?.kind === 'yut');
+    act('yut-start', {});
+    const m = () => S.room.yut;
+    ck('★판이 깔린다', m().phase === 'play' && m().pieces.length === 2);
+    ck('  팀마다 말 4개가 대기에서 시작', m().pieces.every(a => a.length === 4 && a.every(x => x === -1)));
+
+    /* 판 규칙 — 지름길은 모서리에 「정확히 멈춘 뒤」에만 */
+    ck('★바깥 한 바퀴가 20칸', (() => { let p = 0, n = 0, f = true;
+      while (p !== YUT_HOME && n < 60){ p = yutStep(p, f); f = false; n++; } return n === 20; })());
+    ck('★모서리를 지나가면 지름길을 안 탄다', yutMove(4, 2) === 6);
+    ck('★모서리에 멈췄다 출발하면 탄다', yutMove(5, 1) === 21);
+    ck('  중앙에서는 도착 쪽으로 나간다', yutMove(23, 3) === YUT_HOME);
+    ck('  완주를 넘겨도 완주로 처리', yutMove(18, 5) === YUT_HOME);
+
+    /* 던지기 → 이동 */
+    S.room.yut.roll = { n:'개', v:2, again:false, by:'h1', at:1 };
+    act('yut-move', { pos:'-1' });
+    ck('★대기 말이 판에 나온다', m().pieces[0].filter(x => x === 1).length === 4);
+    ck('  같은 칸 말은 업고 함께 간다(4개가 같이 이동)', m().pieces[0].every(x => x === 1));
+    ck('  윷·모가 아니면 턴이 넘어간다', m().turn === 1);
+
+    /* 잡기 — 잡으면 상대는 대기로, 잡은 팀은 한 번 더 */
+    S.room.yut.pieces = [[3,-1,-1,-1],[1,-1,-1,-1]];
+    S.room.yut.turn = 1;
+    S.room.yut.roll = { n:'개', v:2, again:false, by:'h1', at:1 };
+    act('yut-move', { pos:'1' });
+    ck('★★상대 말을 잡으면 대기로 돌아간다', m().pieces[0][0] === -1);
+    ck('★잡으면 한 번 더 (턴이 안 넘어감)', m().turn === 1);
+
+    /* 완주 · 승리 */
+    S.room.yut.pieces = [[0,0,0,0],[19,19,19,19]];
+    S.room.yut.turn = 1;
+    S.room.yut.roll = { n:'도', v:1, again:false, by:'h1', at:1 };
+    act('yut-move', { pos:'19' });
+    ck('★말 4개를 다 완주시키면 승리', m().phase === 'ended' && m().winner === 1);
+
+    /* ✋ 잠시! — 영어 지적 */
+    act('yut-start', {});
+    S.room.yut.pieces = [[3,7,-1,-1],[0,-1,-1,-1]];
+    S.room.yut.turn = 0;
+    S.play = { gameId:'yut', kind:'yut', phase:'play' };
+    const other = Object.entries(S.room.teams.assign).find(([,t]) => Number(t) !== 0)?.[0];
+    const meWas = S.pid; S.pid = other;
+    act('yut-halt', {});
+    S.pid = meWas;
+    ck('★상대팀이 「잠시!」를 걸 수 있다', !!m().halt && m().halt.team === 0);
+    ck('  판단 화면이 최우선으로 뜬다', view('play').includes('잠시!'));
+    act('yut-halt-ok', {});
+    ck('★★인정하면 가장 앞선 말이 처음으로 돌아간다',
+      m().pieces[0].filter(x => x === -1).length === 3 && m().pieces[0].includes(3));
+    ck('  영어 횟수가 기록된다', (m().penalty || {})[0] === 1);
+    ck('  판단이 끝나면 halt 가 지워진다', !m().halt);
+
+    /* 우리 팀은 지적 못 한다 */
+    S.room.yut.turn = 0;
+    const mineTeam0 = Object.entries(S.room.teams.assign).find(([,t]) => Number(t) === 0)?.[0];
+    S.pid = mineTeam0; act('yut-halt', {}); S.pid = meWas;
+    ck('★우리 팀은 「잠시!」를 못 건다', !m().halt);
+
+    /* 쓰기 주체 분리 — 참가자가 던진 결과를 호스트가 소비한다 */
+    S.room.yut.roll = null; S.room.yut.turn = 0;
+    S.room.yut.throw = { n:'걸', v:3, again:false, by:mineTeam0, at:2 };
+    yutConsume();
+    ck('★★참가자가 던진 결과를 호스트가 반영한다', m().roll?.v === 3);
+    ck('★★반영 뒤 throw 를 지운다 (같은 결과 재적용 방지)', !m().throw);
+    S.room.yut.roll = null;
+    S.room.yut.throw = { n:'윷', v:4, again:true, by:other, at:3 };   // 남의 차례
+    yutConsume();
+    ck('★남의 차례 던지기는 버린다', !m().roll && !m().throw);
+
+    /* 서명 — 판이 바뀌면 참가자 화면이 갱신돼야 한다 */
+    const sig1 = renderSig();
+    S.room.yut.turn = 1;
+    ck('★★yut 변화가 renderSig 에 잡힌다', renderSig() !== sig1);
+
+    /* 각자 폰 화면 */
+    S.pid = mineTeam0; S.view = 'yut'; render(true);
+    const ph = document.getElementById('view').innerHTML;
+    ck('★폰 화면에 윷 던지기와 잠시!가 있다',
+      ph.includes('data-act="yut-throw"') && ph.includes('data-act="yut-halt"'));
+    S.pid = meWas;
+
+    act('yut-clear', {});
+    ck('정리하면 판이 사라진다', !S.room.yut);
+    S.view = 'game';
+    }
+
     /* ── 5.4) 덱 카테고리의 use 태그 ──
        ⚠️ 두 게임이 같은 덱을 쓰지만 요구가 정반대다. 태그가 새면
           「아르헨티나를 몸으로 표현하세요」가 나온다. */

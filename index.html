@@ -513,6 +513,53 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .stockbox button:active{transform:scale(.94)}
 .stockbox.low{background:rgba(255,184,77,.1);border-color:rgba(255,184,77,.34)}
 
+/* ── 🎲 윷놀이 말판 ─────────────────────────────────────────
+   ⚠️ 칸 좌표가 % 라서 판이 커져도 그대로 맞는다(폰↔태블릿 공용). */
+.board{position:relative;width:100%;max-width:520px;margin:0 auto 14px;aspect-ratio:1/1;
+  border-radius:var(--r-l);background:rgba(0,0,0,.3);border:1px solid var(--line2);
+  box-shadow:var(--sh1),var(--lift)}
+.board .lines{position:absolute;inset:9%;pointer-events:none;
+  width:82%;height:82%;color:var(--line2);overflow:visible}
+.cellwrap{position:absolute;inset:9%}
+.cell{position:absolute;transform:translate(-50%,-50%);width:13%;aspect-ratio:1/1;
+  border-radius:50%;display:grid;place-items:center;
+  background:var(--surf2);border:1.5px solid var(--line2);
+  font-size:9px;font-weight:800;color:var(--dim2)}
+.cell.big{width:17%;background:var(--surf3);border-color:var(--amber);color:var(--amber)}
+.cell.pick{border-color:var(--mint);background:rgba(61,224,168,.2);cursor:pointer;
+  box-shadow:0 0 0 3px rgba(61,224,168,.22)}
+.cell.pick:active{transform:translate(-50%,-50%) scale(.9)}
+.cell .pcs{position:absolute;inset:-14%;display:flex;flex-wrap:wrap;align-content:center;
+  justify-content:center;gap:2px}
+.pc{width:38%;aspect-ratio:1/1;border-radius:50%;border:1.5px solid rgba(0,0,0,.45);
+  box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.homebox{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+.hteam{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:12px;
+  background:rgba(0,0,0,.26);border:1px solid var(--line2);font-size:13px;font-weight:800}
+.hteam.on{border-color:var(--amber);background:rgba(255,184,77,.14)}
+.hteam .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.rollbig{text-align:center;padding:16px;border-radius:var(--r-l);margin-bottom:12px;
+  background:linear-gradient(150deg,rgba(255,184,77,.18),var(--surf));
+  border:1px solid rgba(255,184,77,.38)}
+.rollbig .v{font-size:44px;font-weight:900;letter-spacing:-.05em;line-height:1.1;
+  background:var(--hero);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rollbig .s{font-size:13px;color:var(--dim);margin-top:4px;font-weight:700}
+.haltbig{text-align:center;padding:18px;border-radius:var(--r-l);margin-bottom:12px;
+  background:linear-gradient(150deg,rgba(255,92,124,.22),var(--surf));
+  border:1px solid rgba(255,92,124,.45);box-shadow:var(--sh1),var(--lift)}
+.haltbig .t{font-size:26px;font-weight:900;letter-spacing:-.04em;color:#FFB0BC}
+.haltbig .s{font-size:13.5px;color:#DAD4EE;margin-top:6px;line-height:1.55;word-break:keep-all}
+.ylog{font-size:12.5px;line-height:1.7;color:var(--dim);word-break:keep-all}
+.ylog div:first-child{color:var(--tx);font-weight:700}
+.bigthrow{width:100%;padding:34px 12px;border-radius:24px;font-size:24px;font-weight:900;
+  background:var(--hero);color:#2A1206;border:0;box-shadow:0 10px 30px rgba(255,140,74,.3)}
+.bigthrow:active{transform:scale(.97)}
+.bigthrow:disabled{background:var(--surf2);color:var(--dim2);box-shadow:none}
+.haltbtn{width:100%;padding:20px 12px;border-radius:20px;font-size:19px;font-weight:900;
+  background:linear-gradient(135deg,#FF5C7C,#FF8F5C);color:#2A0A12;border:0;
+  box-shadow:0 8px 24px rgba(255,92,124,.3)}
+.haltbtn:active{transform:scale(.97)}
+
 /* 유튜브 뮤직으로 나가는 버튼 — 진짜 <a> 다(새 탭으로 열어야 앱 상태가 유지된다) */
 .ytbtn{text-decoration:none;color:inherit;margin-bottom:0}
 .ytbtn:visited{color:inherit}
@@ -743,6 +790,13 @@ details.more .in{padding:0 15px 15px}
   .g-m{font-size:14px}
   .rules{font-size:17px;line-height:1.9}
   .oneline{font-size:22px}
+  /* 말판은 다 같이 보는 것이라 크게. ⚠️ 단 **세로를 넘기면 안 된다** —
+     뒤에서 보는 사람은 스크롤을 못 한다(v0.14.0 원칙). vh 로 상한을 건다. */
+  .board{max-width:min(620px, 56vh)}
+  .cell{font-size:12px}
+  .hteam{font-size:16px;padding:11px 16px}
+  .rollbig .v{font-size:62px}
+  .ylog{font-size:15px}
   .fact .v{font-size:17px}
   .fact .k{font-size:12px}
   .step .t{font-size:17px}
@@ -800,6 +854,13 @@ details.more .in{padding:0 15px 15px}
    공용 화면은 스크롤하면 안 되므로(뒤에서 보는 사람은 스크롤을 못 한다) 한 화면에 넣는다. */
 @media (min-width:760px) and (min-height:640px) and (max-height:860px){
   main{padding:16px 26px calc(30px + var(--sb))}
+  /* 가로 태블릿(768px)에서 판·머리말·던진 결과가 한 화면에 들어가야 한다 */
+  .board{max-width:min(520px, 50vh);margin-bottom:8px}
+  .rollbig{padding:10px}
+  .rollbig .v{font-size:34px}
+  .rollbig .s{font-size:12px}
+  .homebox{margin-bottom:8px}
+  .hteam{font-size:13px;padding:7px 11px}
   .wcard{min-height:200px;padding:34px 24px}
   .wtxt{font-size:58px}
   .wtxt.long{font-size:43px}
@@ -842,7 +903,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.21.0';
+const APP_VERSION = 'v0.22.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1249,6 +1310,182 @@ const SONG_DECKS = {
     ['그대로 멈춰라','동요'],['우리 모두 다 같이','동요']]},
 };
 const SONG_KEYS = Object.keys(SONG_DECKS);
+
+/* ══════════════════════════════════════════════
+   🎲 훈민정음 윷놀이
+   ──────────────────────────────────────────────
+   ⚠️ **이 앱에서 유일하게 각자 폰과 태블릿이 같이 도는 게임**이다(v0.13.0 이후 처음).
+      태블릿 = 말판(다 같이 봄) · 각자 폰 = 윷 던지기 + 「잠시!」.
+      그래서 쓰기 주체를 반드시 나눈다:
+        호스트 : pushYut() 으로 board/turn/pieces/log …
+        참가자 : yut/throw/{내pid} 와 yut/halt 만
+      ⚠️ pushHostState() 에 yut 을 넣지 말 것 — 통째로 덮으면 던진 결과가 날아간다.
+
+   판: 외곽 20칸(0=출발점 겸 도착) + 지름길.
+       모서리 5·10 에 **정확히 멈추면** 지름길을 탄다. 중앙(방)에서는 도착 쪽으로 나간다.
+   ⚠️ 좌표는 % 라 판 크기가 달라져도 그대로 맞는다(태블릿·폰 공용). */
+const YUT_CELLS = (() => {
+  const c = [];
+  const put = (i, x, y, corner) => { c[i] = { x, y, corner:!!corner }; };
+  for (let k = 0; k < 6; k++) put(k, 100, 100 - k * 20, k === 5);        // 0~5 오른쪽 변(위로) · 5=지름길
+  for (let k = 1; k <= 5; k++) put(5 + k, 100 - k * 20, 0, k === 5);      // 6~10 윗변(왼쪽)
+  for (let k = 1; k <= 5; k++) put(10 + k, 0, k * 20, false);             // 11~15 왼쪽 변(아래로)
+  for (let k = 1; k <= 4; k++) put(15 + k, k * 20, 100, false);           // 16~19 아랫변(오른쪽)
+  put(21, 83, 17); put(22, 66, 34);            // 5 → 중앙
+  put(23, 50, 50);                             // 중앙(방)
+  put(24, 66, 66); put(25, 83, 83);            // 중앙 → 도착
+  put(26, 17, 17); put(27, 34, 34);            // 10 → 중앙
+  return c;
+})();
+const YUT_HOME = 20;                            // 완주
+
+/* 한 칸 전진.
+   ⚠️ `first` 가 핵심이다 — 지름길은 모서리에 **정확히 멈춘 다음 이동**에서만 탄다.
+      이걸 빼면 모서리를 **지나가기만 해도** 꺾여서 바깥 길이 20칸이 아니라 11칸이 된다
+      (실제로 그렇게 짰다가 경로 길이를 재보고 잡았다). */
+function yutStep(pos, first){
+  if (first && pos === 5)  return 21;           // 모서리에 서 있다가 출발 → 지름길
+  if (first && pos === 10) return 26;
+  if (pos === 21) return 22;
+  if (pos === 22) return 23;
+  if (pos === 26) return 27;
+  if (pos === 27) return 23;
+  if (pos === 23) return 24;                    // 방 → 도착 쪽으로 나간다
+  if (pos === 24) return 25;
+  if (pos === 25) return YUT_HOME;
+  if (pos === 19) return YUT_HOME;
+  return pos + 1;
+}
+/* pos 에서 n 칸. 대기(-1)에서는 첫 칸이 0 이다. YUT_HOME 을 넘으면 완주. */
+function yutMove(pos, n){
+  let p = pos;
+  for (let i = 0; i < n; i++){
+    if (p === -1){ p = 0; continue; }
+    p = yutStep(p, i === 0);
+    if (p === YUT_HOME) return YUT_HOME;
+  }
+  return p;
+}
+
+/* 윷 던지기 — 네 짝의 배(평평한 면)가 몇 개 위로 왔나 */
+const YUT_ROLLS = [
+  { n:'모', v:5, again:true },   // 0개
+  { n:'도', v:1, again:false },
+  { n:'개', v:2, again:false },
+  { n:'걸', v:3, again:false },
+  { n:'윷', v:4, again:true },   // 4개
+];
+function throwYut(){
+  let up = 0;
+  for (let i = 0; i < 4; i++) if (Math.random() < 0.5) up++;
+  return { ...YUT_ROLLS[up], up };
+}
+
+const YT = () => S.room?.yut || null;
+function pushYut(patch){
+  if (!S.isHost || !S.code) return;
+  update(ref(db, `${ROOT}/rooms/${S.code}/yut`), patch).catch(()=>{});
+}
+/* 내가 속한 팀(윷놀이는 팀전 — 대기실 팀 편성을 그대로 쓴다) */
+const myTeam = () => {
+  const a = S.room?.teams?.assign || {};
+  return a[S.pid] != null ? Number(a[S.pid]) : -1;
+};
+/* 그 칸에 있는 말들 */
+/* 판을 새로 깐다. 팀은 대기실 편성을 그대로 쓴다(말 4개씩). */
+function yutStart(){
+  const n = S.room.teams?.count || 0;
+  const pieces = Array.from({ length:n }, () => [-1, -1, -1, -1]);
+  S.room.yut = { phase:'play', turn:0, pieces, roll:null, log:[],
+                 throw:null, halt:null, penalty:{}, winner:null };
+  set(ref(db, `${ROOT}/rooms/${S.code}/yut`), S.room.yut).catch(()=>{});
+}
+const yutLog = (m, msg) => { m.log = [msg, ...(m.log || [])].slice(0, 8); };
+
+/* 던진 결과를 반영한다. 이동할 말이 없으면(전부 완주) 턴을 넘긴다. */
+function yutApplyThrow(r, byPid){
+  const m = YT(); if (!m || m.phase !== 'play') return;
+  m.roll = { ...r, by:byPid, at:now() };
+  yutLog(m, `${pname(byPid)} — ${r.n}(${r.v}칸)`);
+  pushYut({ roll:m.roll, log:m.log, throw:null });
+  SFX.go(); vib(18); render(true);
+}
+
+/* 그 칸의 우리 말들을 옮긴다(같은 칸이면 업어서 함께 간다 — 윷놀이 그대로). */
+function yutMoveFrom(pos){
+  const m = YT(); if (!m || !m.roll) return;
+  const t = m.turn, n = m.roll.v;
+  const mine = m.pieces[t].map((p, i) => ({ p, i })).filter(x => x.p === pos);
+  if (!mine.length) return toast('그 칸에 우리 말이 없어요');
+
+  const dest = yutMove(pos, n);
+  let caught = 0;
+  if (dest !== YUT_HOME){
+    m.pieces.forEach((arr, ti) => {
+      if (ti === t) return;
+      arr.forEach((pp, ii) => { if (pp === dest){ arr[ii] = -1; caught++; } });
+    });
+  }
+  mine.forEach(x => { m.pieces[t][x.i] = dest; });
+
+  const done = m.pieces[t].filter(x => x === YUT_HOME).length;
+  yutLog(m, dest === YUT_HOME
+    ? `${teamName(t)} 말 ${mine.length}개 완주! (${done}/4)`
+    : caught ? `${teamName(t)}가 상대 말 ${caught}개를 잡았다!` : `${teamName(t)} ${n}칸 이동`);
+
+  if (done >= 4){                                   // 승리
+    m.phase = 'ended'; m.winner = t; m.roll = null;
+    pushYut({ pieces:m.pieces, phase:'ended', winner:t, roll:null, log:m.log });
+    confetti(120); SFX.end(); vib([40,60,40]); render(true); return;
+  }
+  const again = m.roll.again || caught > 0;         // 윷·모·잡기 → 한 번 더
+  m.roll = null;
+  if (!again) m.turn = (m.turn + 1) % m.pieces.length;
+  pushYut({ pieces:m.pieces, roll:null, turn:m.turn, log:m.log });
+  caught ? SFX.ok() : SFX.pass(); vib(14); render(true);
+}
+
+/* ✋ 잠시! — 영어를 썼다고 지적. 인정되면 **가장 앞선 말 1개를 판에서 뺀다.**
+   ⚠️ 판정은 앱이 못 한다(영어를 썼는지는 사람만 안다) → 진행자가 인정/취소를 누른다. */
+function yutHaltResolve(ok){
+  const m = YT(); if (!m || !m.halt) return;
+  const t = m.halt.team;
+  if (ok){
+    // 가장 멀리 간 말 하나를 대기로. 완주한 말은 건드리지 않는다.
+    const cand = m.pieces[t].map((p, i) => ({ p, i })).filter(x => x.p >= 0 && x.p !== YUT_HOME);
+    if (cand.length){
+      // ⚠️ yutDist 는 「도착까지 남은 칸」이라 **작을수록 앞선 말**이다.
+      //    내림차순으로 정렬해 첫 번째를 빼면 가장 뒤처진 말이 빠진다(그렇게 짰다가 잡았다).
+      cand.sort((a, b) => yutDist(a.p) - yutDist(b.p));
+      m.pieces[t][cand[0].i] = -1;
+      yutLog(m, `✋ ${teamName(t)} 영어! 말 1개를 처음으로 되돌림`);
+    } else {
+      yutLog(m, `✋ ${teamName(t)} 영어! (뺄 말이 없어 넘어감)`);
+    }
+    m.penalty = { ...(m.penalty || {}), [t]:((m.penalty || {})[t] || 0) + 1 };
+    SFX.end(); vib([30,50,30]);
+  } else {
+    yutLog(m, `✋ 취소 — 영어가 아니었다`);
+    SFX.pass();
+  }
+  m.halt = null;
+  pushYut({ pieces:m.pieces, penalty:m.penalty, log:m.log, halt:null });
+  render(true);
+}
+/* 도착까지 남은 칸 수(작을수록 앞선 말) */
+function yutDist(pos){
+  if (pos < 0) return 99;
+  let p = pos, n = 0, first = true;
+  while (p !== YUT_HOME && n < 60){ p = yutStep(p, first); first = false; n++; }
+  return n;
+}
+const teamName = t => `${t + 1}팀`;
+
+const yutAt = (pieces, pos) => {
+  const out = [];
+  (pieces || []).forEach((arr, t) => arr.forEach((p, i) => { if (p === pos) out.push({ t, i }); }));
+  return out;
+};
 /* 선택한 범위의 곡을 { w:제목, a:가수, c:범위 } 로 펴서 돌려준다.
    w 를 쓰는 이유 — 중복 방지 헬퍼(freshPick/markUsed)가 w 를 보기 때문이다(덱 게임과 공유). */
 function songPool(keys){
@@ -1529,6 +1766,42 @@ const GAMES = [
 · 그래서 재생은 유튜브 뮤직에 맡기고, 앱은 문제·정답·점수만 맡습니다.`
   },
   {
+    id:'yut', name:'훈민정음 윷놀이', emoji:'🎲', color:'#C89BFF', mode:'team', weight:2,
+    role:null, mc:'help', mcWhy:'말판은 다 같이 보는 화면이라 아무나 조작해도 된다 — 태블릿을 가운데 두세요',
+    tag:'팀전 · 태블릿 말판 + 각자 폰', tool:'yut', toolLabel:'▶ 판 깔고 시작',
+    line:'윷을 던져 말을 옮기는데, 영어를 쓰면 말이 처음으로 돌아간다.',
+    prep:'태블릿(말판) · 각자 폰', minP:4, mins:'20~30분',
+    how:[
+      '태블릿을 가운데 두고 말판을 띄운다 — 각자 폰으로 접속한다',
+      '자기 팀 차례가 되면 폰에서 윷을 던진다',
+      '태블릿에서 움직일 말을 골라 옮긴다 (같은 칸 말은 업고 간다)',
+      '영어를 쓴 사람이 있으면 상대팀이 폰에서 「✋ 잠시!」를 누른다',
+    ],
+    win:'말 4개를 먼저 다 완주시킨 팀이 이긴다',
+    rules:
+`윷을 던져 말을 옮기는데, <b>영어를 쓰면 안 된다.</b>
+
+<b>★ 훈민정음 규칙</b>
+· 게임하는 동안 <b>영어를 한 마디도 쓰면 안 됩니다.</b> "고!", "찬스", "오케이" 전부 영어예요.
+· 누가 영어를 쓰면 <b>상대팀이 폰에서 「✋ 잠시!」</b>를 누릅니다.
+· 인정되면 그 팀의 <b>가장 앞선 말 1개가 처음으로 돌아갑니다.</b>
+· 영어였는지 아닌지는 <b>다 같이 판단</b>하고, 진행자가 인정/취소를 누릅니다.
+
+<b>기기</b>
+· <b>태블릿</b>을 가운데 두고 말판을 띄웁니다. 말은 여기서 옮겨요.
+· <b>각자 폰</b>으로 같은 방에 들어와 자기 차례에 윷을 던집니다.
+· 폰에는 「✋ 잠시!」 버튼이 늘 떠 있습니다.
+
+<b>윷 규칙</b>
+· 도 1칸 · 개 2칸 · 걸 3칸 · 윷 4칸 · 모 5칸.
+· <b>윷·모가 나오면 한 번 더</b> 던집니다. <b>상대 말을 잡아도 한 번 더</b>.
+· 같은 칸에 있는 우리 말은 <b>업고 함께</b> 움직입니다.
+· <b>모서리에 정확히 멈추면</b> 지름길로 갈 수 있습니다. 지나가기만 하면 안 돼요.
+
+<b>승패</b>
+· 말 <b>4개를 먼저 다 완주</b>시킨 팀이 이깁니다.`
+  },
+  {
     id:'body', name:'몸으로 말해요 / 한글자로 말해요', emoji:'🕺', color:'#3DE0A8', mode:'team', weight:1.5,
     role:'사회자', mc:'need', mcWhy:'설명자는 두 손으로 몸짓을 해야 하고, 맞히는 팀은 화면을 보면 안 된다 — 제3자가 화면을 들고 설명자에게만 보여줘야 한다',
     tag:'팀전 · 사회자 전담', tool:'deck',
@@ -1624,7 +1897,7 @@ const S = {
 const $ = s => document.querySelector(s);
 const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const now = () => Date.now();
-const emptyRoom = () => ({ createdAt:now(), host:'', status:'lobby', players:{}, teams:{count:0,assign:{}}, scores:{}, rotation:{}, used:{} });
+const emptyRoom = () => ({ createdAt:now(), host:'', status:'lobby', players:{}, teams:{count:0,assign:{}}, scores:{}, rotation:{}, used:{}, yut:null });
 
 function toast(msg, ms=2400){
   const t = $('#toast'); t.textContent = msg; t.classList.add('on');
@@ -1795,8 +2068,26 @@ function pushHostState(){
     status:r.status||'lobby', host:r.host||S.pid,
     teams:r.teams||{count:0,assign:{}}, scores:r.scores||{}, rotation:r.rotation||{},
     used:r.used||{},
+    // ⚠️ yut 은 여기서 쓰지 않는다 — 참가자가 throw/halt 를 직접 쓰기 때문에
+    //    통째로 덮으면 던진 결과와 「잠시!」가 날아간다. pushYut()으로 하위 경로만 갱신할 것.
     touchedAt:now(),
   }).catch(()=>{});
+}
+
+/* 참가자가 던진 결과를 호스트가 받아 판에 반영한다.
+   ⚠️ 반영한 뒤 throw 를 지워야 한다 — 안 지우면 스냅샷마다 같은 결과가 다시 들어온다. */
+function yutConsume(){
+  const m = YT();
+  if (!S.isHost || !m || m.phase !== 'play') return;
+  const th = m.throw;
+  if (th && !m.roll && S.room.teams?.assign?.[th.by] == Number(m.turn)){
+    m.throw = null;
+    yutApplyThrow(th, th.by);
+  } else if (th && (m.roll || S.room.teams?.assign?.[th.by] != Number(m.turn))){
+    m.throw = null;                       // 남의 차례거나 이미 던진 뒤 → 버린다
+    pushYut({ throw:null });
+  }
+  if (m.halt && !m.halt.team && m.halt.team !== 0) m.halt.team = m.turn;
 }
 
 function subscribe(code){
@@ -1805,14 +2096,22 @@ function subscribe(code){
     const v = snap.val();
     if (!v){ if (!S.isHost){ toast('방이 사라졌어요'); leaveRoom(); } return; }
     if (S.isHost){
+      // ⚠️ 윷놀이는 v0.13.0 이후 처음으로 **참가자가 방 노드에 쓰는** 게임이다.
+      //    호스트가 진실원이지만, 참가자가 쓰는 두 경로만은 서버에서 되받아야 한다.
+      //    (v0.8.0 마피아 때와 같은 배선 — 통째로 덮으면 던진 결과가 사라진다.)
       S.room.players = v.players || S.room.players || {};   // 다른 사람 입장만 병합해 받는다
+      if (S.room.yut && v.yut){
+        S.room.yut.throw = v.yut.throw || null;
+        S.room.yut.halt  = v.yut.halt  || null;
+      }
     }else{
       S.room = {
         createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
         players:v.players||{}, teams:v.teams||{count:0,assign:{}},
-        scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{},
+        scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{}, yut:v.yut||null,
       };
     }
+    yutConsume();
     render();
   });
 }
@@ -1860,7 +2159,7 @@ async function joinRoom(code, name){
   if (!v){ toast('그런 방이 없어요'); return false; }
   S.pid = uid(); S.isHost = false; S.code = code;
   S.room = { createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
-    players:v.players||{}, teams:v.teams||{count:0,assign:{}}, scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{} };
+    players:v.players||{}, teams:v.teams||{count:0,assign:{}}, scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{}, yut:v.yut||null };
   try{ await set(ref(db, `${ROOT}/rooms/${code}/players/${S.pid}`), { name, joinedAt:now(), seen:now() }); }catch{}
   saveSession(); subscribe(code); startHeartbeat(); keepAwake();
   go('lobby'); return true;
@@ -1872,7 +2171,7 @@ async function rejoin(sess){
   if (!v || !v.players || !v.players[sess.pid]) return false;
   S.pid = sess.pid; S.code = sess.code; S.isHost = !!sess.isHost;
   S.room = { createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
-    players:v.players||{}, teams:v.teams||{count:0,assign:{}}, scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{} };
+    players:v.players||{}, teams:v.teams||{count:0,assign:{}}, scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{}, yut:v.yut||null };
   subscribe(sess.code); startHeartbeat(); keepAwake();
   go('lobby'); return true;
 }
@@ -2041,6 +2340,11 @@ function startDeckTool(){
 /* 기본으로 켜두는 범위 — 세대가 섞여도 다 같이 맞힐 수 있는 조합.
    ⚠️ 한 시대만 켜면 그 시절을 모르는 사람은 한 곡도 못 맞힌다(범위 = 난이도). */
 const SONG_CATS = ['y10b','y20','ost','ani'];
+
+function startYutTool(){
+  S.play = { gameId:S.gameId, kind:'yut', phase: S.room?.yut ? 'play' : 'setup', _t:null };
+  go('play');
+}
 
 function startSongTool(){
   S.play = {
@@ -2325,7 +2629,9 @@ function renderSig(){
   return JSON.stringify([
     S.view, S.gameId, S.online, S.isHost, S.code,
     r ? Object.entries(r.players).map(([k,p]) => [k, p.name, isOn(p)?1:0, (p.host||k===r.host)?1:0]) : 0,
-    r?.teams || 0, r?.scores || 0, r?.rotation || 0,
+    r?.teams || 0, r?.scores || 0, r?.rotation || 0, r?.used || 0,
+    // ⚠️ yut 을 빼면 각자 폰이 말판 변화에 갱신되지 않는다(참가자 화면이 멈춘다)
+    r?.yut || 0,
     S.draft?.order || 0, S._lastPick || 0,
     // ⚠️ 타이머의 left/elapsed(매 틱 변화)는 넣지 않는다 — 재렌더 폭주가 된다.
     //    타이머 숫자는 각 도구의 인터벌이 DOM을 직접 갱신한다.
@@ -2370,14 +2676,15 @@ function render(force){
   code.style.display = inRoom ? '' : 'none';
   code.innerHTML = inRoom
     ? `${h(S.code)}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></svg>` : '';
-  back.style.display = ['games','game','play','score','board','settings'].includes(S.view) ? '' : 'none';
+  back.style.display = ['games','game','play','score','board','settings','yut'].includes(S.view) ? '' : 'none';
   title.textContent = ({ home:'숙소 게임', lobby:'대기실', games:'게임 고르기',
     game:G(S.gameId)?.name || '게임', play:G(S.gameId)?.name || '진행 중',
-    score:'순위 입력', board:'종합 순위', settings:'설정' })[S.view] || '숙소 게임';
+    score:'순위 입력', board:'종합 순위', settings:'설정', yut:'윷 던지기' })[S.view] || '숙소 게임';
 
   const v = $('#view');
   const keep = grabFocus();
-  v.innerHTML = ({ home:vHome, lobby:vLobby, games:vGames, game:vGame, play:vPlay, score:vScore, board:vBoard, settings:vSettings })[S.view]();
+  v.innerHTML = ({ home:vHome, lobby:vLobby, games:vGames, game:vGame, play:vPlay,
+    score:vScore, board:vBoard, settings:vSettings, yut:vYutPhone })[S.view]();
 
   // 화면 전환일 때만 진입 애니메이션. 제자리 갱신은 애니메이션 없이 조용히 교체한다.
   if (viewChanged){
@@ -2430,6 +2737,18 @@ function vHome(){
     ${last ? `<button class="btn gh" data-act="rejoin" style="margin:20px 0 0">
         ↩︎ ${h(last.name||'')}(으)로 ${h(last.code)}번 방 다시 들어가기</button>` : ''}
 
+    <!-- ⚠️ vHome 은 방에 들어가기 **전에도** 그려진다 → S.room 이 null 이다.
+         여기서 S.room.yut 처럼 쓰면 부팅 때 모듈 전체가 죽는다(실제로 그렇게 터뜨렸다). -->
+    ${S.room?.yut ? (() => { const y = S.room.yut; return `
+      <button class="g" style="${gcVars('#C89BFF')};margin-bottom:10px" data-act="go-yut">
+        <div class="g-ic">🎲</div>
+        <div class="g-b"><div class="g-n">${myTeam() === y.turn && y.phase === 'play'
+            ? '내 차례! 윷을 던지세요' : '훈민정음 윷놀이 진행 중'}</div>
+          <div class="g-m"><span>${y.phase === 'ended'
+            ? h(teamName(y.winner)) + ' 승리'
+            : h(teamName(y.turn)) + ' 차례 · 탭해서 윷 던지기/잠시!'}</span></div></div>
+        <div class="g-ar">›</div>
+      </button>`; })() : ''}
     ${installBannerHtml()}
     <div class="sec">시작하기</div>
     <div class="card">
@@ -2683,6 +3002,7 @@ function vPlay(){
     case 'deck':  return vDeck();
     case 'cho':   return vCho();
     case 'song':  return vSong();
+    case 'yut':   return vYut();
     case 'noise': return vNoise();
     case 'cup':   return vCup();
     case 'act':   return vAct();
@@ -2707,6 +3027,193 @@ function stockBox(gid, total, need, unit){
               : `지금까지 ${used}개 사용 · 전체 ${total}개`}</div>
       <button data-act="used-reset">🔄 초기화</button>
     </div>`;
+}
+
+/* ── 🎲 훈민정음 윷놀이 (태블릿 = 말판) ── */
+function vYut(){
+  const p = S.play, g = G(p.gameId);
+  const m = YT();
+  const teams = S.room.teams || { count:0 };
+
+  if (!m || p.phase === 'setup') return `
+    <div class="gh" style="${gcVars(g.color)};padding:17px">
+      <div class="gh-n" style="font-size:18px;padding-right:0">${g.emoji} ${h(g.name)}</div>
+      <p class="note" style="margin-top:7px;position:relative">
+        이 화면을 가운데 두세요 — 각자 폰으로 윷을 던집니다</p>
+    </div>
+    <div class="mcbox need">
+      <span class="i">📱</span>
+      <span><b>모두 같은 방에 들어와 있어야 합니다</b>
+        <span class="s">방 코드 <b>${h(S.code)}</b> 로 각자 폰에서 접속하면,
+          자기 팀 차례에 <b>윷 던지기</b> 버튼이 뜹니다.</span></span>
+    </div>
+    <div class="card">
+      <div class="sec" style="margin:0 0 10px">팀 <span class="n">${teams.count || 0}팀</span></div>
+      ${teams.count >= 2
+        ? `<p class="note">팀마다 말 4개로 시작합니다.</p>`
+        : `<div class="balbox no"><b>팀을 먼저 나눠주세요</b>
+             <span>대기실에서 2팀 이상으로 편성해야 판을 깔 수 있어요.</span></div>`}
+    </div>
+    <div style="height:14px"></div>
+    <div class="stack">
+      <button class="btn pri" data-act="yut-start" ${teams.count >= 2 ? '' : 'disabled'}>🎲 판 깔고 시작</button>
+      <button class="btn gh" data-act="pl-quit">그만두기</button>
+    </div>`;
+
+  const t = m.turn, n = m.pieces.length;
+  const done = ti => m.pieces[ti].filter(x => x === YUT_HOME).length;
+  const wait = ti => m.pieces[ti].filter(x => x === -1).length;
+
+  /* 이번에 움직일 수 있는 칸들 */
+  const movable = m.roll
+    ? [...new Set(m.pieces[t].filter(x => x !== YUT_HOME))]
+    : [];
+
+  const cellHtml = YUT_CELLS.map((c, i) => {
+    if (!c) return '';
+    const here = yutAt(m.pieces, i);
+    const can = m.roll && movable.includes(i);
+    return `<div class="cell ${c.corner || i === 23 ? 'big' : ''} ${can ? 'pick' : ''}"
+      style="left:${c.x}%;top:${c.y}%" ${can ? `data-act="yut-move" data-pos="${i}"` : ''}>
+      ${i === 0 ? '출발' : c.corner ? '지름' : i === 23 ? '방' : ''}
+      ${here.length ? `<div class="pcs">${here.map(x =>
+        `<div class="pc" style="background:${TEAM_COLORS[x.t % TEAM_COLORS.length]}"></div>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const board = `
+    <div class="board">
+      <!-- ⚠️ 선은 SVG 로 그린다. div 를 회전시키면 좌표가 칸과 안 맞는다(그렇게 했다가 어긋났다).
+           ⚠️ 그리는 선 = **실제로 갈 수 있는 길**이다. 안 쓰는 대각선을 그리면 갈 수 있는 줄 안다. -->
+      <svg class="lines" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <rect x="0" y="0" width="100" height="100" fill="none"
+          stroke="currentColor" stroke-width="0.7" vector-effect="non-scaling-stroke"/>
+        <line x1="100" y1="0" x2="50" y2="50" stroke="currentColor"
+          stroke-width="0.7" vector-effect="non-scaling-stroke"/>
+        <line x1="0" y1="0" x2="50" y2="50" stroke="currentColor"
+          stroke-width="0.7" vector-effect="non-scaling-stroke"/>
+        <line x1="50" y1="50" x2="100" y2="100" stroke="currentColor"
+          stroke-width="0.7" vector-effect="non-scaling-stroke"/>
+      </svg>
+      <div class="cellwrap">${cellHtml}</div>
+    </div>`;
+
+  /* 판정 대기 중인 「잠시!」가 최우선 */
+  if (m.halt) return `
+    <div class="haltbig">
+      <div class="t">✋ 잠시!</div>
+      <div class="s"><b>${h(pname(m.halt.by))}</b>님이
+        <b>${h(teamName(m.halt.team))}</b>의 영어를 지적했습니다.<br>
+        정말 영어를 썼나요? 다 같이 판단하고 눌러주세요.</div>
+    </div>
+    <div class="stack">
+      <button class="btn dan" data-act="yut-halt-ok">✋ 인정 — ${h(teamName(m.halt.team))} 말 1개 되돌리기</button>
+      <button class="btn gh" data-act="yut-halt-no">아니었어요 — 계속 진행</button>
+    </div>
+    ${board}`;
+
+  if (m.phase === 'ended') return `
+    <div class="pickres">
+      <div class="pickres-l">훈민정음 윷놀이</div>
+      <div class="pickres-v">${h(teamName(m.winner))} 승리!</div>
+    </div>
+    ${board}
+    <div class="sec">기록</div>
+    <div class="card"><div class="ylog">${(m.log || []).map(x => `<div>${h(x)}</div>`).join('')}</div></div>
+    <div style="height:14px"></div>
+    <div class="stack">
+      <button class="btn pri" data-act="yut-score">🏆 순위 입력하기</button>
+      <button class="btn" data-act="yut-start">🔄 새 판</button>
+      <button class="btn gh" data-act="yut-clear">🧹 정리 — 종료</button>
+    </div>`;
+
+  return `
+    <div class="homebox">
+      ${m.pieces.map((_, ti) => `
+        <div class="hteam ${ti === t ? 'on' : ''}">
+          <span class="dot" style="background:${TEAM_COLORS[ti % TEAM_COLORS.length]}"></span>
+          ${h(teamName(ti))} <span style="color:var(--dim2)">완주 ${done(ti)}/4</span>
+          ${wait(ti) ? `<span style="color:var(--dim2)">· 대기 ${wait(ti)}</span>` : ''}
+          ${(m.penalty || {})[ti] ? `<span style="color:var(--rose)">· 영어 ${m.penalty[ti]}</span>` : ''}
+        </div>`).join('')}
+    </div>
+
+    ${m.roll ? `<div class="rollbig">
+        <div class="v">${h(m.roll.n)} · ${m.roll.v}칸</div>
+        <div class="s">${h(pname(m.roll.by))}가 던졌어요 — <b>움직일 말을 판에서 고르세요</b>
+          ${m.roll.again ? '· 옮기고 나면 한 번 더!' : ''}</div>
+      </div>`
+    : `<div class="rollbig" style="background:rgba(0,0,0,.26);border-color:var(--line2)">
+        <div class="v" style="font-size:26px;background:none;-webkit-text-fill-color:currentColor;color:var(--tx)">
+          ${h(teamName(t))} 차례</div>
+        <div class="s">그 팀 사람이 <b>자기 폰에서 윷을 던지세요</b></div>
+      </div>`}
+
+    ${board}
+
+    ${m.roll && !movable.length ? `<div class="balbox warn">
+      <b>움직일 말이 없어요</b><span>턴을 넘겨주세요.</span></div>
+      <button class="btn" data-act="yut-skip" style="margin-bottom:12px">턴 넘기기</button>` : ''}
+
+    <div class="sec">기록</div>
+    <div class="card"><div class="ylog">${(m.log || []).length
+      ? m.log.map(x => `<div>${h(x)}</div>`).join('') : '<div>아직 던진 사람이 없어요</div>'}</div></div>
+    <div style="height:12px"></div>
+    <div class="stack">
+      <button class="btn gh sm" data-act="yut-throw-here" style="width:100%">🎲 여기서 대신 던지기</button>
+      <button class="btn gh sm" data-act="pl-quit" style="width:100%">나가기 (판 유지)</button>
+    </div>`;
+}
+
+/* ── 🎲 각자 폰 화면 ── */
+function vYutPhone(){
+  const m = YT();
+  if (!m) return `<div class="empty"><div class="empty-e">🎲</div>
+      <div class="empty-t">아직 판이 안 깔렸어요</div>
+      <div class="note">태블릿에서 「판 깔고 시작」을 누르면 여기에 윷이 나타납니다</div></div>`;
+
+  const mt = myTeam();
+  const mine = mt >= 0 && mt === m.turn;
+  const ended = m.phase === 'ended';
+
+  return `
+    <div class="gh" style="${gcVars('#C89BFF')};padding:18px">
+      <div class="gh-em">🎲</div>
+      <div class="gh-n" style="font-size:19px;padding-right:0">훈민정음 윷놀이</div>
+      <div class="gh-m">
+        <span class="chip">${mt >= 0 ? h(teamName(mt)) : '팀 없음'}</span>
+        <span class="chip ${mine && !ended ? 'amb' : ''}">${ended ? '끝' : mine ? '내 차례!' : h(teamName(m.turn)) + ' 차례'}</span>
+      </div>
+    </div>
+
+    ${ended ? `<div class="pickres"><div class="pickres-l">결과</div>
+        <div class="pickres-v">${h(teamName(m.winner))} 승리!</div></div>`
+    : m.halt ? `<div class="haltbig"><div class="t">✋ 잠시!</div>
+        <div class="s">지금 다 같이 판단 중이에요 — 태블릿을 보세요.</div></div>`
+    : `
+      ${m.roll ? `<div class="rollbig">
+          <div class="v">${h(m.roll.n)} · ${m.roll.v}칸</div>
+          <div class="s">태블릿에서 말을 고르는 중이에요</div>
+        </div>` : ''}
+
+      <div style="height:4px"></div>
+      <button class="bigthrow" data-act="yut-throw" ${mine && !m.roll ? '' : 'disabled'}>
+        ${mine ? (m.roll ? '말을 옮기는 중…' : '🎲 윷 던지기') : `${h(teamName(m.turn))} 차례예요`}
+      </button>
+      <p class="note" style="text-align:center;margin:10px 0 16px">
+        ${mt < 0 ? '<b>대기실에서 팀에 들어가야</b> 던질 수 있어요'
+                 : '결과는 <b>태블릿 말판</b>에 뜹니다'}</p>`}
+
+    ${!ended && !m.halt ? `
+      <div class="sec">영어를 썼나요?</div>
+      <button class="haltbtn" data-act="yut-halt">✋ 잠시!</button>
+      <p class="note" style="text-align:center;margin-top:9px">
+        상대팀이 영어를 쓰면 누르세요 — 인정되면 <b>그 팀 말 1개가 처음으로</b> 돌아갑니다.<br>
+        <span style="color:var(--dim2)">우리 팀은 지적할 수 없어요</span></p>` : ''}
+
+    <div class="sec">기록</div>
+    <div class="card"><div class="ylog">${(m.log || []).length
+      ? m.log.slice(0, 5).map(x => `<div>${h(x)}</div>`).join('') : '<div>아직 기록이 없어요</div>'}</div></div>`;
 }
 
 /* ── 🎵 노래 맞히기 ── */
@@ -3704,7 +4211,7 @@ async function act(a, d){
       return toast('팀전이에요 — 대기실에서 팀을 먼저 나눠주세요');
     ({ deck:startDeckTool, noise:startNoiseTool, cup:startCupTool,
        act:startActTool, smile:startSmileTool, cho:startChoTool,
-       song:startSongTool })[g.tool]?.();
+       song:startSongTool, yut:startYutTool })[g.tool]?.();
     break;
   }
   case 'pl-mode': S.play.mode = d.v; render(); break;
@@ -3737,6 +4244,62 @@ async function act(a, d){
     p.letters[t] = drawLetter();
     SFX.go(); vib(12); render(true); break;
   }
+  /* 🎲 훈민정음 윷놀이 — 태블릿(호스트) */
+  case 'yut-start': {
+    if (!S.isHost) return toast('말판은 진행자 기기에서 열어주세요');
+    if ((S.room.teams?.count || 0) < 2) return toast('대기실에서 팀을 먼저 나눠주세요');
+    yutStart(); S.play.phase = 'play'; confetti(60); render(true); break;
+  }
+  case 'yut-move': yutMoveFrom(Number(d.pos)); break;
+  case 'yut-skip': {
+    const m = YT(); if (!m) return;
+    m.roll = null; m.turn = (m.turn + 1) % m.pieces.length;
+    pushYut({ roll:null, turn:m.turn }); render(true); break;
+  }
+  case 'yut-halt-ok': yutHaltResolve(true);  break;
+  case 'yut-halt-no': yutHaltResolve(false); break;
+  case 'yut-throw-here': {           // 폰이 안 되는 사람 대신 태블릿에서 던져준다
+    const m = YT(); if (!m || m.roll || m.phase !== 'play') return;
+    yutApplyThrow(throwYut(), S.pid); break;
+  }
+  case 'yut-score': {
+    const m = YT(); if (!m) return;
+    // 완주한 말이 많은 팀 순
+    const order = m.pieces.map((arr, ti) => ti)
+      .sort((a, b) => m.pieces[b].filter(x => x === YUT_HOME).length
+                    - m.pieces[a].filter(x => x === YUT_HOME).length);
+    toScore(order, 'team'); break;
+  }
+  case 'yut-clear': {
+    if (!confirm('판을 정리하고 끝낼까요?')) return;
+    S.room.yut = null;
+    remove(ref(db, `${ROOT}/rooms/${S.code}/yut`)).catch(()=>{});
+    stopPlayTimer(); S.play = null; go('game'); break;
+  }
+
+  /* 🎲 각자 폰 */
+  case 'go-yut': go('yut'); break;
+  case 'yut-throw': {
+    const m = YT();
+    if (!m || m.phase !== 'play') return;
+    if (myTeam() !== m.turn) return toast('우리 팀 차례가 아니에요');
+    if (m.roll) return toast('아직 말을 옮기는 중이에요');
+    const r = throwYut();
+    if (S.isHost){ yutApplyThrow(r, S.pid); break; }
+    // ⚠️ 참가자는 yut/throw 에만 쓴다(호스트가 읽어서 반영). 다른 필드를 건드리면 판이 깨진다.
+    set(ref(db, `${ROOT}/rooms/${S.code}/yut/throw`), { ...r, by:S.pid, at:now() }).catch(()=>{});
+    SFX.go(); vib(18); toast(`${r.n}! ${r.v}칸`); break;
+  }
+  case 'yut-halt': {
+    const m = YT();
+    if (!m || m.phase !== 'play' || m.halt) return;
+    if (myTeam() === m.turn) return toast('우리 팀은 지적할 수 없어요');
+    const payload = { by:S.pid, team:m.turn, at:now() };
+    if (S.isHost){ m.halt = payload; pushYut({ halt:payload }); }
+    else set(ref(db, `${ROOT}/rooms/${S.code}/yut/halt`), payload).catch(()=>{});
+    SFX.end(); vib([30,50,30]); toast('✋ 잠시! — 태블릿에서 판단합니다'); break;
+  }
+
   /* 🎵 노래 맞히기 */
   case 'song-n': S.play.n = Number(d.v); render(); break;
   case 'song-cat': {
