@@ -90,7 +90,18 @@ if (has('--dom')){
      들어오자 **전부 통과인데도 exit 1** 이 됐다. 시나리오 쪽은 v0.12.0에 같은 이유로
      이미 고쳤는데 여기가 남아 있었다. 판정은 시나리오가 찍는 표시로만 한다:
      `‼`(실패 건수 요약) · `✕FAIL`(항목 실패) · 맨 앞의 `ERR `(예외). */
-  process.exit(/^ERR |‼|✕FAIL/.test(t?.[1] || '') ? 1 : 0);
+  /* ⚠️ 「아무 표시도 없음」을 통과로 보면 안 된다.
+     사본이 깨져 시나리오가 통째로 안 돌면 <title> 이 앱 기본값 그대로인데,
+     예전엔 그걸 exit 0 으로 넘겼다 — 제일 나쁜 실패다(다 통과한 줄 안다).
+     시나리오는 끝에 반드시 ✅ 또는 ‼ 를 찍는다. 둘 다 없으면 안 돈 것이다. */
+  const title = t?.[1] || '';
+  if (/^ERR |‼|✕FAIL/.test(title)) process.exit(1);
+  if (!title.includes('✅')){
+    console.error('✕ 시나리오가 실행되지 않았습니다(합격 표시 없음).');
+    console.error('  사본이 깨졌을 수 있습니다 → node tools/check.mjs <사본.html>');
+    process.exit(1);
+  }
+  process.exit(0);
 }
 
 /* ── 여러 화면을 한 장에 (같은 출처에서 iframe 으로 나란히) ── */

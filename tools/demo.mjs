@@ -72,5 +72,28 @@ html = html.slice(0, tail)
   + html.slice(tail);
 
 await writeFile(outPath, html, 'utf8');
+
+/* ⚠️ 사본이 문법적으로 깨지면 `<script type="module">` 이 통째로 안 돈다.
+   그러면 시나리오가 실행조차 안 되는데 에러도 없어서 **조용히 통과**한다.
+   (실제로 시나리오에 변수 충돌을 내고도 exit 0 을 받은 적이 있다.)
+   그래서 여기서 한 번 파싱해 본다. */
+{
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const { mkdtemp } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const js = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1] || '';
+  const dir = await mkdtemp(join(tmpdir(), 'pg-demo-'));
+  const f = join(dir, 'bundle.mjs');
+  await writeFile(f, js, 'utf8');
+  try { await promisify(execFile)(process.execPath, ['--check', f]); }
+  catch (e) {
+    console.error(`✕ ${outPath} 가 문법적으로 깨졌습니다 — 시나리오가 아예 안 돕니다.`);
+    console.error(String(e.stderr || e.message).split(/\r?\n/).slice(0, 6).join('\n'));
+    process.exit(1);
+  }
+}
+
 console.log(`✔ ${outPath} — 막은 함수: ${stubbed.join(', ')}`);
 console.log(`  node serve.mjs 8080  후  http://localhost:8080/${outPath}?demo=1`);

@@ -679,6 +679,8 @@ details.more .in{padding:0 15px 15px}
 .mcbox .i{font-size:17px;flex:none;line-height:1.3}
 .mcbox b{display:block;font-size:13.5px;font-weight:800;letter-spacing:-.02em;word-break:keep-all}
 .mcbox.need b{color:#A8D8FF}
+.mcbox.ok{background:linear-gradient(150deg,rgba(61,224,168,.13),var(--surf));border-color:rgba(61,224,168,.34)}
+.mcbox.ok b{color:#8FEFC6}
 .mcbox .s{display:block;font-size:12.5px;color:var(--dim2);margin-top:4px;line-height:1.55;word-break:keep-all}
 
 /* 사회자(관전) 기기 — 겨루지 않는 화면용 기기 */
@@ -840,7 +842,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.20.0';
+const APP_VERSION = 'v0.21.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1481,6 +1483,7 @@ const GAMES = [
     id:'song', name:'노래 맞히기', emoji:'🎵', color:'#FF5C7C', mode:'solo', weight:1,
     role:null, mc:'need', mcWhy:'노래를 틀려면 곡 제목을 볼 수밖에 없다 — 트는 사람은 답을 다 알게 되므로 겨루지 않는 사회자가 맡아야 한다',
     tag:'개인전 · 사회자 전담 · 연도별', tool:'song', toolLabel:'▶ 노래 틀고 시작',
+    privScreen:true,          // 사회자 화면에 정답이 있다 → 가운데 두면 안 된다
     line:'노래를 듣고 제목을 먼저 맞히는 사람이 1점.',
     prep:'인터넷 · 유튜브 뮤직 · 겨루지 않는 사회자 1명', minP:3, mins:'10~15분',
     how:[
@@ -1529,12 +1532,13 @@ const GAMES = [
     id:'body', name:'몸으로 말해요 / 한글자로 말해요', emoji:'🕺', color:'#3DE0A8', mode:'team', weight:1.5,
     role:'사회자', mc:'need', mcWhy:'설명자는 두 손으로 몸짓을 해야 하고, 맞히는 팀은 화면을 보면 안 된다 — 제3자가 화면을 들고 설명자에게만 보여줘야 한다',
     tag:'팀전 · 사회자 전담', tool:'deck',
+    privScreen:true,          // 사회자 화면에 제시어가 있다 → 설명자에게만 보여준다
     line:'한 사람이 제시어를 설명하고 팀원이 맞힌다.',
     prep:'없음 (화면을 들어줄 사회자 1명)', minP:4, mins:'15~25분',
     how:[
       '팀을 나누고, 겨루지 않는 사람이 화면을 든다',
       '설명자만 제시어를 본다 — 맞히는 팀은 보면 안 된다',
-      '몸짓만으로(또는 팀이 정한 한 글자만으로) 설명한다',
+      '몸짓만으로(또는 앱이 준 한 글자만으로) 설명한다',
       '제한 시간 안에 최대한 많이 넘긴다',
     ],
     win:'제한 시간 안에 맞춘 개수가 많은 팀 순',
@@ -1544,7 +1548,8 @@ const GAMES = [
 · 설명자는 말 없이 몸동작만으로 설명하고 팀원이 맞춘다.
 
 <b>② 한글자로 말해요</b>
-· 각 팀은 <b>딱 한 글자</b>를 정한다. (예: "짜")
+· <b>앱이 팀마다 한 글자를 뽑아준다</b> (예: "짜"). 팀끼리 글자가 겹치지 않는다.
+· 마음에 안 들면 <b>「다른 글자로 바꾸기」</b>로 다시 뽑을 수 있다.
 · 그 한 글자만 사용해 억양·연기·몸동작으로 제시어를 설명한다.
 · 팀원이 맞추면 성공.
 
@@ -1988,6 +1993,31 @@ function makeTeams(count){
       최종 순위만 기존 scores 흐름으로 저장한다.
 ══════════════════════════════════════════════ */
 const DEFAULT_CATS = ['animal','job','thing','food'];
+
+/* 「한글자로 말해요」에서 앱이 뽑아주는 글자.
+   ⚠️ 아무 글자나 넣으면 안 된다 — 억양·길이만으로 표현이 되는 **소리 흉내에 가까운 글자**라야
+      게임이 굴러간다("의","례" 같은 건 입에 붙지 않아 그냥 막힌다).
+   ⚠️ 팀마다 **다른 글자**를 준다(같으면 뒷 팀이 앞 팀 방식을 그대로 베낀다). */
+const ONE_LETTERS = ['짜','뿅','쿵','삐','옹','빵','딩','랄','뭐','헐',
+                     '캬','툭','펑','씩','웅','얍','꽥','뚝','칙','방',
+                     '콩','딱','뽀','슝','팡','킁','훅','냠','찡','붕'];
+
+/* 아직 안 쓴 글자 중에서 하나. 다 쓰면 처음부터(팀 수가 글자 수를 넘길 일은 없지만 방어). */
+/* 이번 팀 차례의 글자를 준비해 둔다. ⚠️ 렌더 중에 뽑으면 안 된다 —
+   render()는 스냅샷마다 불리므로 글자가 매번 바뀌어 버린다. 턴이 바뀔 때만 뽑는다. */
+function ensureLetter(){
+  const p = S.play; if (!p || p.mode !== 'oneword') return;
+  const t = p.order[p.turn];
+  if (!p.letters[t]) p.letters[t] = drawLetter();
+}
+
+function drawLetter(){
+  const p = S.play;
+  const used = Object.values(p.letters || {});
+  const pool = ONE_LETTERS.filter(x => !used.includes(x));
+  const from = pool.length ? pool : ONE_LETTERS;
+  return from[(Math.random() * from.length) | 0];
+}
 const shuffle = a => { for (let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; };
 
 function startDeckTool(){
@@ -2576,22 +2606,24 @@ function vGame(){
       </div>
     </div>
 
-    ${g.mcWhy ? `<div class="mcbox ${g.mc==='need'?'need':''}">
-      <span class="i">${g.mc==='need' ? '📺' : '🖐'}</span>
-      <span><b>${g.mc==='need' ? '겨루지 않는 사회자가 있어야 깔끔해요' : '지금 안 뛰는 사람이 폰을 맡아주세요'}</b>
-        <span class="s">${h(g.mcWhy)}</span></span>
-    </div>` : ''}
-
-    ${g.role === '사회자' && nSpec ? `
-      <div class="card">
-        <div class="sec" style="margin:0 0 10px">사회자</div>
-        <div class="mcbox need" style="margin:0">
-          <span class="i">📺</span>
-          <span><b>${h(specNames)} 기기가 사회자예요</b>
-            <span class="s">겨루지 않는 기기가 있으니 선수 중에서 따로 뽑지 않아도 됩니다 —
-              ${playing().length}명 전원이 팀에 들어갑니다.</span></span>
-        </div>
-      </div>` : ''}
+    <!-- ⚠️ 「누가 폰을 잡나」는 한 박스로만 말한다. 예전엔 요구 문구와 해결 문구가
+         동시에 떠서, 이미 갖춰졌는데도 아직 모자란 것처럼 보였다.
+         ⚠️ 이 주석은 DOM 으로 나간다 — UI 문구를 그대로 적지 말 것(문자열 검사에 걸린다). -->
+    ${g.mcWhy ? (() => {
+      const solved = g.mc === 'need' && nSpec;      // 관전 기기가 그 자리를 채우고 있다
+      if (solved) return `<div class="mcbox ok">
+        <span class="i">✅</span>
+        <span><b>${h(specNames)} 기기가 사회자를 맡고 있어요</b>
+          <span class="s">선수 중에서 따로 뽑지 않아도 됩니다 — ${playing().length}명 전원이 참여합니다.
+            ${g.privScreen ? '<b style="color:var(--amber)">단 이 게임은 그 화면을 가운데 두지 말고 사회자가 들고 보세요</b> — 화면에 답이 있습니다.' : ''}</span></span>
+      </div>`;
+      return `<div class="mcbox ${g.mc==='need'?'need':''}">
+        <span class="i">${g.mc==='need' ? '📺' : '🖐'}</span>
+        <span><b>${g.mc==='need' ? '겨루지 않는 사회자가 있어야 깔끔해요' : '지금 안 뛰는 사람이 폰을 맡아주세요'}</b>
+          <span class="s">${h(g.mcWhy)}${g.mc==='need'
+            ? '<br>대기실에서 기기 하나를 <b>「사회자(화면)」</b>로 지정하면 전원이 플레이할 수 있어요.' : ''}</span></span>
+      </div>`;
+    })() : ''}
 
     ${g.role && !(g.role === '사회자' && nSpec) ? `
       <div class="card">
@@ -3027,10 +3059,13 @@ function vDeck(){
 
       ${p.mode==='oneword' ? `
         <div class="sec">이 팀의 한 글자</div>
-        <div class="card">
-          <input class="inp" id="in-letter" maxlength="1" placeholder="예: 짜" value="${h(p.letters[t]||'')}"
-            style="text-align:center;font-size:30px;font-weight:900;padding:14px">
-          <p class="note" style="margin-top:9px">이 글자만 써서 설명해야 합니다</p>
+        <div class="card" style="text-align:center">
+          <div style="font-size:64px;font-weight:900;letter-spacing:-.05em;line-height:1.1;
+            background:var(--hero);-webkit-background-clip:text;background-clip:text;color:transparent">
+            ${h(p.letters[t] || '?')}</div>
+          <p class="note" style="margin:10px 0 12px">이 글자<b>만</b> 써서 설명해야 합니다 —
+            억양·길이·표정은 자유예요</p>
+          <button class="btn gh sm" data-act="pl-reletter" style="width:100%">🎲 다른 글자로 바꾸기</button>
         </div>` : ''}
 
       <div style="text-align:center;padding:26px 18px;border-radius:var(--r-l);
@@ -3688,21 +3723,19 @@ async function act(a, d){
   }
   case 'pl-start': {
     if (!S.play.cats.length) return toast('카테고리를 하나 이상 골라주세요');
-    Object.assign(S.play, { phase:'ready', turn:0, results:{} });
+    Object.assign(S.play, { phase:'ready', turn:0, results:{}, letters:{} });
+    ensureLetter();
     buildDeck();                       // 판 전체가 하나의 덱을 이어 쓴다(팀 간 중복 방지)
     if (!S.play.deck.length) return toast('낼 제시어가 없어요 — 카테고리를 더 골라주세요');
     nextWord();                        // 첫 장을 미리 뽑아둔다(턴 시작마다 뽑으면 한 장씩 샌다)
     if (S.play.wrapped) toast('제시어를 한 바퀴 다 썼어요 — 처음부터 다시 돕니다');
     render(); break;
   }
-  case 'pl-begin': {
+  case 'pl-begin': beginTurn(); break;
+  case 'pl-reletter': {
     const p = S.play, t = p.order[p.turn];
-    if (p.mode === 'oneword'){
-      const v = ($('#in-letter')?.value || '').trim();
-      if (!v) return toast('이 팀이 쓸 한 글자를 정해주세요');
-      p.letters[t] = v[0];
-    }
-    beginTurn(); break;
+    p.letters[t] = drawLetter();
+    SFX.go(); vib(12); render(true); break;
   }
   /* 🎵 노래 맞히기 */
   case 'song-n': S.play.n = Number(d.v); render(); break;
@@ -3801,7 +3834,7 @@ async function act(a, d){
       // 이 판에 실제로 화면에 뜬 제시어만 기록한다(안 넘긴 카드는 아직 안 쓴 것)
       markUsed(p.gameId, Object.values(p.results).flat().map(x => x.w));
     }
-    else { p.turn++; p.phase = 'ready'; }
+    else { p.turn++; p.phase = 'ready'; ensureLetter(); }
     render(); break;
   }
   case 'pl-save': deckToScore(); break;

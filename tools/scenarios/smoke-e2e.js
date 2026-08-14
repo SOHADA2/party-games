@@ -273,6 +273,33 @@ if (new URLSearchParams(location.search).has('demo')){
     act('pl-save', {}); act('score-cancel', {});
     S.room.used = {};
 
+    /* ── 5.35) 🗣 한글자로 말해요 — 앱이 글자를 준다 ──
+       ⚠️ 예전엔 팀이 입력창에 직접 쳤다. 아무도 안 정해서 시작이 지연됐고,
+          팀마다 같은 글자를 골라 뒷 팀이 앞 팀 방식을 그대로 베끼기도 했다. */
+    {
+    makeTeams(2);
+    S.gameId = 'body'; go('game'); act('tool-start', {});
+    S.play.mode = 'oneword'; S.play.cats = ['animal'];
+    act('pl-start', {});
+    const t0 = S.play.order[0];
+    ck('★한 글자를 앱이 자동으로 준다', !!S.play.letters[t0]);
+    ck('  준 글자가 목록 안에 있다', ONE_LETTERS.includes(S.play.letters[t0]));
+    ck('  입력창이 없다', !view('play').includes('id="in-letter"'));
+    ck('  글자가 화면에 뜬다', view('play').includes(S.play.letters[t0]));
+    const before = S.play.letters[t0];
+    let changed = false;
+    for (let i = 0; i < 8 && !changed; i++){ act('pl-reletter', {}); changed = S.play.letters[t0] !== before; }
+    ck('★다시 뽑으면 다른 글자가 나온다', changed);
+    act('pl-begin', {});
+    for (let i = 0; i < 3; i++) act('pl-mark', { v:'1' });
+    act('pl-stop', {}); act('pl-next', {});
+    const t1 = S.play.order[1];
+    ck('★다음 팀도 자동으로 받는다', !!S.play.letters[t1]);
+    ck('★★팀끼리 글자가 겹치지 않는다', S.play.letters[t0] !== S.play.letters[t1]);
+    act('pl-quit', {});
+    S.room.used = {};
+    }
+
     /* ── 5.4) 덱 카테고리의 use 태그 ──
        ⚠️ 두 게임이 같은 덱을 쓰지만 요구가 정반대다. 태그가 새면
           「아르헨티나를 몸으로 표현하세요」가 나온다. */
@@ -461,11 +488,19 @@ if (new URLSearchParams(location.search).has('demo')){
     S.gameId='body'; S.view='game'; render(true);
     const gv = document.getElementById('view').innerHTML;
     ck('★사회자 기기가 있으면 사회자 뽑기 숨김', !gv.includes('사회자 뽑기'));
-    ck('  대신 사회자 기기를 안내한다', gv.includes('기기가 사회자예요'));
+    ck('  대신 사회자 기기를 안내한다', gv.includes('기기가 사회자를 맡고 있어요'));
+    // ★ 요구와 해결이 동시에 뜨면 안 된다 — 갖췄는데도 모자란 것처럼 보였다(v0.21.0에서 고침)
+    ck('★★사회자 기기가 있으면 「있어야 깔끔해요」 요구가 사라진다',
+      !gv.includes('있어야 깔끔해요'));
+    ck('  화면에 답이 있는 게임은 「가운데 두지 말라」를 같이 안내한다',
+      gv.includes('가운데 두지 말고'));
     S.room.players[P[0]].spec = false;
     S.view='game'; render(true);
-    ck('사회자 기기가 없으면 뽑기가 다시 뜬다',
-      document.getElementById('view').innerHTML.includes('사회자 뽑기'));
+    {
+      const gv2 = document.getElementById('view').innerHTML;
+      ck('사회자 기기가 없으면 뽑기가 다시 뜬다', gv2.includes('사회자 뽑기'));
+      ck('★사회자 기기가 없으면 요구 문구가 다시 뜬다', gv2.includes('있어야 깔끔해요'));
+    }
     S.room.players[P[0]].spec = true;
 
     S.gameId='noise'; go('game');
