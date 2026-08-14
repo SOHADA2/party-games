@@ -87,6 +87,24 @@ curl -s https://sohada2.github.io/party-games/ | grep -o "APP_VERSION = '[^']*'"
 ⚠️ **캐시 주의**: `sw.js`가 앱 셸을 캐싱한다. network-first라 보통 즉시 반영되지만,
 안 바뀌면 시크릿 창 또는 새로고침 2번.
 
+### ⚠️ Pages 배포가 안 올라갈 때 (실제로 겪음, v0.20.0)
+푸시는 됐는데 라이브 버전이 그대로면 **GitHub 쪽 문제일 수 있다.** 순서대로 본다:
+
+```bash
+gh run list --repo SOHADA2/party-games --limit 3     # 실패/queued 인지
+gh run view <ID> --repo SOHADA2/party-games --log-failed
+curl -s https://www.githubstatus.com/api/v2/summary.json   # Pages/Actions 상태
+```
+
+- `Failed to get ID Token … Request timeout` → **OIDC 토큰 발급 타임아웃(일시 장애)**.
+  내 코드와 무관하다. 직전 빌드가 같은 설정으로 성공했는지 보면 바로 구분된다.
+- `gh run rerun` 을 해도 **queued 에서 안 움직이는 경우가 있다**(정상은 20~25초).
+  이때 `gh run cancel` 은 "이미 완료됨"이라 나오고 `gh run view` 에는 잡이 비어 있다 —
+  큐가 꼬인 상태다.
+- **가장 확실한 복구는 새 커밋을 푸시해 빌드를 새로 거는 것.** 같은 SHA 재푸시는 트리거되지 않는다.
+⚠️ 이때 **배포가 안 됐는데 "배포 완료"라고 보고하지 말 것.** 라이브 `APP_VERSION` 을
+   직접 `curl` 로 확인한 값만 믿는다.
+
 ---
 
 ## 로컬 테스트
