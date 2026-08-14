@@ -22,7 +22,7 @@ node serve.mjs 8123   # 포트 지정
 ```bash
 node tools/check.mjs                                    # 문법 + 끊어진 참조, 실패 시 exit 1
 node tools/demo.mjs tools/scenarios/smoke-e2e.js _s.html
-node tools/shot.mjs --dom "/_s.html?demo=1"             # 게임 5종 + 백본 자동 점검
+node tools/shot.mjs --dom "/_s.html?demo=1"             # 게임 6종 + 백본 자동 점검
 rm -f _*.html                                           # 검증 사본 정리
 ```
 
@@ -99,8 +99,8 @@ Firebase RTDB (aram 프로젝트 재사용, `party` 노드로 격리)
 
 ## 현재 상태
 
-**게임 5종**, 전부 전용 진행 도구까지 구현 —
-멕썸노이즈 · 스마일~! · 몸으로/한글자로 말해요 · 연기 대결 · 컵 레이스.
+**게임 6종**, 전부 전용 진행 도구까지 구현 —
+멕썸노이즈 · 스마일~! · **초성 퀴즈** · 몸으로/한글자로 말해요 · 연기 대결 · 컵 레이스.
 백본(방 생성/참여, 팀 랜덤, 술래 뽑기, 순위 입력, 종합 리더보드, PWA, 화면 꺼짐 방지)도 완료.
 
 **태블릿은 「사회자」로 방에 들어간다**(v0.15.0) — 대기실에서 기기 하나를 「사회자(화면)」로

@@ -526,6 +526,26 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .wtxt.long{font-size:27px}
 .wtxt.xlong{font-size:21px;line-height:1.4}   /* 긴 속담(최대 20자)까지 안 넘치게 */
 .wcat{font-size:11.5px;font-weight:800;color:var(--dim2);letter-spacing:.1em;margin-bottom:14px}
+/* 초성은 자음이 붙어 있으면 몇 글자인지 안 보인다 — 자간을 벌린다.
+   그리고 제시어보다 **크게** 띄운다: 글자 수가 적은 대신 모두가 이걸 노려본다.
+   ⚠️ .long/.xlong 을 여기서 다시 선언하는 이유 — 이 규칙이 .wtxt.long 보다 뒤에 있어
+      (같은 특정도라) 나중 규칙이 이긴다. 안 적으면 긴 속담 초성이 화면을 넘친다. */
+.wtxt.cho{letter-spacing:.14em;font-size:48px}
+.wtxt.cho.long{font-size:32px}
+.wtxt.cho.xlong{font-size:24px}
+.wans{margin-top:16px;padding-top:15px;border-top:1px solid rgba(255,255,255,.13)}
+.wans-l{font-size:11.5px;font-weight:800;color:var(--dim2);letter-spacing:.1em;margin-bottom:7px}
+.wans-v{font-size:30px;font-weight:900;letter-spacing:-.04em;line-height:1.25;word-break:keep-all;
+  background:var(--hero);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* 직전 문제 한 줄 — 템포를 안 끊으려고 정답 확인을 여기서 한다 */
+.lastq{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:13px;margin-bottom:12px;
+  background:rgba(0,0,0,.26);border:1px solid var(--line2);font-size:13px;font-weight:700;
+  color:#CFC8E6;word-break:keep-all;line-height:1.5}
+.lastq b{color:var(--tx)}
+.lastq .u{margin-left:auto;flex:none;padding:6px 11px;border-radius:9px;font-size:12px;font-weight:800;
+  background:rgba(255,255,255,.07);border:1px solid var(--line2);color:var(--dim)}
+.lastq .u:active{transform:scale(.94)}
+.choq{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .wletter{display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;
   padding:5px 12px;border-radius:99px;background:rgba(124,107,255,.16);color:#B8AEFF;
   font-size:12.5px;font-weight:800}
@@ -685,6 +705,13 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
   .wtxt.xlong{font-size:38px}
   .wcat{font-size:15px;margin-bottom:18px}
   .wletter{font-size:17px;padding:8px 18px;margin-bottom:18px}
+  /* 초성·정답은 전원이 보는 것이라 키운다(.priv 아님) */
+  .wtxt.cho{font-size:110px}
+  .wtxt.cho.long{font-size:64px}
+  .wtxt.cho.xlong{font-size:44px}
+  .wans-v{font-size:52px}
+  .wans-l{font-size:14px}
+  .lastq{font-size:17px;padding:15px 17px}
   .turnhd .t{font-size:24px}
   .turnhd .r{font-size:16px}
   .tbar{height:14px}
@@ -726,6 +753,10 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
   .wtxt{font-size:58px}
   .wtxt.long{font-size:43px}
   .wtxt.xlong{font-size:32px}
+  .wtxt.cho{font-size:84px}
+  .wtxt.cho.long{font-size:52px}
+  .wtxt.cho.xlong{font-size:36px}
+  .wans-v{font-size:40px}
   .wcat{margin-bottom:12px}
   .tsec{font-size:46px}
   .bignum{font-size:74px}
@@ -760,7 +791,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.15.0';
+const APP_VERSION = 'v0.16.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -849,6 +880,16 @@ const WORD_DECKS = {
     '사공이 많으면 배가 산으로 간다','원수는 외나무다리에서 만난다']},
 };
 const DECK_KEYS = Object.keys(WORD_DECKS);
+
+/* 초성 퀴즈 — 제시어를 그대로 재사용한다(새 데이터가 필요 없다).
+   삼계탕 → ㅅㄱㅌ · 가는 말이 고와야 → ㄱㄴ ㅁㅇ ㄱㅇㅇ
+   ⚠️ 한글이 아닌 글자(공백·숫자·영문)는 건드리지 않고 그대로 둔다 — 띄어쓰기가
+      살아 있어야 「몇 단어짜리인지」가 보이고, 그게 이 게임의 유일한 힌트다. */
+const CHO_TABLE = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+const cho = w => [...String(w)].map(c => {
+  const i = c.charCodeAt(0) - 0xAC00;
+  return (i >= 0 && i < 11172) ? CHO_TABLE[Math.floor(i / 588)] : c;
+}).join('');
 
 /* 받침에 따라 조사 선택: jo('수박','을','를') → 수박을 / jo('사과','을','를') → 사과를 */
 function jo(w, a, b){
@@ -955,6 +996,27 @@ const GAMES = [
 
 <b>순위</b>
 · 마지막까지 안 걸린 사람이 1등. 술래가 된 순서의 역순.`
+  },
+  {
+    id:'chosung', name:'초성 퀴즈', emoji:'🔠', color:'#FFB84D', mode:'solo', weight:1,
+    role:null, mc:'help', mcWhy:'정답이 화면에 안 뜨므로 폰을 잡은 사람도 같이 맞힐 수 있다 — 탭만 대신 눌러준다',
+    tag:'개인전 · 먼저 맞히기', tool:'cho', toolLabel:'▶ 초성 띄우고 시작',
+    rules:
+`화면에 <b>초성만</b> 뜬다. 먼저 맞히는 사람이 1점.
+
+<b>진행</b>
+· 폰이나 태블릿을 가운데 두고 <b>다 같이 화면을 봅니다.</b>
+· 초성을 보고 아는 사람이 <b>소리쳐서</b> 답합니다. 손 들 필요도 없어요.
+· 진행자가 맞힌 사람을 탭하면 1점이 오르고 <b>바로 다음 문제</b>로 넘어갑니다.
+· 아무도 못 맞히겠으면 <b>「아무도 못 맞힘」</b> — 정답을 보여주고 넘어갑니다.
+· 잘못 눌렀으면 <b>「방금 취소」</b> 로 그 문제부터 다시 합니다.
+
+<b>승패</b>
+· 정한 문제 수를 다 풀면 <b>많이 맞힌 순서대로</b> 순위가 매겨집니다.
+
+<b>이 게임의 좋은 점</b>
+· 규칙 설명이 한 줄이면 끝나고 준비물이 없습니다.
+· <b>정답은 맞히기 전까지 화면에 안 뜹니다</b> — 그래서 폰을 잡은 사람도 같이 맞힐 수 있어요.`
   },
   {
     id:'body', name:'몸으로 말해요 / 한글자로 말해요', emoji:'🕺', color:'#3DE0A8', mode:'team', weight:1.5,
@@ -1408,6 +1470,40 @@ function startDeckTool(){
   go('play');
 }
 
+/* ── 🔠 초성 퀴즈 ────────────────────────────────────────────
+   ⚠️ 이 게임의 비밀은 「화면」이 아니라 「정답 문자열」이다.
+      태블릿을 가운데 두고 다 같이 보므로 .priv 로 가릴 대상이 없다 —
+      대신 **정답은 맞히기 전까지 어떤 화면에도 렌더하지 않는다.**
+      그래서 폰을 잡은 진행자도 같이 맞힐 수 있다(mc:'help' 인 이유).
+   ⚠️ 점수를 따로 들고 있지 않고 log 에서 매번 센다. 상태가 하나뿐이라
+      「방금 취소」가 log.pop() 한 줄로 끝나고, renderSig 의 log.length 가
+      점수 변화를 자동으로 잡는다(따로 서명 필드를 안 늘려도 된다). */
+const CHO_CATS = ['movie','music','char','animal'];
+
+function startChoTool(){
+  S.play = {
+    gameId:S.gameId, kind:'cho', phase:'setup',
+    cats:[...CHO_CATS], n:15,
+    deck:[], di:0, cur:null, log:[], _t:null,
+  };
+  go('play');
+}
+
+/* log → {pid: 맞힌 개수}. 못 맞힌 문제는 by:null 이라 안 세어진다. */
+function choScores(){
+  const m = {};
+  playing().forEach(([pid]) => { m[pid] = 0; });
+  (S.play?.log || []).forEach(x => { if (x.by != null && m[x.by] != null) m[x.by]++; });
+  return m;
+}
+
+function choNext(){
+  const p = S.play;
+  if (p.log.length >= p.n){ p.phase = 'done'; stopPlayTimer(); SFX.end(); vib([40,60,40]); }
+  else { nextWord(); p.phase = 'run'; }
+  render(true);
+}
+
 function buildDeck(){
   const p = S.play;
   const seen = new Set();
@@ -1581,7 +1677,7 @@ function renderSig(){
       S.play.pts || 0, S.play.votes || 0, S.play.vi ?? -1,
       (S.play.picked || []).join(''), S.play.judged || 0, S.play.cur?.t || 0,
       S.play.sen || 0, S.play.card || 0, S.play.cnt ?? 0, S.play.sit || 0,
-      S.play.reading ?? -1,
+      S.play.reading ?? -1, S.play.n ?? 0,
       !!S.play.show, !!S.play.pol, !!S.play.doc, !!S.play.incHost,
       !!S.play.running, !!S.play.over, S.play.sul || 0,
       (S.play.pool || []).length, (S.play.log || []).length,
@@ -1901,12 +1997,144 @@ function vPlay(){
   const p = S.play; if (!p) return '';
   switch (p.kind){
     case 'deck':  return vDeck();
+    case 'cho':   return vCho();
     case 'noise': return vNoise();
     case 'cup':   return vCup();
     case 'act':   return vAct();
     case 'smile': return vSmile();
   }
   return '';
+}
+
+/* ── 🔠 초성 퀴즈 ── */
+function vCho(){
+  const p = S.play;
+  const g = G(p.gameId);
+  const wordCount = p.cats.reduce((n,k) => n + (WORD_DECKS[k]?.words.length || 0), 0);
+
+  /* 1) 설정 */
+  if (p.phase === 'setup') return `
+    <div class="gh" style="${gcVars(g.color)};padding:17px">
+      <div class="gh-n" style="font-size:18px;padding-right:0">${g.emoji} ${h(g.name)}</div>
+      <p class="note" style="margin-top:7px;position:relative">
+        화면을 가운데 두고 다 같이 봅니다 — 정답은 맞히기 전까지 안 뜹니다</p>
+    </div>
+
+    <div class="sec">문제 수</div>
+    <div class="seg">
+      ${[10,15,20].map(n => `<button data-act="cho-n" data-v="${n}" class="${p.n===n?'on':''}">${n}문제</button>`).join('')}
+    </div>
+
+    <div class="sec">출제 범위 <span class="n">${wordCount}개</span></div>
+    <div class="catgrid">
+      ${DECK_KEYS.map(k => `
+        <button class="cat ${p.cats.includes(k)?'on':''}" data-act="pl-cat" data-v="${k}">
+          <span class="e">${WORD_DECKS[k].emoji}</span>
+          <span>${h(WORD_DECKS[k].name)}</span>
+          <span class="c">${WORD_DECKS[k].words.length}</span>
+        </button>`).join('')}
+    </div>
+    <p class="note" style="margin:9px 4px 0">영화·드라마 / 노래·가수 / 캐릭터가 제일 잘 붙습니다.
+      <b>속담</b>은 통째로 초성이 되어 난이도가 확 올라가요.</p>
+
+    <div style="height:20px"></div>
+    <div class="stack">
+      <button class="btn pri" data-act="cho-start" ${!p.cats.length ? 'disabled' : ''}>
+        ${p.cats.length ? '▶ 시작하기' : '범위를 하나 이상 골라주세요'}</button>
+      <button class="btn gh" data-act="pl-quit">그만두기</button>
+    </div>`;
+
+  const sc = choScores();
+  const board = playing().slice().sort((a,b) => sc[b[0]] - sc[a[0]]);
+
+  /* 4) 종료 */
+  if (p.phase === 'done'){
+    const solved = p.log.filter(x => x.by != null).length;
+    return `
+      <div class="pickres">
+        <div class="pickres-l">${p.log.length}문제 중</div>
+        <div class="pickres-v">${solved}개 맞힘</div>
+      </div>
+      <div class="sec">점수</div>
+      ${board.map(([pid,pl],i) => `
+        <div class="tscore" style="--tc:${avColor(pid)};margin-bottom:6px">
+          <div class="n" style="display:flex;align-items:center;gap:9px">
+            <span style="color:var(--dim2);font-weight:800;min-width:20px">${i+1}</span>
+            ${av(pid, pl.name, 'sm')} ${h(pl.name)}</div>
+          <div class="v">${sc[pid]}<small>개</small></div>
+        </div>`).join('')}
+      ${(() => {
+        const v = board.map(([pid]) => sc[pid]);
+        return v.length !== new Set(v).size
+          ? `<p class="note" style="margin:9px 4px 0">동점이 있어요 —
+             다음 화면에서 <b>순서를 끌어 바꿀 수 있습니다.</b></p>` : '';
+      })()}
+      <div class="sec">나온 문제</div>
+      ${p.log.map(x => `<div class="sumrow ${x.by?'':'no'}">
+          <span class="m">${x.by ? '✅' : '⛔'}</span>
+          <span class="w">${h(x.w)}</span>
+          <span style="margin-left:auto;font-size:12px;color:var(--dim2);font-weight:700">
+            ${x.by ? h(pname(x.by)) : '아무도 못 맞힘'}</span>
+        </div>`).join('')}
+      <div style="height:18px"></div>
+      <div class="stack">
+        <button class="btn pri" data-act="cho-save">🏆 순위 입력하기</button>
+        <button class="btn gh" data-act="pl-quit">그만두기</button>
+      </div>`;
+  }
+
+  /* 직전 문제 한 줄 — 정답 확인을 여기서 해서 진행 템포를 안 끊는다 */
+  const last = p.log[p.log.length - 1];
+  const lastHtml = last ? `
+    <div class="lastq">
+      <span>직전 <b>${h(last.w)}</b>${last.by ? ` — ${h(pname(last.by))}` : ' — 못 맞힘'}</span>
+      <button class="u" data-act="cho-undo">방금 취소</button>
+    </div>` : '';
+
+  const wl = (p.cur?.w || '').length;
+  const long = wl > 14 ? 'xlong' : wl > 8 ? 'long' : '';
+  const revealing = p.phase === 'reveal';
+
+  /* 2~3) 진행 중 / 정답 공개 — ⚠️ .priv 를 붙이지 않는다(전원이 봐야 하는 화면) */
+  return `
+    <div class="turnhd">
+      <span class="sw" style="--tc:${g.color}"></span>
+      <span class="t">🔠 초성 퀴즈</span>
+      <span class="r">${p.log.length + 1} / ${p.n}</span>
+    </div>
+    ${lastHtml}
+
+    <div class="wcard">
+      <div>
+        <div class="wcat">${h(WORD_DECKS[p.cur?.c]?.name || '')}</div>
+        <div class="wtxt cho ${long}">${h(cho(p.cur?.w || ''))}</div>
+        ${revealing ? `<div class="wans">
+          <div class="wans-l">정답</div>
+          <div class="wans-v">${h(p.cur?.w || '')}</div>
+        </div>` : ''}
+      </div>
+    </div>
+
+    ${revealing
+      ? `<div class="stack">
+           <button class="btn pri" data-act="cho-skip">다음 문제 →</button>
+           <button class="btn gh sm" data-act="cho-done" style="width:100%">지금 끝내기</button>
+         </div>`
+      : `<div class="sec">누가 맞혔나요?</div>
+         <div class="choq">
+           ${playing().map(([pid,pl]) => `
+             <button class="pick" data-act="cho-hit" data-pid="${pid}">
+               ${av(pid, pl.name, 'sm')}
+               <div style="flex:1;font-weight:800;font-size:15px;min-width:0;
+                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h(pl.name)}</div>
+               <span class="chip">${sc[pid]}</span>
+             </button>`).join('')}
+         </div>
+         <div style="height:12px"></div>
+         <div class="stack">
+           <button class="btn" data-act="cho-pass">🤷 아무도 못 맞힘 — 정답 공개</button>
+           <button class="btn gh sm" data-act="cho-done" style="width:100%">지금 끝내기</button>
+         </div>`}`;
 }
 
 /* ── 제시어 덱 (몸으로/한글자로 말해요) ── */
@@ -2610,6 +2838,7 @@ async function act(a, d){
     else if (g.tool === 'cup'){   if (n < 2) return toast('2명 이상 필요해요'); startCupTool(); }
     else if (g.tool === 'act'){   if (n < 2) return toast('2명 이상 필요해요'); startActTool(); }
     else if (g.tool === 'smile'){ if (n < 3) return toast('3명 이상 필요해요'); startSmileTool(); }
+    else if (g.tool === 'cho'){   if (n < 2) return toast('2명 이상 필요해요'); startChoTool(); }
     break;
   }
   case 'pl-mode': S.play.mode = d.v; render(); break;
@@ -2634,6 +2863,46 @@ async function act(a, d){
     }
     beginTurn(); break;
   }
+  /* 🔠 초성 퀴즈 */
+  case 'cho-n': S.play.n = Number(d.v); render(); break;
+  case 'cho-start': {
+    const p = S.play;
+    if (!p.cats.length) return toast('범위를 하나 이상 골라주세요');
+    p.log = []; buildDeck(); nextWord(); p.phase = 'run';
+    SFX.go(); vib(20); render(true); break;
+  }
+  case 'cho-hit': {
+    const p = S.play; if (p.phase !== 'run') return;
+    p.log.push({ w:p.cur.w, c:p.cur.c, by:d.pid });
+    SFX.ok(); vib(16); choNext(); break;
+  }
+  case 'cho-pass': {
+    const p = S.play; if (p.phase !== 'run') return;
+    p.phase = 'reveal'; SFX.pass(); vib(8); render(true); break;
+  }
+  case 'cho-skip': {
+    const p = S.play;
+    p.log.push({ w:p.cur.w, c:p.cur.c, by:null });
+    choNext(); break;
+  }
+  case 'cho-undo': {
+    // 잘못 탭한 경우 — 그 문제를 되돌려 다시 출제한다(덱 인덱스는 그대로 두면 된다)
+    const p = S.play;
+    const x = p.log.pop(); if (!x) return;
+    p.cur = { w:x.w, c:x.c }; p.phase = 'run';
+    SFX.pass(); vib(8); render(true); break;
+  }
+  case 'cho-done': {
+    const p = S.play;
+    if (!p.log.length) return toast('아직 푼 문제가 없어요');
+    p.phase = 'done'; stopPlayTimer(); SFX.end(); render(true); break;
+  }
+  case 'cho-save': {
+    const sc = choScores();
+    toScore(playing().map(([pid]) => pid).sort((a,b) => sc[b] - sc[a]), 'solo');
+    break;
+  }
+
   case 'pl-mark': markWord(d.v === '1'); break;
   case 'pl-stop': endTurn(); break;
   case 'pl-next': {

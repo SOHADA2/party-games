@@ -1,4 +1,4 @@
-/* 남은 게임 5종 + 방/점수 백본 스모크 점검 — 결과를 <title> 에 적는다(헤드리스로 읽어가려고).
+/* 게임 6종 + 방/점수 백본 스모크 점검 — 결과를 <title> 에 적는다(헤드리스로 읽어가려고).
  *
  *   node tools/demo.mjs tools/scenarios/smoke-e2e.js _s.html
  *   node tools/shot.mjs --dom "/_s.html?demo=1"
@@ -107,6 +107,61 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('라운드 로그 3건', m.log.length === 3);
     act('sm-done', {}); act('sm-score', {});
     ck('smile 순위 화면', S.view === 'score' && S.play === null);
+    act('score-cancel', {});
+
+    /* ── 5.5) 🔠 초성 퀴즈 (cho) ──
+       ⚠️ 이 게임의 핵심 제약은 「정답이 맞히기 전까지 화면에 없다」는 것이다.
+          태블릿을 다 같이 보므로 정답이 새면 게임이 통째로 성립하지 않는다. */
+    S.gameId = 'chosung'; go('game'); act('tool-start', {});
+    ck('cho 진입', S.play?.kind === 'cho' && S.play.phase === 'setup');
+    S.play.n = 3;                                     // 짧게 한 판
+    act('cho-start', {});
+    ck('초성 문제 생성', S.play.phase === 'run' && !!S.play.cur?.w);
+
+    /* 변환 정확도 — 겹자음·공백·비한글 */
+    ck('★초성 변환 정확', cho('삼계탕') === 'ㅅㄱㅌ' && cho('짜장면') === 'ㅉㅈㅁ'
+      && cho('가는 말이') === 'ㄱㄴ ㅁㅇ' && cho('BTS 노래') === 'BTS ㄴㄹ');
+
+    /* ★ 정답 누출 — 진행 화면 어디에도 원문이 있으면 안 된다 */
+    const runHtml = view('play');
+    ck('★진행 화면에 초성이 뜬다', runHtml.includes(cho(S.play.cur.w)));
+    ck('★★진행 화면에 정답이 없다', !runHtml.includes(S.play.cur.w));
+    ck('★.priv 를 안 붙였다 (전원이 봐야 하는 화면)', !/wcard[^"]*priv/.test(runHtml));
+
+    /* 맞히면 +1 하고 바로 다음 문제 */
+    const q1 = S.play.cur.w;
+    act('cho-hit', { pid:P[1] });
+    ck('맞히면 점수 +1', choScores()[P[1]] === 1);
+    ck('바로 다음 문제로', S.play.phase === 'run' && S.play.cur.w !== q1);
+    ck('직전 문제 줄에 정답 공개', view('play').includes(q1));
+
+    /* 잘못 눌렀을 때 되돌리기 — 그 문제부터 다시 */
+    act('cho-undo', {});
+    ck('★방금 취소 — 점수 복구', choScores()[P[1]] === 0);
+    ck('★방금 취소 — 그 문제로 복귀', S.play.cur.w === q1 && S.play.phase === 'run');
+    ck('취소 후 진행 카운터도 되돌아감', S.play.log.length === 0);
+
+    /* 아무도 못 맞히면 정답 공개 */
+    act('cho-pass', {});
+    const revHtml = view('play');
+    ck('정답 공개 단계', S.play.phase === 'reveal');
+    ck('★공개하면 그때 정답이 뜬다', revHtml.includes(S.play.cur.w));
+    act('cho-skip', {});
+    ck('못 맞힌 문제는 by:null', S.play.log[0].by === null && S.play.log.length === 1);
+
+    /* 남은 문제를 채우면 자동 종료 */
+    act('cho-hit', { pid:P[2] });
+    act('cho-hit', { pid:P[2] });
+    ck('★목표 문제 수를 채우면 자동 종료', S.play.phase === 'done' && S.play.log.length === 3);
+    const choSc = choScores();
+    ck('점수 집계', choSc[P[2]] === 2 && choSc[P[1]] === 0);
+    const doneHtml = view('play');
+    ck('종료 화면에 나온 문제 공개', doneHtml.includes(S.play.log[0].w));
+    act('cho-save', {});
+    ck('cho 순위 화면', S.view === 'score' && S.play === null);
+    ck('★많이 맞힌 사람이 1등', S.draft.order[0] === P[2]);
+    ck('cho 는 개인전으로 넘어간다', S.draft.mode === 'solo');
+    ck('선수 전원이 순위에 들어간다', S.draft.order.length === playing().length);
     act('score-cancel', {});
 
     /* ── 6) 술래 뽑기(중복 방지 로테이션) ── */

@@ -85,7 +85,12 @@ if (has('--dom')){
   await rm(ud, { recursive:true, force:true }).catch(()=>{});
   const t = stdout.match(/<title>([\s\S]*?)<\/title>/);
   console.log(t ? t[1].split(' ## ').join('\n') : '(title 없음) → ' + out);
-  process.exit(/문제|ERR |‼/.test(t?.[1] || '') ? 1 : 0);
+  /* ⚠️ 판정에 「문제」 같은 **평범한 낱말**을 넣지 말 것.
+     예전엔 /문제|ERR |‼/ 였는데, 초성 퀴즈처럼 라벨에 "문제"가 들어가는 시나리오가
+     들어오자 **전부 통과인데도 exit 1** 이 됐다. 시나리오 쪽은 v0.12.0에 같은 이유로
+     이미 고쳤는데 여기가 남아 있었다. 판정은 시나리오가 찍는 표시로만 한다:
+     `‼`(실패 건수 요약) · `✕FAIL`(항목 실패) · 맨 앞의 `ERR `(예외). */
+  process.exit(/^ERR |‼|✕FAIL/.test(t?.[1] || '') ? 1 : 0);
 }
 
 /* ── 여러 화면을 한 장에 (같은 출처에서 iframe 으로 나란히) ── */
