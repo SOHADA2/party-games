@@ -320,8 +320,11 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('  중앙에서는 도착 쪽으로 나간다', yutMove(23, 3) === YUT_HOME);
     ck('  완주를 넘겨도 완주로 처리', yutMove(18, 5) === YUT_HOME);
 
-    /* 던지기 → 이동 */
+    /* 던지기 → 이동. ⚠️ 대기 말은 판에 칸이 없어 **버튼**으로만 나갈 수 있다 */
     S.room.yut.roll = { n:'개', v:2, again:false, by:'h1', at:1 };
+    S.view = 'play'; render(true);
+    ck('★대기 말을 내보내는 버튼이 있다',
+      document.getElementById('view').innerHTML.includes('data-pos="-1"'));
     act('yut-move', { pos:'-1' });
     ck('★대기 말이 판에 나온다', m().pieces[0].filter(x => x === 1).length === 4);
     ck('  같은 칸 말은 업고 함께 간다(4개가 같이 이동)', m().pieces[0].every(x => x === 1));
@@ -354,10 +357,22 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('★상대팀이 「잠시!」를 걸 수 있다', !!m().halt && m().halt.team === 0);
     ck('  판단 화면이 최우선으로 뜬다', view('play').includes('잠시!'));
     act('yut-halt-ok', {});
-    ck('★★인정하면 가장 앞선 말이 처음으로 돌아간다',
-      m().pieces[0].filter(x => x === -1).length === 3 && m().pieces[0].includes(3));
-    ck('  영어 횟수가 기록된다', (m().penalty || {})[0] === 1);
+    // ★ 앱이 고르지 않는다 — 벌 받는 팀이 직접 고른다(방금 출발한 말을 버릴 수도 있어야 한다)
+    ck('★★인정하면 「그 팀이 고르는」 단계로 간다', !!m().pick && m().pick.team === 0);
+    ck('  아직 아무 말도 안 빠졌다',
+      m().pieces[0].filter(x => x === -1).length === 2);
+    ck('  영어 횟수는 이때 기록된다', (m().penalty || {})[0] === 1);
+    ck('  고르는 화면이 뜬다', view('play').includes('되돌릴 말을 고르세요'));
+    ck('  고르는 중에는 이동이 막힌다',
+      (S.room.yut.roll = { n:'도', v:1, again:false, by:'h1', at:9 },
+       act('yut-move', { pos:'3' }), m().pieces[0].includes(3)));
+    // ★ 앞선 말(7) 대신 **뒤에 있는 말(3)** 을 골라 되돌릴 수 있어야 한다
+    act('yut-pickback', { pos:'3' });
+    ck('★★고른 말이 처음으로 돌아간다 (앞선 말이 아니라)',
+      !m().pieces[0].includes(3) && m().pieces[0].includes(7));
+    ck('  고르고 나면 pick 이 지워진다', !m().pick);
     ck('  판단이 끝나면 halt 가 지워진다', !m().halt);
+    S.room.yut.roll = null;
 
     /* 우리 팀은 지적 못 한다 */
     S.room.yut.turn = 0;

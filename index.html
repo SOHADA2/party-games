@@ -903,7 +903,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.22.0';
+const APP_VERSION = 'v0.22.1';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1397,7 +1397,7 @@ function yutStart(){
   const n = S.room.teams?.count || 0;
   const pieces = Array.from({ length:n }, () => [-1, -1, -1, -1]);
   S.room.yut = { phase:'play', turn:0, pieces, roll:null, log:[],
-                 throw:null, halt:null, penalty:{}, winner:null };
+                 throw:null, halt:null, pick:null, penalty:{}, winner:null };
   set(ref(db, `${ROOT}/rooms/${S.code}/yut`), S.room.yut).catch(()=>{});
 }
 const yutLog = (m, msg) => { m.log = [msg, ...(m.log || [])].slice(0, 8); };
@@ -1414,6 +1414,7 @@ function yutApplyThrow(r, byPid){
 /* 그 칸의 우리 말들을 옮긴다(같은 칸이면 업어서 함께 간다 — 윷놀이 그대로). */
 function yutMoveFrom(pos){
   const m = YT(); if (!m || !m.roll) return;
+  if (m.pick) return toast('되돌릴 말을 먼저 고르세요');
   const t = m.turn, n = m.roll.v;
   const mine = m.pieces[t].map((p, i) => ({ p, i })).filter(x => x.p === pos);
   if (!mine.length) return toast('그 칸에 우리 말이 없어요');
@@ -1450,27 +1451,42 @@ function yutMoveFrom(pos){
 function yutHaltResolve(ok){
   const m = YT(); if (!m || !m.halt) return;
   const t = m.halt.team;
-  if (ok){
-    // 가장 멀리 간 말 하나를 대기로. 완주한 말은 건드리지 않는다.
-    const cand = m.pieces[t].map((p, i) => ({ p, i })).filter(x => x.p >= 0 && x.p !== YUT_HOME);
-    if (cand.length){
-      // ⚠️ yutDist 는 「도착까지 남은 칸」이라 **작을수록 앞선 말**이다.
-      //    내림차순으로 정렬해 첫 번째를 빼면 가장 뒤처진 말이 빠진다(그렇게 짰다가 잡았다).
-      cand.sort((a, b) => yutDist(a.p) - yutDist(b.p));
-      m.pieces[t][cand[0].i] = -1;
-      yutLog(m, `✋ ${teamName(t)} 영어! 말 1개를 처음으로 되돌림`);
-    } else {
-      yutLog(m, `✋ ${teamName(t)} 영어! (뺄 말이 없어 넘어감)`);
-    }
-    m.penalty = { ...(m.penalty || {}), [t]:((m.penalty || {})[t] || 0) + 1 };
-    SFX.end(); vib([30,50,30]);
-  } else {
+
+  if (!ok){
     yutLog(m, `✋ 취소 — 영어가 아니었다`);
-    SFX.pass();
+    m.halt = null; SFX.pass();
+    pushYut({ log:m.log, halt:null }); render(true); return;
   }
-  m.halt = null;
-  pushYut({ pieces:m.pieces, penalty:m.penalty, log:m.log, halt:null });
-  render(true);
+
+  m.penalty = { ...(m.penalty || {}), [t]:((m.penalty || {})[t] || 0) + 1 };
+  const cand = m.pieces[t].filter(x => x >= 0 && x !== YUT_HOME);
+  if (!cand.length){
+    yutLog(m, `✋ ${teamName(t)} 영어! (판에 나온 말이 없어 넘어감)`);
+    m.halt = null;
+    pushYut({ penalty:m.penalty, log:m.log, halt:null });
+    SFX.end(); render(true); return;
+  }
+
+  /* ⚠️ 어떤 말을 되돌릴지는 **벌 받는 팀이 직접 고른다.**
+     앱이 「가장 앞선 말」을 골라주면 전략이 사라진다 — 방금 출발한 말을 버리고
+     앞서 있는 말을 지키는 선택이 이 게임의 재미다(사장님 지적). */
+  m.halt = null; m.pick = { team:t };
+  yutLog(m, `✋ ${teamName(t)} 영어! 되돌릴 말을 고르는 중…`);
+  pushYut({ penalty:m.penalty, log:m.log, halt:null, pick:m.pick });
+  SFX.end(); vib([30,50,30]); render(true);
+}
+
+/* 벌 받는 팀이 고른 말을 집으로 돌려보낸다(업혀 있으면 그중 하나만). */
+function yutPickBack(pos){
+  const m = YT(); if (!m || !m.pick) return;
+  const t = m.pick.team;
+  const idx = m.pieces[t].findIndex(x => x === pos);
+  if (idx < 0) return toast('그 칸에 그 팀 말이 없어요');
+  m.pieces[t][idx] = -1;
+  m.pick = null;
+  yutLog(m, `✋ ${teamName(t)} 말 1개가 처음으로 돌아갔다`);
+  pushYut({ pieces:m.pieces, pick:null, log:m.log });
+  SFX.pass(); vib(16); render(true);
 }
 /* 도착까지 남은 칸 수(작을수록 앞선 말) */
 function yutDist(pos){
@@ -3064,17 +3080,20 @@ function vYut(){
   const done = ti => m.pieces[ti].filter(x => x === YUT_HOME).length;
   const wait = ti => m.pieces[ti].filter(x => x === -1).length;
 
-  /* 이번에 움직일 수 있는 칸들 */
-  const movable = m.roll
-    ? [...new Set(m.pieces[t].filter(x => x !== YUT_HOME))]
-    : [];
+  /* 지금 집을 수 있는 칸 — 평소엔 「내 말 이동」, 벌칙 중엔 「되돌릴 말 고르기」 */
+  const picking = !!m.pick;
+  const pickTeam = picking ? m.pick.team : t;
+  const hot = picking
+    ? [...new Set(m.pieces[pickTeam].filter(x => x >= 0 && x !== YUT_HOME))]
+    : (m.roll ? [...new Set(m.pieces[t].filter(x => x >= 0 && x !== YUT_HOME))] : []);
+  const hotAct = picking ? 'yut-pickback' : 'yut-move';
 
   const cellHtml = YUT_CELLS.map((c, i) => {
     if (!c) return '';
     const here = yutAt(m.pieces, i);
-    const can = m.roll && movable.includes(i);
+    const can = hot.includes(i);
     return `<div class="cell ${c.corner || i === 23 ? 'big' : ''} ${can ? 'pick' : ''}"
-      style="left:${c.x}%;top:${c.y}%" ${can ? `data-act="yut-move" data-pos="${i}"` : ''}>
+      style="left:${c.x}%;top:${c.y}%" ${can ? `data-act="${hotAct}" data-pos="${i}"` : ''}>
       ${i === 0 ? '출발' : c.corner ? '지름' : i === 23 ? '방' : ''}
       ${here.length ? `<div class="pcs">${here.map(x =>
         `<div class="pc" style="background:${TEAM_COLORS[x.t % TEAM_COLORS.length]}"></div>`).join('')}</div>` : ''}
@@ -3111,6 +3130,17 @@ function vYut(){
       <button class="btn gh" data-act="yut-halt-no">아니었어요 — 계속 진행</button>
     </div>
     ${board}`;
+
+  /* 되돌릴 말을 고르는 중 — 그 팀이 태블릿에서 직접 고른다 */
+  if (m.pick) return `
+    <div class="haltbig">
+      <div class="t">✋ ${h(teamName(m.pick.team))} — 되돌릴 말을 고르세요</div>
+      <div class="s">영어를 썼습니다. <b>${h(teamName(m.pick.team))}이 직접</b>
+        판에서 말 하나를 골라 집으로 보내세요.<br>
+        <span style="color:var(--dim2)">방금 출발한 말을 버리고 앞선 말을 지켜도 됩니다</span></div>
+    </div>
+    ${board}
+    <p class="note" style="text-align:center">초록으로 표시된 말 중에서 고르세요</p>`;
 
   if (m.phase === 'ended') return `
     <div class="pickres">
@@ -3151,9 +3181,19 @@ function vYut(){
 
     ${board}
 
-    ${m.roll && !movable.length ? `<div class="balbox warn">
-      <b>움직일 말이 없어요</b><span>턴을 넘겨주세요.</span></div>
-      <button class="btn" data-act="yut-skip" style="margin-bottom:12px">턴 넘기기</button>` : ''}
+    ${(() => {
+      if (!m.roll) return '';
+      const waiting = m.pieces[t].filter(x => x === -1).length;
+      // ⚠️ 대기 말은 판에 칸이 없다 → 버튼이 없으면 **말을 아예 못 내보낸다**(실제로 빠져 있었다)
+      const outBtn = waiting
+        ? `<button class="btn pri" data-act="yut-move" data-pos="-1" style="margin-bottom:10px">
+             🏁 새 말 내보내기 (대기 ${waiting}개)</button>` : '';
+      if (!hot.length && !waiting) return `<div class="balbox warn">
+          <b>움직일 말이 없어요</b><span>턴을 넘겨주세요.</span></div>
+        <button class="btn" data-act="yut-skip" style="margin-bottom:12px">턴 넘기기</button>`;
+      return outBtn + (hot.length ? '' :
+        `<p class="note" style="text-align:center;margin-bottom:10px">판에 나온 말이 없어요 — 새 말을 내보내세요</p>`);
+    })()}
 
     <div class="sec">기록</div>
     <div class="card"><div class="ylog">${(m.log || []).length
@@ -3190,6 +3230,10 @@ function vYutPhone(){
         <div class="pickres-v">${h(teamName(m.winner))} 승리!</div></div>`
     : m.halt ? `<div class="haltbig"><div class="t">✋ 잠시!</div>
         <div class="s">지금 다 같이 판단 중이에요 — 태블릿을 보세요.</div></div>`
+    : m.pick ? `<div class="haltbig"><div class="t">✋ ${h(teamName(m.pick.team))} 벌칙</div>
+        <div class="s">${myTeam() === m.pick.team
+          ? '<b>우리 팀이 되돌릴 말을 고를 차례예요</b> — 태블릿에서 고르세요.'
+          : `${h(teamName(m.pick.team))}이 되돌릴 말을 고르는 중입니다.`}</div></div>`
     : `
       ${m.roll ? `<div class="rollbig">
           <div class="v">${h(m.roll.n)} · ${m.roll.v}칸</div>
@@ -4251,6 +4295,7 @@ async function act(a, d){
     yutStart(); S.play.phase = 'play'; confetti(60); render(true); break;
   }
   case 'yut-move': yutMoveFrom(Number(d.pos)); break;
+  case 'yut-pickback': yutPickBack(Number(d.pos)); break;
   case 'yut-skip': {
     const m = YT(); if (!m) return;
     m.roll = null; m.turn = (m.turn + 1) % m.pieces.length;

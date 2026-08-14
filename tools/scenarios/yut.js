@@ -13,6 +13,9 @@ if (new URLSearchParams(location.search).has('demo')){
     S.room.yut.log=['1팀 2칸 이동','2팀이 상대 말 1개를 잡았다!','나 — 개(2칸)'];
     if(v==='board'){ S.room.yut.roll={n:'걸',v:3,again:false,by:'h1',at:1}; }
     if(v==='halt'){ S.room.yut.halt={by:players()[1][0],team:0,at:1}; }
+    if(v==='pick'){ S.room.yut.pick={team:0}; }
+    if(v==='wait'){ S.room.yut.pieces=[[-1,-1,-1,-1],[7,-1,-1,-1]];
+      S.room.yut.roll={n:'모',v:5,again:true,by:'h1',at:1}; }
     if(v==='phone'){ S.view='yut'; }
   }
   render(true);
