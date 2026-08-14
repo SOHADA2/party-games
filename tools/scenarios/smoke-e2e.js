@@ -109,6 +109,32 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('smile 순위 화면', S.view === 'score' && S.play === null);
     act('score-cancel', {});
 
+    /* ── 5.4) 덱 카테고리의 use 태그 ──
+       ⚠️ 두 게임이 같은 덱을 쓰지만 요구가 정반대다. 태그가 새면
+          「아르헨티나를 몸으로 표현하세요」가 나온다. */
+    ck('★몸으로 말해요에 나라·사자성어가 안 들어간다',
+      !deckKeys('body').includes('place') && !deckKeys('body').includes('idiom'));
+    ck('  두 게임 모두 쓸 카테고리는 양쪽에 다 있다',
+      deckKeys('body').includes('animal') && deckKeys('cho').includes('animal'));
+    ck('  초성 전용 카테고리도 초성에는 있다',
+      deckKeys('cho').includes('place') && deckKeys('cho').includes('idiom'));
+    ck('전 카테고리에 use 태그가 있다',
+      DECK_KEYS.every(k => Array.isArray(WORD_DECKS[k].use) && WORD_DECKS[k].use.length));
+    ck('전 카테고리 이름·이모지·단어 있음',
+      DECK_KEYS.every(k => WORD_DECKS[k].name && WORD_DECKS[k].emoji && WORD_DECKS[k].words.length));
+    /* 덱 안 원문 중복 0 (같은 단어를 두 번 넣으면 한 판에 두 번 나온다) */
+    {
+      const all = DECK_KEYS.flatMap(k => WORD_DECKS[k].words);
+      const dup = all.filter((w,i) => all.indexOf(w) !== i);
+      ck('★덱 전체에 같은 단어가 두 번 없다', dup.length === 0);
+      if (dup.length) say('  중복:', [...new Set(dup)].slice(0,6).join(','));
+    }
+    /* 규모 — 판을 거듭해도 안 겹치게 하려고 늘린 것이다 */
+    say('덱 규모', DECK_KEYS.length + '종 ' + DECK_KEYS.reduce((n,k)=>n+WORD_DECKS[k].words.length,0) + '단어',
+        '| 초성 출제가능 ' + choWords(deckKeys('cho')).length);
+    ck('★초성 출제 가능 600문제 이상', choWords(deckKeys('cho')).length >= 600);
+    ck('  기본 범위만으로도 300문제 이상', choWords(CHO_CATS).length >= 300);
+
     /* ── 5.5) 🔠 초성 퀴즈 (cho) ──
        ⚠️ 이 게임의 핵심 제약은 「정답이 맞히기 전까지 화면에 없다」는 것이다.
           태블릿을 다 같이 보므로 정답이 새면 게임이 통째로 성립하지 않는다. */
