@@ -301,8 +301,8 @@ if (new URLSearchParams(location.search).has('demo')){
     }
 
     /* ── 5.45) 🎲 훈민정음 윷놀이 ──
-       ⚠️ v0.13.0 이후 처음으로 **참가자가 방 노드에 쓰는** 게임이다.
-          쓰기 주체가 섞이면 던진 결과가 조용히 사라진다(v0.8.0 마피아 때 겪음). */
+       ⚠️ 각자 폰이 방 노드에 쓰는 유일한 게임 + 규칙이 제일 복잡하다.
+          「대각선 통과 vs 방에 멈춤」과 「던진 값을 모아 배분」이 윷놀이의 핵심이다. */
     {
     makeTeams(2);
     S.gameId = 'yut'; go('game'); act('tool-start', {});
@@ -310,98 +310,101 @@ if (new URLSearchParams(location.search).has('demo')){
     act('yut-start', {});
     const m = () => S.room.yut;
     ck('★판이 깔린다', m().phase === 'play' && m().pieces.length === 2);
-    ck('  팀마다 말 4개가 대기에서 시작', m().pieces.every(a => a.length === 4 && a.every(x => x === -1)));
+    ck('  팀마다 말 4개가 집에서 시작', m().pieces.every(a => a.length === 4 && a.every(x => x === -1)));
+    ck('★판이 29칸이다 (외곽20 + 대각선8 + 방1)', YUT_CELLS.filter(Boolean).length === 29);
 
-    /* 판 규칙 — 지름길은 모서리에 「정확히 멈춘 뒤」에만 */
-    ck('★바깥 한 바퀴가 20칸', (() => { let p = 0, n = 0, f = true;
-      while (p !== YUT_HOME && n < 60){ p = yutStep(p, f); f = false; n++; } return n === 20; })());
-    ck('★모서리를 지나가면 지름길을 안 탄다', yutMove(4, 2) === 6);
-    ck('★모서리에 멈췄다 출발하면 탄다', yutMove(5, 1) === 21);
-    ck('  중앙에서는 도착 쪽으로 나간다', yutMove(23, 3) === YUT_HOME);
-    ck('  완주를 넘겨도 완주로 처리', yutMove(18, 5) === YUT_HOME);
+    /* ── 판 규칙: 여기가 v0.22 에서 제일 많이 틀렸던 곳 ── */
+    ck('★★바깥 한 바퀴가 20칸', yutMove(-1, 20) === YUT_HOME && yutMove(-1, 19) === 19);
+    ck('★모서리를 지나가면 지름길을 안 탄다', yutMove(4, 2) === 6 && yutMove(9, 2) === 11);
+    ck('★모서리에 멈췄다 출발하면 탄다', yutMove(5, 1) === 21 && yutMove(10, 1) === 26);
+    ck('★★방을 지나갈 땐 타고 온 대각선을 유지한다',
+      yutMove(5, 4) === 24 && yutMove(10, 4) === 28);
+    ck('★★방에 멈췄다 출발하면 날 쪽 지름길로 빠진다', yutMove(23, 1) === 28);
+    ck('  5 지름길은 반대 모서리(15)로 나간다', yutMove(5, 6) === 15);
+    ck('  5 지름길 전체가 11칸', yutMove(5, 11) === YUT_HOME);
+    ck('  10 지름길 전체가 6칸', yutMove(10, 6) === YUT_HOME);
+    ck('  방에서 나기까지 3칸', yutMove(23, 3) === YUT_HOME);
 
-    /* 던지기 → 이동. ⚠️ 대기 말은 판에 칸이 없어 **버튼**으로만 나갈 수 있다 */
-    S.room.yut.roll = { n:'개', v:2, again:false, by:'h1', at:1 };
+    /* ── 던진 값을 모아서 배분한다 ── */
     S.view = 'play'; render(true);
-    ck('★대기 말을 내보내는 버튼이 있다',
-      document.getElementById('view').innerHTML.includes('data-pos="-1"'));
-    act('yut-move', { pos:'-1' });
-    ck('★대기 말이 판에 나온다', m().pieces[0].filter(x => x === 1).length === 4);
-    ck('  같은 칸 말은 업고 함께 간다(4개가 같이 이동)', m().pieces[0].every(x => x === 1));
-    ck('  윷·모가 아니면 턴이 넘어간다', m().turn === 1);
+    ck('★차례 팀이 던질 수 있다', m().canThrow === true && m().pending.length === 0);
+    yutApplyThrow({ n:'윷', v:4, again:true, sticks:[1,1,1,1] }, 'h1');
+    ck('★윷이 나오면 한 번 더 던질 수 있다', m().canThrow === true && m().pending.length === 1);
+    yutApplyThrow({ n:'도', v:1, again:false, sticks:[1,0,0,0] }, 'h1');
+    ck('★★던진 값이 쌓인다 (즉시 이동하지 않는다)',
+      m().pending.length === 2 && m().canThrow === false);
+    ck('  화면에 고를 결과가 뜬다', view('play').includes('data-act="yut-use"'));
+    ck('  윷짝 4개가 그려진다', (view('play').match(/class="stick/g) || []).length >= 4);
 
-    /* 잡기 — 잡으면 상대는 대기로, 잡은 팀은 한 번 더 */
-    S.room.yut.pieces = [[3,-1,-1,-1],[1,-1,-1,-1]];
-    S.room.yut.turn = 1;
-    S.room.yut.roll = { n:'개', v:2, again:false, by:'h1', at:1 };
+    /* 모아둔 값을 골라 배분 — 도로 새 말, 윷으로 그 말 */
+    act('yut-use', { i:'1' });                        // 도(1칸) 선택
+    act('yut-move', { pos:'-1' });                    // 집에서 새 말
+    ck('★고른 값으로 움직인다 (도 → 1번 칸)', m().pieces[0].filter(x => x === 1).length === 4);
+    ck('  쓴 값은 사라진다', m().pending.length === 1 && m().pending[0].n === '윷');
+    ck('  남은 값이 있으면 턴이 안 넘어간다', m().turn === 0);
+    act('yut-use', { i:'0' });
     act('yut-move', { pos:'1' });
-    ck('★★상대 말을 잡으면 대기로 돌아간다', m().pieces[0][0] === -1);
-    ck('★잡으면 한 번 더 (턴이 안 넘어감)', m().turn === 1);
+    ck('★같은 칸 말은 업고 함께 간다', m().pieces[0].every(x => x === 5));
+    ck('★다 쓰면 턴이 넘어간다', m().turn === 1 && m().pending.length === 0 && m().canThrow === true);
 
-    /* 완주 · 승리 */
+    /* ── 잡기 → 한 번 더 던진다 ── */
+    S.room.yut.pieces = [[3,-1,-1,-1],[1,-1,-1,-1]];
+    S.room.yut.turn = 1; S.room.yut.pending = [{ n:'개', v:2 }]; S.room.yut.canThrow = false;
+    S.play.useIdx = 0;
+    act('yut-move', { pos:'1' });
+    ck('★★상대 말을 잡으면 집으로 보낸다', m().pieces[0][0] === -1);
+    ck('★잡으면 한 번 더 던진다', m().canThrow === true && m().turn === 1);
+
+    /* ── 나기(완주) → 승리 ── */
     S.room.yut.pieces = [[0,0,0,0],[19,19,19,19]];
-    S.room.yut.turn = 1;
-    S.room.yut.roll = { n:'도', v:1, again:false, by:'h1', at:1 };
+    S.room.yut.turn = 1; S.room.yut.pending = [{ n:'도', v:1 }]; S.play.useIdx = 0;
     act('yut-move', { pos:'19' });
-    ck('★말 4개를 다 완주시키면 승리', m().phase === 'ended' && m().winner === 1);
+    ck('★말 4개를 다 내보내면 승리', m().phase === 'ended' && m().winner === 1);
 
-    /* ✋ 잠시! — 영어 지적 */
+    /* ── ✋ 잠시! ── */
     act('yut-start', {});
-    S.room.yut.pieces = [[3,7,-1,-1],[0,-1,-1,-1]];
+    S.room.yut.pieces = [[3,7,-1,-1],[1,-1,-1,-1]];
     S.room.yut.turn = 0;
-    S.play = { gameId:'yut', kind:'yut', phase:'play' };
+    S.play = { gameId:'yut', kind:'yut', phase:'play', useIdx:0 };
     const other = Object.entries(S.room.teams.assign).find(([,t]) => Number(t) !== 0)?.[0];
-    const meWas = S.pid; S.pid = other;
-    act('yut-halt', {});
-    S.pid = meWas;
+    const mine0 = Object.entries(S.room.teams.assign).find(([,t]) => Number(t) === 0)?.[0];
+    const meWas = S.pid;
+    S.pid = other; act('yut-halt', {}); S.pid = meWas;
     ck('★상대팀이 「잠시!」를 걸 수 있다', !!m().halt && m().halt.team === 0);
-    ck('  판단 화면이 최우선으로 뜬다', view('play').includes('잠시!'));
+    S.pid = mine0; act('yut-halt', {}); S.pid = meWas;
+    ck('★우리 팀은 「잠시!」를 못 건다 (이미 걸린 것만 남음)', m().halt.by === other);
     act('yut-halt-ok', {});
-    // ★ 앱이 고르지 않는다 — 벌 받는 팀이 직접 고른다(방금 출발한 말을 버릴 수도 있어야 한다)
     ck('★★인정하면 「그 팀이 고르는」 단계로 간다', !!m().pick && m().pick.team === 0);
-    ck('  아직 아무 말도 안 빠졌다',
-      m().pieces[0].filter(x => x === -1).length === 2);
+    ck('  아직 아무 말도 안 빠졌다', m().pieces[0].filter(x => x === -1).length === 2);
     ck('  영어 횟수는 이때 기록된다', (m().penalty || {})[0] === 1);
     ck('  고르는 화면이 뜬다', view('play').includes('되돌릴 말을 고르세요'));
-    ck('  고르는 중에는 이동이 막힌다',
-      (S.room.yut.roll = { n:'도', v:1, again:false, by:'h1', at:9 },
-       act('yut-move', { pos:'3' }), m().pieces[0].includes(3)));
-    // ★ 앞선 말(7) 대신 **뒤에 있는 말(3)** 을 골라 되돌릴 수 있어야 한다
+    // ★ 앞선 말(7) 대신 뒤의 말(3)을 고를 수 있어야 한다
     act('yut-pickback', { pos:'3' });
-    ck('★★고른 말이 처음으로 돌아간다 (앞선 말이 아니라)',
+    ck('★★고른 말이 집으로 간다 (앱이 고르지 않는다)',
       !m().pieces[0].includes(3) && m().pieces[0].includes(7));
-    ck('  고르고 나면 pick 이 지워진다', !m().pick);
-    ck('  판단이 끝나면 halt 가 지워진다', !m().halt);
-    S.room.yut.roll = null;
+    ck('  고르고 나면 pick 이 지워진다', !m().pick && !m().halt);
 
-    /* 우리 팀은 지적 못 한다 */
-    S.room.yut.turn = 0;
-    const mineTeam0 = Object.entries(S.room.teams.assign).find(([,t]) => Number(t) === 0)?.[0];
-    S.pid = mineTeam0; act('yut-halt', {}); S.pid = meWas;
-    ck('★우리 팀은 「잠시!」를 못 건다', !m().halt);
-
-    /* 쓰기 주체 분리 — 참가자가 던진 결과를 호스트가 소비한다 */
-    S.room.yut.roll = null; S.room.yut.turn = 0;
-    S.room.yut.throw = { n:'걸', v:3, again:false, by:mineTeam0, at:2 };
+    /* ── 쓰기 주체 분리 ── */
+    S.room.yut.pending = []; S.room.yut.canThrow = true; S.room.yut.turn = 0;
+    S.room.yut.throw = { n:'걸', v:3, again:false, sticks:[1,1,1,0], by:mine0 };
     yutConsume();
-    ck('★★참가자가 던진 결과를 호스트가 반영한다', m().roll?.v === 3);
-    ck('★★반영 뒤 throw 를 지운다 (같은 결과 재적용 방지)', !m().throw);
-    S.room.yut.roll = null;
-    S.room.yut.throw = { n:'윷', v:4, again:true, by:other, at:3 };   // 남의 차례
+    ck('★★참가자가 던진 결과를 호스트가 반영한다', m().pending.length === 1 && m().pending[0].v === 3);
+    ck('★★반영 뒤 throw 를 지운다', !m().throw);
+    S.room.yut.throw = { n:'모', v:5, again:true, sticks:[0,0,0,0], by:other };  // 남의 차례
     yutConsume();
-    ck('★남의 차례 던지기는 버린다', !m().roll && !m().throw);
+    ck('★남의 차례 던지기는 버린다', m().pending.length === 1 && !m().throw);
 
-    /* 서명 — 판이 바뀌면 참가자 화면이 갱신돼야 한다 */
-    const sig1 = renderSig();
-    S.room.yut.turn = 1;
+    /* ── 화면 ── */
+    const sig1 = renderSig(); S.room.yut.turn = 1;
     ck('★★yut 변화가 renderSig 에 잡힌다', renderSig() !== sig1);
-
-    /* 각자 폰 화면 */
-    S.pid = mineTeam0; S.view = 'yut'; render(true);
+    S.room.yut.turn = 0;
+    S.pid = mine0; S.view = 'yut'; render(true);
     const ph = document.getElementById('view').innerHTML;
-    ck('★폰 화면에 윷 던지기와 잠시!가 있다',
+    ck('★폰에 윷 던지기와 잠시!가 있다',
       ph.includes('data-act="yut-throw"') && ph.includes('data-act="yut-halt"'));
-    S.pid = meWas;
+    S.pid = meWas; S.view = 'play'; render(true);
+    ck('★집에 있는 말을 내보내는 버튼이 있다',
+      document.getElementById('view').innerHTML.includes('data-pos="-1"'));
 
     act('yut-clear', {});
     ck('정리하면 판이 사라진다', !S.room.yut);
