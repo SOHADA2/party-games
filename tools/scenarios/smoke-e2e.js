@@ -146,25 +146,38 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('song 진입', S.play?.kind === 'song' && S.play.phase === 'setup');
     say('곡 데이터', SONG_KEYS.length + '범위 ' + songPool(SONG_KEYS).length + '곡');
     ck('★범위가 연도별로 나뉘어 있다',
-      ['y90','y00','y10','y20'].every(k => SONG_KEYS.includes(k)));
+      ['y90','y20'].every(k => SONG_KEYS.includes(k)));
     ck('  전 범위에 이름·이모지·곡 있음',
       SONG_KEYS.every(k => SONG_DECKS[k].name && SONG_DECKS[k].emoji && SONG_DECKS[k].songs.length >= 15));
     ck('  곡마다 제목과 가수가 다 있다',
       songPool(SONG_KEYS).every(x => x.w && x.a));
-    ck('  같은 곡이 두 번 없다',
-      new Set(songPool(SONG_KEYS).map(x => x.w + '|' + x.a)).size === songPool(SONG_KEYS).length);
+    // ⚠️ songPool() 은 이미 중복을 걸러 돌려준다 — 그걸 자기 자신과 비교하면 **항상 통과**한다.
+    //    원본 SONG_DECKS 배열을 봐야 진짜 중복이 잡힌다.
+    {
+      const raw = SONG_KEYS.flatMap(k => SONG_DECKS[k].songs.map(x => x[0] + '|' + x[1]));
+      const dup = [...new Set(raw.filter((x,i) => raw.indexOf(x) !== i))];
+      ck('★같은 곡이 두 범위에 들어가 있지 않다', dup.length === 0);
+      if (dup.length) say('  중복:', dup.slice(0,5).join(' / '));
+    }
+    ck('★시대가 다섯으로 나뉘어 있다',
+      ['y80','y90','y00a','y00b','y10a','y10b','y20'].every(k => SONG_KEYS.includes(k)));
+    ck('  곡이 충분히 많다(300곡 이상)', songPool(SONG_KEYS).length >= 300);
+    ck('★사회자 전담 게임이다 (트는 사람이 답을 보므로)',
+      G('song').mc === 'need' && G('song').minP >= 3);
 
-    S.play.cats = ['y10']; S.play.n = 3;
+    S.play.cats = ['y10b']; S.play.n = 3;
     act('song-start', {});
     ck('곡 뽑힘', S.play.phase === 'run' && !!S.play.cur?.w);
 
     const sv = view('play');
-    ck('★★정답(제목)은 .priv 안에만 있다',
-      /wcard priv[\s\S]{0,400}?[^<>]*/.test(sv) && sv.includes('진행자만 보세요'));
     {
-      // .priv 블록을 통째로 지우고도 제목이 남으면 공용 화면에 새는 것이다
-      const outside = sv.replace(/<div class="wcard priv">[\s\S]*?<\/div>\s*<\/div>/, '');
-      ck('★★.priv 밖에는 곡 제목이 없다', !outside.includes(S.play.cur.w));
+      // ⚠️ 앞의 정규식은 사실상 아무거나 통과했다(`[\s\S]{0,400}?[^<>]*`).
+      //    「.priv 블록 **안에** 제목이 있고, 블록을 지우면 **밖엔 없다**」로 정확히 본다.
+      const priv = (sv.match(/<div class="wcard priv">[\s\S]*?<\/div>\s*<\/div>/) || [''])[0];
+      ck('★★정답(제목)이 .priv 안에 있다',
+        priv.includes(S.play.cur.w) && sv.includes('사회자만 보세요'));
+      ck('★★.priv 밖에는 곡 제목이 없다',
+        !sv.replace(priv, '').includes(S.play.cur.w));
     }
     ck('★유튜브 뮤직 딥링크가 걸려 있다',
       sv.includes('music.youtube.com/search?q=') && sv.includes('target="_blank"'));
