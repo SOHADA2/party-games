@@ -118,6 +118,32 @@ if (new URLSearchParams(location.search).has('demo')){
     act('cho-start', {});
     ck('초성 문제 생성', S.play.phase === 'run' && !!S.play.cur?.w);
 
+    /* ★ 답이 하나로 정해지는가 — 사장님 제보(「ㄱㄹ·동물」이면 기린도 고래도 된다)
+       실측상 원인은 덱 중복보다 단어 길이였다. 두 겹(3글자↑ · 초성 충돌 제거)을 다 본다. */
+    const dk = S.play.deck;
+    ck('★출제 후보가 충분', dk.length >= 20);
+    ck('★★두 글자 이하 단어가 안 나온다',
+      dk.every(x => x.w.replace(/\s/g, '').length >= 3));
+    ck('★★덱 안에 초성이 겹치는 문제가 없다',
+      new Set(dk.map(x => cho(x.w))).size === dk.length);
+    ck('  기린/고래 같은 짝은 아예 빠졌다',
+      !dk.some(x => x.w === '기린') && !dk.some(x => x.w === '고래'));
+    /* 전 카테고리를 켜도 같은 보장이 유지되는지 — 조합이 바뀌면 충돌도 바뀐다 */
+    const allCat = choWords(DECK_KEYS);
+    ck('★전 범위를 켜도 초성 충돌 0',
+      new Set(allCat.map(x => cho(x.w))).size === allCat.length);
+    ck('  전 범위에서도 카테고리마다 남는 게 있다',
+      DECK_KEYS.every(k => choWords([k]).length >= 20));
+    /* 덱이 바닥나도 규칙이 유지되는지(nextWord 재빌드 경로)
+       ⚠️ 단어 **하나**만 보면 안 된다 — 필터를 벗겨놔도 우연히 3글자가 걸려 통과한다.
+          (실제로 그렇게 헛통과하는 걸 보고 덱 전체를 보도록 고쳤다.) */
+    S.play.di = S.play.deck.length; nextWord();
+    const re = S.play.deck;
+    ck('★덱 재빌드 후에도 규칙 유지',
+      re.length >= 20
+      && re.every(x => x.w.replace(/\s/g, '').length >= 3)
+      && new Set(re.map(x => cho(x.w))).size === re.length);
+
     /* 변환 정확도 — 겹자음·공백·비한글 */
     ck('★초성 변환 정확', cho('삼계탕') === 'ㅅㄱㅌ' && cho('짜장면') === 'ㅉㅈㅁ'
       && cho('가는 말이') === 'ㄱㄴ ㅁㅇ' && cho('BTS 노래') === 'BTS ㄴㄹ');

@@ -791,7 +791,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.16.0';
+const APP_VERSION = 'v0.16.1';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1013,6 +1013,11 @@ const GAMES = [
 
 <b>승패</b>
 · 정한 문제 수를 다 풀면 <b>많이 맞힌 순서대로</b> 순위가 매겨집니다.
+
+<b>답은 하나로 정해집니다</b>
+· 「ㄱㄹ · 동물」처럼 <b>답이 여러 개인 문제는 아예 안 나옵니다.</b>
+  두 글자 단어와 초성이 겹치는 단어를 앱이 미리 빼두기 때문입니다.
+· 그래서 누가 외친 답이 맞는지 옥신각신할 일이 없습니다.
 
 <b>이 게임의 좋은 점</b>
 · 규칙 설명이 한 줄이면 끝나고 준비물이 없습니다.
@@ -1480,6 +1485,36 @@ function startDeckTool(){
       점수 변화를 자동으로 잡는다(따로 서명 필드를 안 늘려도 된다). */
 const CHO_CATS = ['movie','music','char','animal'];
 
+/* ⚠️ 초성 퀴즈는 제시어 덱을 **그대로 쓰면 안 된다** — 답이 여러 개인 문제가 나온다.
+   「ㄱㄹ · 동물」이면 기린도 고래도 맞다. 진행자가 판정을 못 하니 게임이 성립하지 않는다.
+
+   실측해보니 원인은 덱 내부 중복보다 **단어 길이**였다:
+     1글자 27% · 2글자 19% 충돌  /  3글자 1% · 4글자 2% · 5글자↑ 0%
+   짧으면 덱에 없는 답까지 쏟아진다(「ㅂ·동물」= 뱀·벌·붕어·백조…).
+   그래서 두 겹으로 거른다:
+     ① 공백 뺀 길이 3글자 이상만
+     ② 그러고도 초성이 겹치는 것은 **양쪽 다** 뺀다
+        (하나만 남겨도 사람은 다른 답을 외친다 — 애초에 그 초성을 안 내는 게 맞다)
+   → 416개 중 282개 생존, 카테고리는 전부 23개 이상 남는다(4글자로 올리면 반토막). */
+const CHO_MIN_LEN = 3;
+
+function choWords(keys){
+  const seen = new Set(), all = [];
+  for (const k of keys)
+    for (const w of (WORD_DECKS[k]?.words || []))
+      if (String(w).replace(/\s/g, '').length >= CHO_MIN_LEN && !seen.has(w)){
+        seen.add(w); all.push({ w, c:k });
+      }
+  const by = {};
+  all.forEach(x => { (by[cho(x.w)] ||= []).push(x); });
+  return all.filter(x => by[cho(x.w)].length === 1);
+}
+
+function choBuildDeck(){
+  const p = S.play;
+  p.deck = shuffle(choWords(p.cats)); p.di = 0;
+}
+
 function startChoTool(){
   S.play = {
     gameId:S.gameId, kind:'cho', phase:'setup',
@@ -1516,7 +1551,9 @@ function buildDeck(){
 
 function nextWord(){
   const p = S.play;
-  if (p.di >= p.deck.length){ buildDeck(); }   // 다 쓰면 다시 섞는다
+  // ⚠️ 재고갈 시에도 초성 덱은 초성 규칙으로 다시 채운다(여기서 buildDeck 을 부르면
+  //    두 글자 단어가 슬그머니 섞여 들어와 답이 여러 개인 문제가 되살아난다)
+  if (p.di >= p.deck.length){ p.kind === 'cho' ? choBuildDeck() : buildDeck(); }
   p.cur = p.deck[p.di++] || { w:'—', c:null };
 }
 
@@ -2010,7 +2047,9 @@ function vPlay(){
 function vCho(){
   const p = S.play;
   const g = G(p.gameId);
-  const wordCount = p.cats.reduce((n,k) => n + (WORD_DECKS[k]?.words.length || 0), 0);
+  // ⚠️ 원래 개수(416)가 아니라 **초성 퀴즈로 낼 수 있는 개수**를 보여준다.
+  //    걸러진 걸 모르면 "왜 이 단어는 안 나오지?" 가 된다.
+  const usable = choWords(p.cats).length;
 
   /* 1) 설정 */
   if (p.phase === 'setup') return `
@@ -2025,22 +2064,24 @@ function vCho(){
       ${[10,15,20].map(n => `<button data-act="cho-n" data-v="${n}" class="${p.n===n?'on':''}">${n}문제</button>`).join('')}
     </div>
 
-    <div class="sec">출제 범위 <span class="n">${wordCount}개</span></div>
+    <div class="sec">출제 범위 <span class="n">${usable}문제</span></div>
     <div class="catgrid">
       ${DECK_KEYS.map(k => `
         <button class="cat ${p.cats.includes(k)?'on':''}" data-act="pl-cat" data-v="${k}">
           <span class="e">${WORD_DECKS[k].emoji}</span>
           <span>${h(WORD_DECKS[k].name)}</span>
-          <span class="c">${WORD_DECKS[k].words.length}</span>
+          <span class="c">${choWords([k]).length}</span>
         </button>`).join('')}
     </div>
-    <p class="note" style="margin:9px 4px 0">영화·드라마 / 노래·가수 / 캐릭터가 제일 잘 붙습니다.
-      <b>속담</b>은 통째로 초성이 되어 난이도가 확 올라가요.</p>
+    <p class="note" style="margin:9px 4px 0">
+      <b>답이 하나로 정해지는 것만</b> 냅니다 — 두 글자 단어(ㄱㄹ = 기린? 고래?)와
+      초성이 겹치는 단어는 아예 빠집니다. 그래서 표시된 개수가 원래 덱보다 적어요.<br>
+      영화·드라마 / 노래·가수 / 캐릭터가 제일 잘 붙고, <b>속담</b>은 난이도가 확 올라갑니다.</p>
 
     <div style="height:20px"></div>
     <div class="stack">
-      <button class="btn pri" data-act="cho-start" ${!p.cats.length ? 'disabled' : ''}>
-        ${p.cats.length ? '▶ 시작하기' : '범위를 하나 이상 골라주세요'}</button>
+      <button class="btn pri" data-act="cho-start" ${usable ? '' : 'disabled'}>
+        ${usable ? `▶ 시작하기 — ${Math.min(p.n, usable)}문제` : '범위를 하나 이상 골라주세요'}</button>
       <button class="btn gh" data-act="pl-quit">그만두기</button>
     </div>`;
 
@@ -2868,7 +2909,9 @@ async function act(a, d){
   case 'cho-start': {
     const p = S.play;
     if (!p.cats.length) return toast('범위를 하나 이상 골라주세요');
-    p.log = []; buildDeck(); nextWord(); p.phase = 'run';
+    p.log = []; choBuildDeck();
+    if (!p.deck.length) return toast('그 범위에는 낼 문제가 없어요 — 범위를 더 골라주세요');
+    nextWord(); p.phase = 'run';
     SFX.go(); vib(20); render(true); break;
   }
   case 'cho-hit': {
