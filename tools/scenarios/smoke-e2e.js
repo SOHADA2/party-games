@@ -137,6 +137,66 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('smile 순위 화면', S.view === 'score' && S.play === null);
     act('score-cancel', {});
 
+    /* ── 5.2) 🎵 노래 맞히기 (song) ──
+       ⚠️ 이 게임의 정답은 **곡 제목**이고, 그걸 진행자가 봐야 노래를 튼다.
+          그래서 초성 퀴즈와 반대로 「.priv 를 반드시 붙여야」 한다 —
+          태블릿 공용 화면에서 커지면 그 자리에서 게임이 끝난다. */
+    S.room.used = {};
+    S.gameId = 'song'; go('game'); act('tool-start', {});
+    ck('song 진입', S.play?.kind === 'song' && S.play.phase === 'setup');
+    say('곡 데이터', SONG_KEYS.length + '범위 ' + songPool(SONG_KEYS).length + '곡');
+    ck('★범위가 연도별로 나뉘어 있다',
+      ['y90','y00','y10','y20'].every(k => SONG_KEYS.includes(k)));
+    ck('  전 범위에 이름·이모지·곡 있음',
+      SONG_KEYS.every(k => SONG_DECKS[k].name && SONG_DECKS[k].emoji && SONG_DECKS[k].songs.length >= 15));
+    ck('  곡마다 제목과 가수가 다 있다',
+      songPool(SONG_KEYS).every(x => x.w && x.a));
+    ck('  같은 곡이 두 번 없다',
+      new Set(songPool(SONG_KEYS).map(x => x.w + '|' + x.a)).size === songPool(SONG_KEYS).length);
+
+    S.play.cats = ['y10']; S.play.n = 3;
+    act('song-start', {});
+    ck('곡 뽑힘', S.play.phase === 'run' && !!S.play.cur?.w);
+
+    const sv = view('play');
+    ck('★★정답(제목)은 .priv 안에만 있다',
+      /wcard priv[\s\S]{0,400}?[^<>]*/.test(sv) && sv.includes('진행자만 보세요'));
+    {
+      // .priv 블록을 통째로 지우고도 제목이 남으면 공용 화면에 새는 것이다
+      const outside = sv.replace(/<div class="wcard priv">[\s\S]*?<\/div>\s*<\/div>/, '');
+      ck('★★.priv 밖에는 곡 제목이 없다', !outside.includes(S.play.cur.w));
+    }
+    ck('★유튜브 뮤직 딥링크가 걸려 있다',
+      sv.includes('music.youtube.com/search?q=') && sv.includes('target="_blank"'));
+    ck('  딥링크에 제목과 가수가 함께 들어간다', (() => {
+      const m = sv.match(/href="(https:\/\/music\.youtube\.com[^"]+)"/);
+      if (!m) return false;
+      const q = decodeURIComponent(m[1].split('q=')[1] || '');
+      return q.includes(S.play.cur.w) && q.includes(S.play.cur.a);
+    })());
+
+    const s1 = S.play.cur.w;
+    act('song-hit', { pid:P[1] });
+    ck('맞히면 +1 후 다음 곡', songScores()[P[1]] === 1 && S.play.cur.w !== s1);
+    act('song-undo', {});
+    ck('방금 취소 — 점수·곡 복구', songScores()[P[1]] === 0 && S.play.cur.w === s1);
+    act('song-pass', {});
+    ck('정답 공개 단계', S.play.phase === 'reveal');
+    ck('★공개하면 그때 제목이 크게 뜬다', (() => {
+      const v = view('play');
+      return v.includes(S.play.cur.w) && !/wcard priv/.test(v);
+    })());
+    act('song-skip', {});
+    act('song-hit', { pid:P[2] }); act('song-hit', { pid:P[2] });
+    ck('★곡 수를 채우면 자동 종료', S.play.phase === 'done' && S.play.log.length === 3);
+    ck('종료 화면에 가수까지 공개', view('play').includes(S.play.log[0].a));
+    ck('★판이 끝나면 중복 방지에 기록된다', usedWords('song').size === 3);
+    act('song-save', {});
+    ck('song 순위 화면', S.view === 'score' && S.play === null);
+    ck('★많이 맞힌 사람이 1등', S.draft.order[0] === P[2]);
+    act('score-cancel', {});
+    S.room.used = {};
+
     /* ── 5.3) ★ 중복 방지 — 판을 거듭해도 같은 제시어가 안 나온다 ──
        ⚠️ 셋을 따로 본다: ① 판 사이 ② 같은 판의 팀 사이 ③ 다 쓰면 자동 순환 */
     S.room.used = {};

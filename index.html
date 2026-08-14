@@ -513,6 +513,10 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .stockbox button:active{transform:scale(.94)}
 .stockbox.low{background:rgba(255,184,77,.1);border-color:rgba(255,184,77,.34)}
 
+/* 유튜브 뮤직으로 나가는 버튼 — 진짜 <a> 다(새 탭으로 열어야 앱 상태가 유지된다) */
+.ytbtn{text-decoration:none;color:inherit;margin-bottom:0}
+.ytbtn:visited{color:inherit}
+
 /* 게임 설명 — 「무슨 게임 / 뭐가 필요 / 어떻게 / 누가 이김」 순서로 고정한다 */
 .oneline{font-size:16.5px;font-weight:800;line-height:1.6;letter-spacing:-.03em;
   word-break:keep-all;margin:0 0 14px;color:#EFEAFF}
@@ -836,7 +840,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.18.0';
+const APP_VERSION = 'v0.19.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1046,6 +1050,105 @@ const WORD_DECKS = {
     '오피스텔','주민센터','보건소','정류장','고속도로','횡단보도','육교','지하도']},
 };
 const DECK_KEYS = Object.keys(WORD_DECKS);
+
+/* ══════════════════════════════════════════════
+   🎵 노래 맞히기 — 곡 목록
+   ──────────────────────────────────────────────
+   ⚠️ 앱이 음원을 갖고 있지 않다. **진행자가 유튜브 뮤직에서 직접 튼다.**
+      왜 임베드가 아닌가: `music.youtube.com` 은 `X-Frame-Options: SAMEORIGIN` 이라
+      웹페이지에 넣는 것이 **원천 불가능**하다(실측). 임베드되는 건 일반 유튜브인데
+      그쪽은 플레이어에 **영상 제목이 그대로 뜬다 = 정답 노출**이고, 가리는 것은
+      유튜브 정책 위반이다. 그래서 재생은 유튜브 뮤직 앱에 맡기고 앱은 진행만 맡는다.
+   ⚠️ 그래서 이 게임은 **인터넷이 필요한 유일한 게임**이다(다른 게임은 다 오프라인 가능).
+   ⚠️ 곡 제목·가수는 **게임 내용**이다 — 「이름 원칙」이 막는 예시·더미·주석이 아니다.
+      (기존 `music` 제시어 덱도 같은 성격이다.)
+   ⚠️ 범위는 **난이도 조절 손잡이**다. 세대가 섞인 자리에서 90년대만 틀면 아무도 못 맞힌다.
+══════════════════════════════════════════════ */
+const SONG_DECKS = {
+  y90:{ name:'1990년대', emoji:'📼', songs:[
+    ['난 알아요','서태지와 아이들'],['잘못된 만남','김건모'],['캔디','H.O.T.'],
+    ['커플','젝스키스'],['날개 잃은 천사','룰라'],['꿍따리 샤바라','클론'],
+    ['영원한 사랑','핑클'],['To Heaven','조성모'],['어머님께','god'],
+    ['보이지 않는 사랑','신승훈'],['그녀와의 이별','김현정'],['회상','터보'],
+    ['늑대와 함께 춤을','임창정'],['말해줘','지누션'],['와','이정현'],
+    ['미아','벅'],['텅 빈 마음','조관우'],['사랑을 위하여','김종환'],
+    ['이젠 안녕','015B'],['내가 아직 모르는 것','유승준']]},
+
+  y00:{ name:'2000년대', emoji:'💿', songs:[
+    ['거짓말','빅뱅'],['Tell Me','원더걸스'],['Gee','소녀시대'],
+    ['Sorry Sorry','슈퍼주니어'],['아브라카다브라','브라운아이드걸스'],
+    ['10 Minutes','이효리'],['Mirotic','동방신기'],['겁쟁이','버즈'],
+    ['보고싶다','김범수'],['내 여자라니까','이승기'],['Fly','에픽하이'],
+    ['8282','다비치'],['Bo Peep Bo Peep','티아라'],['I Dont Care','2NE1'],
+    ['미스터','카라'],['Diva','애프터스쿨'],['죄와 벌','SG워너비'],
+    ['벌써 일년','브라운아이즈'],['눈의 꽃','박효신'],['사랑스러워','김종국']]},
+
+  y10:{ name:'2010년대', emoji:'📱', songs:[
+    ['강남스타일','싸이'],['DNA','방탄소년단'],['TT','트와이스'],
+    ['으르렁','EXO'],['뚜두뚜두','블랙핑크'],['빨간 맛','레드벨벳'],
+    ['좋은 날','아이유'],['Shake It','씨스타'],['시간을 달려서','여자친구'],
+    ['넌 is 뭔들','마마무'],['우주를 줄게','볼빨간사춘기'],['에너제틱','워너원'],
+    ['아주 NICE','세븐틴'],['REALLY REALLY','위너'],['뱅뱅뱅','빅뱅'],
+    ['벚꽃엔딩','버스커 버스커'],['여수 밤바다','버스커 버스커'],
+    ['양화대교','자이언티'],['모든 날 모든 순간','폴킴'],['선물','멜로망스'],
+    ['비도 오고 그래서','헤이즈'],['주저하는 연인들을 위해','잔나비']]},
+
+  y20:{ name:'2020년대', emoji:'🔥', songs:[
+    ['Dynamite','방탄소년단'],['Butter','방탄소년단'],['Attention','뉴진스'],
+    ['Ditto','뉴진스'],['Next Level','에스파'],['LOVE DIVE','아이브'],
+    ['I AM','아이브'],['ANTIFRAGILE','르세라핌'],['TOMBOY','(여자)아이들'],
+    ['Pink Venom','블랙핑크'],['아무노래','지코'],['신호등','이무진'],
+    ['롤린','브레이브걸스'],['이제 나만 믿어요','임영웅'],['찐이야','영탁'],
+    ['테스형','나훈아'],['Celebrity','아이유'],['손오공','세븐틴'],
+    ['꽃','지수'],['Cupid','피프티피프티'],['Super Shy','뉴진스'],
+    ['Hype Boy','뉴진스']]},
+
+  pop:{ name:'팝송', emoji:'🌎', songs:[
+    ['Shape of You','Ed Sheeran'],['Rolling in the Deep','Adele'],
+    ['Uptown Funk','Bruno Mars'],['Blinding Lights','The Weeknd'],
+    ['bad guy','Billie Eilish'],['Shake It Off','Taylor Swift'],
+    ['Viva La Vida','Coldplay'],['Believer','Imagine Dragons'],
+    ['Billie Jean','Michael Jackson'],['Bohemian Rhapsody','Queen'],
+    ['Dancing Queen','ABBA'],['Hey Jude','The Beatles'],['Imagine','John Lennon'],
+    ['I Will Always Love You','Whitney Houston'],
+    ['I Want It That Way','Backstreet Boys'],['Poker Face','Lady Gaga'],
+    ['Roar','Katy Perry'],['Sugar','Maroon 5'],['Sorry','Justin Bieber'],
+    ['See You Again','Charlie Puth']]},
+
+  trot:{ name:'트로트', emoji:'🎤', songs:[
+    ['어머나','장윤정'],['사랑의 배터리','홍진영'],['네 박자','송대관'],
+    ['사랑은 아무나 하나','태진아'],['곤드레만드레','박현빈'],
+    ['아모르 파티','김연자'],['안동역에서','진성'],['잃어버린 30년','설운도'],
+    ['신사동 그 사람','주현미'],['사랑밖엔 난 몰라','심수봉'],
+    ['찔레꽃','백난아'],['돌아가는 삼각지','배호'],['빙빙빙','장윤정'],
+    ['막걸리 한잔','영탁'],['나보다 더 사랑해요','김호중'],
+    ['짠짠짠','홍진영'],['해뜰날','송대관'],['정 때문에','송대관']]},
+
+  ani:{ name:'만화·동요', emoji:'🧸', songs:[
+    ['아기상어','핑크퐁'],['곰 세 마리','동요'],['상어가족','핑크퐁'],
+    ['날아라 슈퍼보드','만화 주제가'],['달려라 하니','만화 주제가'],
+    ['검정고무신','만화 주제가'],['포켓몬스터 오프닝','만화 주제가'],
+    ['디지몬 어드벤처 오프닝','만화 주제가'],['카드캡터 체리 오프닝','만화 주제가'],
+    ['세일러문 오프닝','만화 주제가'],['짱구는 못말려 오프닝','만화 주제가'],
+    ['도라에몽 오프닝','만화 주제가'],['원피스 We Are','만화 주제가'],
+    ['Let It Go','겨울왕국'],['Hakuna Matata','라이온킹'],
+    ['A Whole New World','알라딘'],['Part of Your World','인어공주'],
+    ['You Have Got a Friend in Me','토이스토리'],
+    ['뽀롱뽀롱 뽀로로','뽀로로'],['텔레토비 노래','텔레토비']]},
+};
+const SONG_KEYS = Object.keys(SONG_DECKS);
+/* 선택한 범위의 곡을 { w:제목, a:가수, c:범위 } 로 펴서 돌려준다.
+   w 를 쓰는 이유 — 중복 방지 헬퍼(freshPick/markUsed)가 w 를 보기 때문이다(덱 게임과 공유). */
+function songPool(keys){
+  const seen = new Set(), out = [];
+  for (const k of keys)
+    for (const [t, a] of (SONG_DECKS[k]?.songs || []))
+      if (!seen.has(t + a)){ seen.add(t + a); out.push({ w:t, a, c:k }); }
+  return out;
+}
+/* 유튜브 뮤직으로 바로 검색해서 열어준다(앱이 깔려 있으면 앱으로 전환된다) */
+const ytMusicUrl = (t, a) =>
+  'https://music.youtube.com/search?q=' + encodeURIComponent(`${t} ${a}`);
 
 /* ── 이미 나온 제시어 (판을 거듭해도 안 겹치게) ────────────────
    ⚠️ 왜 방 노드(`room.used`)에 두나 — `S.play` 는 판이 끝나면 null 이라 기억이 없다.
@@ -1263,6 +1366,47 @@ const GAMES = [
 <b>이 게임의 좋은 점</b>
 · 규칙 설명이 한 줄이면 끝나고 준비물이 없습니다.
 · <b>정답은 맞히기 전까지 화면에 안 뜹니다</b> — 그래서 폰을 잡은 사람도 같이 맞힐 수 있어요.`
+  },
+  {
+    id:'song', name:'노래 맞히기', emoji:'🎵', color:'#FF5C7C', mode:'solo', weight:1,
+    role:null, mc:'help', mcWhy:'진행자 폰으로 노래를 틀어야 해서 그 사람은 답을 알게 된다 — 그때 안 겨루는 사람이 맡으면 제일 깔끔하다',
+    tag:'개인전 · 연도별 범위', tool:'song', toolLabel:'▶ 노래 틀고 시작',
+    line:'노래를 듣고 제목을 먼저 맞히는 사람이 1점.',
+    prep:'인터넷 · 유튜브 뮤직 · 소리 나는 스피커', minP:2, mins:'10~15분',
+    how:[
+      '진행자가 범위를 고른다 — 90년대·2000년대처럼 연도별로 나뉜다',
+      '앱이 곡을 하나 정해 진행자에게만 보여준다',
+      '진행자가 「유튜브 뮤직에서 열기」를 눌러 노래를 튼다',
+      '아는 사람이 소리쳐서 답하면 진행자가 그 사람을 탭한다',
+    ],
+    win:'정한 곡 수를 다 들으면 많이 맞힌 순서대로',
+    rules:
+`노래를 듣고 <b>제목</b>을 먼저 맞히는 사람이 1점.
+
+<b>진행</b>
+· 진행자가 <b>범위</b>를 고릅니다 — 1990년대 · 2000년대 · 2010년대 · 2020년대 ·
+  팝송 · 트로트 · 만화·동요.
+· 앱이 곡을 하나 정해 <b>진행자 화면에만</b> 보여줍니다.
+· 진행자가 <b>「유튜브 뮤직에서 열기」</b>를 누르면 그 곡 검색 화면이 열립니다. 재생하세요.
+· 아는 사람이 소리쳐서 답하고, 진행자가 맞힌 사람을 탭하면 다음 곡으로 넘어갑니다.
+· 아무도 못 맞히면 <b>「아무도 못 맞힘」</b> — 정답을 공개하고 넘어갑니다.
+
+<b>범위가 곧 난이도입니다</b>
+· 세대가 섞인 자리라면 여러 연도를 같이 켜세요. 90년대만 켜면 어린 사람이 하나도 못 맞힙니다.
+· <b>만화·동요</b>는 누구나 아는 것들이라 몸풀기로 좋습니다.
+
+<b>준비물</b>
+· <b>인터넷이 필요합니다.</b> 이 앱에서 인터넷이 꼭 필요한 유일한 게임이에요.
+· 유튜브 뮤직 앱이 깔려 있으면 앱으로 열리고, 없으면 웹으로 열립니다.
+· 소리가 크게 나는 스피커면 더 좋습니다.
+
+<b>승패</b>
+· 정한 곡 수를 다 들으면 <b>많이 맞힌 순서대로</b> 순위가 매겨집니다.
+
+<b>왜 앱이 직접 안 틀어주나요?</b>
+· 유튜브 뮤직은 웹페이지 안에 넣는 것이 <b>기술적으로 막혀 있습니다.</b>
+· 일반 유튜브는 넣을 수 있지만 <b>플레이어에 제목이 그대로 떠서</b> 정답이 새요.
+· 그래서 재생은 유튜브 뮤직에 맡기고, 앱은 문제·정답·점수만 맡습니다.`
   },
   {
     id:'body', name:'몸으로 말해요 / 한글자로 말해요', emoji:'🕺', color:'#3DE0A8', mode:'team', weight:1.5,
@@ -1742,6 +1886,50 @@ function startDeckTool(){
   go('play');
 }
 
+/* ── 🎵 노래 맞히기 ──────────────────────────────────────────
+   ⚠️ 정답(제목·가수)은 **진행자만** 본다 → 화면에 `.priv` 를 붙인다.
+      태블릿을 공용 화면으로 세워둔 자리에서 이게 커지면 게임이 그 자리에서 끝난다.
+   ⚠️ 진행 구조는 초성 퀴즈와 일부러 똑같이 맞췄다(log 하나로 점수·되돌리기·중복 방지).
+      배우는 규칙이 하나면 두 게임을 다 할 줄 알게 된다. */
+const SONG_CATS = ['y10','y20','ani'];
+
+function startSongTool(){
+  S.play = {
+    gameId:S.gameId, kind:'song', phase:'setup',
+    cats:[...SONG_CATS], n:10,
+    deck:[], di:0, cur:null, log:[], _t:null,
+  };
+  go('play');
+}
+function songScores(){
+  const m = {};
+  playing().forEach(([pid]) => { m[pid] = 0; });
+  (S.play?.log || []).forEach(x => { if (x.by != null && m[x.by] != null) m[x.by]++; });
+  return m;
+}
+function songBuildDeck(){
+  const p = S.play;
+  const { list, wrapped } = freshPick(p.gameId, songPool(p.cats), p.n || 10);
+  p.wrapped = wrapped;
+  p.deck = shuffle(list); p.di = 0;
+}
+function songNextCard(){
+  const p = S.play;
+  if (p.di >= p.deck.length) songBuildDeck();
+  p.cur = p.deck[p.di++] || null;
+}
+function songNext(){
+  const p = S.play;
+  if (p.log.length >= p.n) songFinish();
+  else { songNextCard(); p.phase = 'run'; render(true); }
+}
+function songFinish(){
+  const p = S.play;
+  p.phase = 'done'; stopPlayTimer();
+  markUsed(p.gameId, p.log.map(x => x.w));
+  SFX.end(); vib([40,60,40]); render(true);
+}
+
 /* ── 🔠 초성 퀴즈 ────────────────────────────────────────────
    ⚠️ 이 게임의 비밀은 「화면」이 아니라 「정답 문자열」이다.
       태블릿을 가운데 두고 다 같이 보므로 .priv 로 가릴 대상이 없다 —
@@ -1999,7 +2187,7 @@ function renderSig(){
       S.play.pts || 0, S.play.votes || 0, S.play.vi ?? -1,
       (S.play.picked || []).join(''), S.play.judged || 0, S.play.cur?.t || 0,
       S.play.sen || 0, S.play.card || 0, S.play.cnt ?? 0, S.play.sit || 0,
-      S.play.reading ?? -1, S.play.n ?? 0,
+      S.play.reading ?? -1, S.play.n ?? 0, S.play.cur?.w || 0,
       !!S.play.show, !!S.play.pol, !!S.play.doc, !!S.play.incHost,
       !!S.play.running, !!S.play.over, S.play.sul || 0,
       (S.play.pool || []).length, (S.play.log || []).length,
@@ -2343,6 +2531,7 @@ function vPlay(){
   switch (p.kind){
     case 'deck':  return vDeck();
     case 'cho':   return vCho();
+    case 'song':  return vSong();
     case 'noise': return vNoise();
     case 'cup':   return vCup();
     case 'act':   return vAct();
@@ -2367,6 +2556,145 @@ function stockBox(gid, total, need, unit){
               : `지금까지 ${used}개 사용 · 전체 ${total}개`}</div>
       <button data-act="used-reset">🔄 초기화</button>
     </div>`;
+}
+
+/* ── 🎵 노래 맞히기 ── */
+function vSong(){
+  const p = S.play;
+  const g = G(p.gameId);
+  const usable = songPool(p.cats).length;
+
+  /* 1) 설정 — 범위가 곧 난이도다 */
+  if (p.phase === 'setup') return `
+    <div class="gh" style="${gcVars(g.color)};padding:17px">
+      <div class="gh-n" style="font-size:18px;padding-right:0">${g.emoji} ${h(g.name)}</div>
+      <p class="note" style="margin-top:7px;position:relative">
+        진행자 폰으로 유튜브 뮤직에서 틀어주세요 — 곡 정보는 진행자만 봅니다</p>
+    </div>
+
+    ${stockBox(p.gameId, usable, p.n, '곡')}
+
+    <div class="sec">곡 수</div>
+    <div class="seg">
+      ${[5,10,15].map(n => `<button data-act="song-n" data-v="${n}" class="${p.n===n?'on':''}">${n}곡</button>`).join('')}
+    </div>
+
+    <div class="sec">범위 <span class="n">${usable}곡</span></div>
+    <div class="catgrid">
+      ${SONG_KEYS.map(k => `
+        <button class="cat ${p.cats.includes(k)?'on':''}" data-act="song-cat" data-v="${k}">
+          <span class="e">${SONG_DECKS[k].emoji}</span>
+          <span>${h(SONG_DECKS[k].name)}</span>
+          <span class="c">${SONG_DECKS[k].songs.length}</span>
+        </button>`).join('')}
+    </div>
+    <p class="note" style="margin:9px 4px 0">
+      <b>범위가 곧 난이도예요.</b> 세대가 섞였으면 여러 연도를 같이 켜세요 —
+      한 연도만 켜면 그 시절을 모르는 사람은 한 곡도 못 맞힙니다.
+      <b>만화·동요</b>는 누구나 아니까 몸풀기로 좋아요.</p>
+
+    <div style="height:20px"></div>
+    <div class="stack">
+      <button class="btn pri" data-act="song-start" ${usable ? '' : 'disabled'}>
+        ${usable ? `▶ 시작하기 — ${Math.min(p.n, usable)}곡` : '범위를 하나 이상 골라주세요'}</button>
+      <button class="btn gh" data-act="pl-quit">그만두기</button>
+    </div>`;
+
+  const sc = songScores();
+  const board = playing().slice().sort((a,b) => sc[b[0]] - sc[a[0]]);
+
+  /* 3) 종료 */
+  if (p.phase === 'done'){
+    const solved = p.log.filter(x => x.by != null).length;
+    return `
+      <div class="pickres">
+        <div class="pickres-l">${p.log.length}곡 중</div>
+        <div class="pickres-v">${solved}곡 맞힘</div>
+      </div>
+      <div class="sec">점수</div>
+      ${board.map(([pid,pl],i) => `
+        <div class="tscore" style="--tc:${avColor(pid)};margin-bottom:6px">
+          <div class="n" style="display:flex;align-items:center;gap:9px">
+            <span style="color:var(--dim2);font-weight:800;min-width:20px">${i+1}</span>
+            ${av(pid, pl.name, 'sm')} ${h(pl.name)}</div>
+          <div class="v">${sc[pid]}<small>곡</small></div>
+        </div>`).join('')}
+      ${(() => { const v = board.map(([pid]) => sc[pid]);
+        return v.length !== new Set(v).size
+          ? `<p class="note" style="margin:9px 4px 0">동점이 있어요 —
+             다음 화면에서 <b>순서를 끌어 바꿀 수 있습니다.</b></p>` : ''; })()}
+      <div class="sec">나온 곡</div>
+      ${p.log.map(x => `<div class="sumrow ${x.by?'':'no'}">
+          <span class="m">${x.by ? '✅' : '⛔'}</span>
+          <span class="w">${h(x.w)} <span style="color:var(--dim2);font-weight:600">— ${h(x.a)}</span></span>
+          <span style="margin-left:auto;font-size:12px;color:var(--dim2);font-weight:700">
+            ${x.by ? h(pname(x.by)) : '아무도 못 맞힘'}</span>
+        </div>`).join('')}
+      <div style="height:18px"></div>
+      <div class="stack">
+        <button class="btn pri" data-act="song-save">🏆 순위 입력하기</button>
+        <button class="btn gh" data-act="pl-quit">그만두기</button>
+      </div>`;
+  }
+
+  const last = p.log[p.log.length - 1];
+  const revealing = p.phase === 'reveal';
+
+  /* 2) 진행 중 / 정답 공개 */
+  return `
+    <div class="turnhd">
+      <span class="sw" style="--tc:${g.color}"></span>
+      <span class="t">🎵 노래 맞히기</span>
+      <span class="r">${p.log.length + 1} / ${p.n}</span>
+    </div>
+    ${last ? `<div class="lastq">
+        <span>직전 <b>${h(last.w)}</b>${last.by ? ` — ${h(pname(last.by))}` : ' — 못 맞힘'}</span>
+        <button class="u" data-act="song-undo">방금 취소</button>
+      </div>` : ''}
+
+    ${revealing
+      ? `<div class="wcard">
+           <div>
+             <div class="wcat">정답</div>
+             <div class="wtxt ${(p.cur?.w||'').length > 8 ? 'long' : ''}">${h(p.cur?.w || '')}</div>
+             <div class="wans" style="margin-top:12px;padding-top:12px">
+               <div class="wans-l">${h(SONG_DECKS[p.cur?.c]?.name || '')}</div>
+               <div class="wans-v" style="font-size:22px">${h(p.cur?.a || '')}</div>
+             </div>
+           </div>
+         </div>
+         <div class="stack">
+           <button class="btn pri" data-act="song-skip">다음 곡 →</button>
+           <button class="btn gh sm" data-act="song-done" style="width:100%">지금 끝내기</button>
+         </div>`
+      : `<!-- ⚠️ .priv — 정답이라 진행자 한 사람만 본다. 큰 화면에서 커지면 안 된다. -->
+         <div class="wcard priv">
+           <div>
+             <div class="wcat">🙈 진행자만 보세요 · ${h(SONG_DECKS[p.cur?.c]?.name || '')}</div>
+             <div class="wtxt ${(p.cur?.w||'').length > 8 ? 'long' : ''}">${h(p.cur?.w || '')}</div>
+             <div class="note priv" style="margin-top:8px">${h(p.cur?.a || '')}</div>
+           </div>
+         </div>
+         <a class="btn pri ytbtn" href="${p.cur ? ytMusicUrl(p.cur.w, p.cur.a) : '#'}"
+            target="_blank" rel="noopener">▶ 유튜브 뮤직에서 열기</a>
+         <p class="note" style="text-align:center;margin:9px 0 14px">
+           새 탭에서 열려요 · 재생하고 돌아오면 여기 그대로 있습니다</p>
+
+         <div class="sec">누가 맞혔나요?</div>
+         <div class="choq">
+           ${playing().map(([pid,pl]) => `
+             <button class="pick" data-act="song-hit" data-pid="${pid}">
+               ${av(pid, pl.name, 'sm')}
+               <div style="flex:1;font-weight:800;font-size:15px;min-width:0;
+                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h(pl.name)}</div>
+               <span class="chip">${sc[pid]}</span>
+             </button>`).join('')}
+         </div>
+         <div style="height:12px"></div>
+         <div class="stack">
+           <button class="btn" data-act="song-pass">🤷 아무도 못 맞힘 — 정답 공개</button>
+           <button class="btn gh sm" data-act="song-done" style="width:100%">지금 끝내기</button>
+         </div>`}`;
 }
 
 /* ── 🔠 초성 퀴즈 ── */
@@ -3214,7 +3542,8 @@ async function act(a, d){
     if (g.mode === 'team' && (S.room.teams?.count || 0) < 2)
       return toast('팀전이에요 — 대기실에서 팀을 먼저 나눠주세요');
     ({ deck:startDeckTool, noise:startNoiseTool, cup:startCupTool,
-       act:startActTool, smile:startSmileTool, cho:startChoTool })[g.tool]?.();
+       act:startActTool, smile:startSmileTool, cho:startChoTool,
+       song:startSongTool })[g.tool]?.();
     break;
   }
   case 'pl-mode': S.play.mode = d.v; render(); break;
@@ -3249,6 +3578,52 @@ async function act(a, d){
     }
     beginTurn(); break;
   }
+  /* 🎵 노래 맞히기 */
+  case 'song-n': S.play.n = Number(d.v); render(); break;
+  case 'song-cat': {
+    const c = S.play.cats, i = c.indexOf(d.v);
+    i < 0 ? c.push(d.v) : c.splice(i, 1);
+    render(); break;
+  }
+  case 'song-start': {
+    const p = S.play;
+    if (!p.cats.length) return toast('범위를 하나 이상 골라주세요');
+    p.log = []; songBuildDeck();
+    if (!p.deck.length) return toast('그 범위에는 낼 곡이 없어요');
+    if (p.wrapped) toast('곡을 한 바퀴 다 썼어요 — 처음부터 다시 돕니다');
+    songNextCard(); p.phase = 'run';
+    SFX.go(); vib(20); render(true); break;
+  }
+  case 'song-hit': {
+    const p = S.play; if (p.phase !== 'run') return;
+    p.log.push({ w:p.cur.w, a:p.cur.a, c:p.cur.c, by:d.pid });
+    SFX.ok(); vib(16); songNext(); break;
+  }
+  case 'song-pass': {
+    const p = S.play; if (p.phase !== 'run') return;
+    p.phase = 'reveal'; SFX.pass(); vib(8); render(true); break;
+  }
+  case 'song-skip': {
+    const p = S.play;
+    p.log.push({ w:p.cur.w, a:p.cur.a, c:p.cur.c, by:null });
+    songNext(); break;
+  }
+  case 'song-undo': {
+    const p = S.play;
+    const x = p.log.pop(); if (!x) return;
+    p.cur = { w:x.w, a:x.a, c:x.c }; p.phase = 'run';
+    SFX.pass(); vib(8); render(true); break;
+  }
+  case 'song-done': {
+    if (!S.play.log.length) return toast('아직 들은 곡이 없어요');
+    songFinish(); break;
+  }
+  case 'song-save': {
+    const sc = songScores();
+    toScore(playing().map(([pid]) => pid).sort((a,b) => sc[b] - sc[a]), 'solo');
+    break;
+  }
+
   /* 🔠 초성 퀴즈 */
   case 'cho-n': S.play.n = Number(d.v); render(); break;
   case 'cho-start': {
