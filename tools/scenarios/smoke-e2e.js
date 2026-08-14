@@ -169,6 +169,10 @@ if (new URLSearchParams(location.search).has('demo')){
     act('song-start', {});
     ck('곡 뽑힘', S.play.phase === 'run' && !!S.play.cur?.w);
 
+    // ⚠️ 곡을 **고정**한다. 랜덤으로 뽑으면 「I」(태연) 같은 한 글자 제목이 걸리는 순간
+    //    화면 아무 데나 매칭돼서 「.priv 밖에 제목이 없다」가 **가끔** 실패한다.
+    //    랜덤하게 실패하는 검사는 사람을 길들여 진짜 실패까지 무시하게 만든다.
+    S.play.cur = { w:'벚꽃엔딩', a:'버스커 버스커', c:'y10a' };
     const sv = view('play');
     {
       // ⚠️ 앞의 정규식은 사실상 아무거나 통과했다(`[\s\S]{0,400}?[^<>]*`).
@@ -387,11 +391,12 @@ if (new URLSearchParams(location.search).has('demo')){
     /* ── 쓰기 주체 분리 ── */
     S.room.yut.pending = []; S.room.yut.canThrow = true; S.room.yut.turn = 0;
     S.room.yut.throw = { n:'걸', v:3, again:false, sticks:[1,1,1,0], by:mine0 };
-    yutConsume();
+    // ⚠️ 던지는 연출이 끝나야 판에 반영된다(연출이 결과를 바꾸진 않는다)
+    await yutConsume();
     ck('★★참가자가 던진 결과를 호스트가 반영한다', m().pending.length === 1 && m().pending[0].v === 3);
     ck('★★반영 뒤 throw 를 지운다', !m().throw);
     S.room.yut.throw = { n:'모', v:5, again:true, sticks:[0,0,0,0], by:other };  // 남의 차례
-    yutConsume();
+    await yutConsume();
     ck('★남의 차례 던지기는 버린다', m().pending.length === 1 && !m().throw);
 
     /* ── 화면 ── */

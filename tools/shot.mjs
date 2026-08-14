@@ -79,7 +79,8 @@ if (has('--dom')){
   await rm(ud, { recursive:true, force:true }).catch(()=>{});
   const { stdout } = await run(EDGE, [
     '--headless=new', '--disable-gpu', '--no-sandbox', `--user-data-dir=${ud}`,
-    '--virtual-time-budget=9000', '--dump-dom', `http://localhost:${PORT}${path}`,
+    // ⚠️ 시나리오에 연출(윷 던지기 등)이 있으면 9초로는 모자라 중간에 잘린다
+    '--virtual-time-budget=20000', '--dump-dom', `http://localhost:${PORT}${path}`,
   ], { maxBuffer: 64 * 1024 * 1024, timeout: 120000 });
   await writeFile(out, stdout, 'utf8');
   await rm(ud, { recursive:true, force:true }).catch(()=>{});
