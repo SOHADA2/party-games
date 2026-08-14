@@ -15,3 +15,5 @@ _tmp*
 _scratch*
 # 검증용 임시 하네스 (_demo.html / _frame.html 등)
 _*.html
+# 임시 시나리오(디버그용) — 실수로 커밋되는 걸 막는다
+tools/scenarios/_*.js
