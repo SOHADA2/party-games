@@ -545,20 +545,44 @@ if (new URLSearchParams(location.search).has('demo')){
       /* 데이터 정합 */
       const qAll = Object.values(QUIZ_DECKS).flatMap(v => v.qs);
       say('상식 퀴즈', QUIZ_KEYS.length + '범위', qAll.length + '문제');
-      ck('★상식 퀴즈 500문제 이상', qAll.length >= 500);
+      ck('★상식 퀴즈 1400문제 이상', qAll.length >= 1400);
       ck('★범위 10가지 이상', QUIZ_KEYS.length >= 10);
+      ck('  범위마다 100문제 이상', QUIZ_KEYS.every(k => QUIZ_DECKS[k].qs.length >= 100));
       ck('전 범위에 이름·이모지·문제 보유',
         QUIZ_KEYS.every(k => QUIZ_DECKS[k].name && QUIZ_DECKS[k].emoji
-          && Array.isArray(QUIZ_DECKS[k].qs) && QUIZ_DECKS[k].qs.length >= 20));
+          && Array.isArray(QUIZ_DECKS[k].qs)));
       ck('★★문제 문장이 범위를 넘어 중복되지 않는다',
         new Set(qAll.map(x => x[0])).size === qAll.length);
+      /* ★★ 유사 중복 — 글자만 조금 다른 같은 질문을 막는다.
+         ⚠️ 문제를 1,500개까지 늘리면서 실제로 「일본의 수도는?」/「일본의 수도 이름은?」
+            같은 쌍이 생기기 쉬워졌다. 완전 일치 검사만으로는 이걸 못 잡는다.
+            공백·기호·흔한 어미를 떼고 비교해서 같으면 중복으로 본다. */
+      {
+        const norm = q => q.replace(/[\s·?!,()]/g, '')
+          .replace(/(이름|것)?(은|는|을|를|이|가)?(무엇|뭐라하나|뭐라부르나|몇개|얼마)?$/, '');
+        const ns = new Set(qAll.map(x => norm(x[0])));
+        ck('★★어미만 다른 같은 질문이 없다', ns.size === qAll.length);
+      }
       ck('전 문제에 정답이 있다', qAll.every(x => x[0].trim() && x[1].trim()));
       ck('  문제는 물음표로 끝난다', qAll.every(x => x[0].endsWith('?')));
       /* 기본 범위 — 쏠리기 쉬운 범위는 꺼둔 상태여야 한다(난이도 손잡이) */
       ck('★기본 범위에 어려운 쪽이 안 켜져 있다',
         !QUIZ_CATS.includes('hist') && !QUIZ_CATS.includes('art')
         && !QUIZ_CATS.includes('sport') && !QUIZ_CATS.includes('it'));
-      ck('  그래도 기본 범위만으로 200문제 이상', quizPool(QUIZ_CATS).length >= 200);
+      ck('  그래도 기본 범위만으로 700문제 이상', quizPool(QUIZ_CATS).length >= 700);
+      /* ★ 판을 거듭해도 안 겹치는지 — 사장님 요구의 핵심.
+         20문제씩 20판(400문제)을 돌려도 같은 문제가 두 번 안 나와야 한다. */
+      {
+        const pool = quizPool(QUIZ_CATS);
+        const seenQ = new Set(); let again = 0;
+        const used = new Set();
+        for (let r = 0; r < 20; r++){
+          const fresh = pool.filter(x => !used.has(x.w));
+          const round = shuffle(fresh.slice()).slice(0, 20);
+          for (const x of round){ if (seenQ.has(x.w)) again++; seenQ.add(x.w); used.add(x.w); }
+        }
+        ck('★★20문제씩 20판을 돌려도 재출제 0', again === 0 && seenQ.size === 400);
+      }
 
       S.gameId = 'quiz'; go('game'); act('tool-start', {});
       ck('quiz 진입', S.play?.kind === 'quiz' && S.play.phase === 'setup');
