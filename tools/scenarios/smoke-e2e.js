@@ -536,6 +536,106 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('선수 전원이 순위에 들어간다', S.draft.order.length === playing().length);
     act('score-cancel', {});
 
+    /* ── 5.6) 🧠 상식 퀴즈 (quiz) ──
+       ⚠️ 초성 퀴즈와 흐름이 **뒤집혀 있다**. 그게 이 게임의 핵심이므로 순서를 못 박는다.
+            run(문제만) → 「정답 공개」 → reveal(정답 + 누가 맞혔나) → 다음
+          정답 공개 **전에는** 누구도 고를 수 없어야 하고(그래야 진행자도 같이 맞힌다),
+          정답 문자열이 run 화면에 새면 게임이 통째로 성립하지 않는다. */
+    {
+      /* 데이터 정합 */
+      const qAll = Object.values(QUIZ_DECKS).flatMap(v => v.qs);
+      say('상식 퀴즈', QUIZ_KEYS.length + '범위', qAll.length + '문제');
+      ck('★상식 퀴즈 500문제 이상', qAll.length >= 500);
+      ck('★범위 10가지 이상', QUIZ_KEYS.length >= 10);
+      ck('전 범위에 이름·이모지·문제 보유',
+        QUIZ_KEYS.every(k => QUIZ_DECKS[k].name && QUIZ_DECKS[k].emoji
+          && Array.isArray(QUIZ_DECKS[k].qs) && QUIZ_DECKS[k].qs.length >= 20));
+      ck('★★문제 문장이 범위를 넘어 중복되지 않는다',
+        new Set(qAll.map(x => x[0])).size === qAll.length);
+      ck('전 문제에 정답이 있다', qAll.every(x => x[0].trim() && x[1].trim()));
+      ck('  문제는 물음표로 끝난다', qAll.every(x => x[0].endsWith('?')));
+      /* 기본 범위 — 쏠리기 쉬운 범위는 꺼둔 상태여야 한다(난이도 손잡이) */
+      ck('★기본 범위에 어려운 쪽이 안 켜져 있다',
+        !QUIZ_CATS.includes('hist') && !QUIZ_CATS.includes('art')
+        && !QUIZ_CATS.includes('sport') && !QUIZ_CATS.includes('it'));
+      ck('  그래도 기본 범위만으로 200문제 이상', quizPool(QUIZ_CATS).length >= 200);
+
+      S.gameId = 'quiz'; go('game'); act('tool-start', {});
+      ck('quiz 진입', S.play?.kind === 'quiz' && S.play.phase === 'setup');
+      S.play.n = 3;
+      act('quiz-start', {});
+      ck('문제 생성', S.play.phase === 'run' && !!S.play.cur?.w && !!S.play.cur?.a);
+
+      /* ★ 정답 누출 — 카드를 **고정**해서 본다.
+         ⚠️ 랜덤 카드로 검사하면 안 된다. 정답이 「M」 처럼 짧으면 화면 아무 데나 걸려
+            뽑기에 따라 실패하는 검사가 된다(v0.24.0 의 「I」 사건과 같은 병). */
+      S.play.cur = { w:'세계에서 가장 긴 강은?', a:'나일강', c:'world' };
+      const qRun = view('play');
+      ck('★진행 화면에 문제가 뜬다', qRun.includes('세계에서 가장 긴 강은?'));
+      ck('★★진행 화면에 정답이 없다', !qRun.includes('나일강'));
+      ck('★.priv 를 안 붙였다 (전원이 봐야 하는 화면)', !/wcard[^"]*priv/.test(qRun));
+      ck('★공개 전에는 「누가 맞혔나」가 안 뜬다', !qRun.includes('누가 맞혔나요?'));
+
+      /* ★ 공개 전에는 아무도 고를 수 없다 — 이게 뚫리면 정답 없이 판정하게 된다 */
+      act('quiz-hit', { pid:P[1] });
+      ck('★★정답 공개 전에는 맞힌 사람을 고를 수 없다',
+        S.play.log.length === 0 && S.play.phase === 'run');
+
+      act('quiz-show', {});
+      const qRev = view('play');
+      ck('정답 공개 단계', S.play.phase === 'reveal');
+      ck('★공개하면 그때 정답이 뜬다', qRev.includes('나일강'));
+      ck('공개 후에 「누가 맞혔나」가 뜬다', qRev.includes('누가 맞혔나요?'));
+
+      /* 맞히면 +1 하고 바로 다음 문제 */
+      act('quiz-hit', { pid:P[1] });
+      ck('맞히면 점수 +1', quizScores()[P[1]] === 1);
+      ck('바로 다음 문제로', S.play.phase === 'run' && S.play.cur.w !== '세계에서 가장 긴 강은?');
+      ck('직전 줄에 정답이 남는다', view('play').includes('나일강'));
+
+      /* 되돌리기 — ⚠️ 정답이 보이는 상태(reveal)로 돌아가야 다시 고를 수 있다 */
+      act('quiz-undo', {});
+      ck('★방금 취소 — 점수 복구', quizScores()[P[1]] === 0);
+      ck('★★방금 취소 — 정답이 보이는 단계로 복귀',
+        S.play.phase === 'reveal' && S.play.cur.w === '세계에서 가장 긴 강은?');
+      ck('취소 후 진행 카운터도 되돌아감', S.play.log.length === 0);
+
+      /* 아무도 못 맞힘 */
+      act('quiz-none', {});
+      ck('못 맞힌 문제는 by:null', S.play.log[0].by === null && S.play.log.length === 1);
+      ck('  넘어가면 다음 문제', S.play.phase === 'run');
+
+      /* 목표 수를 채우면 자동 종료 */
+      act('quiz-show', {}); act('quiz-hit', { pid:P[2] });
+      act('quiz-show', {}); act('quiz-hit', { pid:P[2] });
+      ck('★목표 문제 수를 채우면 자동 종료',
+        S.play.phase === 'done' && S.play.log.length === 3);
+      const qSc = quizScores();
+      ck('점수 집계', qSc[P[2]] === 2 && qSc[P[1]] === 0);
+      /* ⚠️ 정답만 적으면 뭘 물었는지 알 수 없다 — 「60세」가 환갑인지 정년인지 모른다.
+            초성 퀴즈는 제시어가 곧 답이라 문제없지만 이 게임은 둘이 따로다. */
+      const qDone = view('play');
+      ck('종료 화면에 정답 목록', qDone.includes(S.play.log[0].a));
+      ck('★★종료 화면에 문제도 같이 적힌다', qDone.includes(S.play.log[0].w));
+      ck('★판이 끝나면 나온 문제가 기록된다', usedWords('quiz').size === 3);
+
+      act('quiz-save', {});
+      ck('quiz 순위 화면', S.view === 'score' && S.play === null);
+      ck('★많이 맞힌 사람이 1등', S.draft.order[0] === P[2]);
+      ck('quiz 는 개인전으로 넘어간다', S.draft.mode === 'solo');
+      ck('선수 전원이 순위에 들어간다', S.draft.order.length === playing().length);
+      act('score-cancel', {});
+
+      /* 중복 방지 — 이미 나온 문제는 다음 판에 안 나온다 */
+      S.gameId = 'quiz'; go('game'); act('tool-start', {});
+      S.play.n = 3; act('quiz-start', {});
+      const used2 = usedWords('quiz');
+      ck('★다음 판 덱에 이미 나온 문제가 없다',
+        S.play.deck.every(x => !used2.has(x.w)));
+      act('pl-quit', {});
+      S.room.used = {};
+    }
+
     /* ── 6) 술래 뽑기(중복 방지 로테이션) ── */
     /* ⚠️ S._lastPick 은 {gameId: pid} 맵이다(통째로 읽으면 안 된다).
        그리고 act('pick') 은 rollReveal 을 await 하는 async 다 — 누가 뽑혔는지는
