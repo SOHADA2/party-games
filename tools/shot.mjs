@@ -77,8 +77,14 @@ if (has('--dom')){
   // --dump-dom 은 stdout 으로 나오므로 edge() 헬퍼(스크린샷용) 대신 직접 돌린다
   const ud = join(TMP, 'pg-edge-dom');
   await rm(ud, { recursive:true, force:true }).catch(()=>{});
+  /* ⚠️ 창 크기는 **-w/-h 를 명시했을 때만** 준다.
+     안 그러면 기존 E2E 의 렌더 환경이 통째로 바뀐다(큰 화면 미디어쿼리가 켜질 수 있다).
+     명시하면 화면 밖으로 밀린 버튼 같은 **레이아웃**을 시나리오에서 잴 수 있다 —
+     예전엔 --dom 이 크기를 안 받아서 재는 족족 780x493 값이 나왔다(측정이 무의미했다). */
+  const sized = args.includes('-w') || args.includes('-h');
   const { stdout } = await run(EDGE, [
     '--headless=new', '--disable-gpu', '--no-sandbox', `--user-data-dir=${ud}`,
+    ...(sized ? [`--window-size=${W},${H}`] : []),
     // ⚠️ 시나리오에 연출(윷 던지기 등)이 있으면 9초로는 모자라 중간에 잘린다
     '--virtual-time-budget=20000', '--dump-dom', `http://localhost:${PORT}${path}`,
   ], { maxBuffer: 64 * 1024 * 1024, timeout: 120000 });

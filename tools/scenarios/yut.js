@@ -6,6 +6,8 @@ if (new URLSearchParams(location.search).has('demo')){
   S.room.players.h1={name:'나',joinedAt:1,seen:Date.now(),host:true};
   addBots(5); makeTeams(2);
   S.gameId='yut'; act('tool-start',{});
+  // ⚠️ 컨페티가 화면을 덮어 스샷 판독을 방해한다 — 스냅샷에서는 끈다
+  confetti=()=>{};
   const v=q.get('v')||'board';
   if(v!=='setup'){
     act('yut-start',{});
