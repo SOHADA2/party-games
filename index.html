@@ -562,8 +562,10 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .cell.pick:active{transform:translate(-50%,-50%) scale(.9)}
 .cell .pcs{position:absolute;inset:-14%;display:flex;flex-wrap:wrap;align-content:center;
   justify-content:center;gap:2px}
-.pc{width:38%;aspect-ratio:1/1;border-radius:50%;border:1.5px solid rgba(0,0,0,.45);
-  box-shadow:0 1px 3px rgba(0,0,0,.5)}
+/* 말 — 업은 말은 개수를 적는다(하나씩 그리면 칸을 덮는다) */
+.pc{width:52%;aspect-ratio:1/1;border-radius:50%;border:1.5px solid rgba(0,0,0,.45);
+  box-shadow:0 1px 3px rgba(0,0,0,.5);display:grid;place-items:center;
+  font-size:11px;font-weight:900;color:rgba(0,0,0,.7);line-height:1}
 .homebox{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
 .hteam{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:12px;
   background:rgba(0,0,0,.26);border:1px solid var(--line2);font-size:13px;font-weight:800}
@@ -874,6 +876,7 @@ details.more .in{padding:0 15px 15px}
   /* 세로 태블릿에서도 조작 버튼이 한 화면에 들어와야 한다(3px 차이로 잘렸다) */
   .ybtns{gap:8px;margin-bottom:8px}
   .board{margin-bottom:10px}
+  .pc{font-size:18px}
   /* 진행 중 — 제시어 카드 / 타이머 / 스톱워치 */
   .wcard{min-height:280px;padding:52px 26px}
   .wtxt{font-size:74px}
@@ -930,14 +933,21 @@ details.more .in{padding:0 15px 15px}
   main{padding:16px 26px calc(30px + var(--sb))}
   /* 가로 태블릿(768px)에서 판·머리말·윷짝·결과 칩이 한 화면에 들어가야 한다.
      ⚠️ 말판이 잘리면 안 된다 — 뒤에서 보는 사람은 스크롤을 못 한다. */
-  /* ⚠️ 가로 태블릿은 세로가 모자라다(768px). 판·윷짝·결과 칩까지는 다 보여야 하고,
-     **조작 버튼(새 말 내보내기 · 대신 던지기)도 화면 안에 있어야** 진행자가 매 턴
-     스크롤하지 않는다. 기록은 참고용이라 아래로 밀려도 된다. */
-  .board{max-width:min(460px, 40vh);margin-bottom:6px}
-  .homebox{margin-bottom:6px}
+  /* ⚠️ 가로 태블릿은 **세로가 모자라고 가로가 남는다.** 1단으로 쌓으면 판을 계속 줄이게 되어
+     다 같이 봐야 할 말판이 폰보다 작아진다(그렇게 272px 까지 내려갔었다).
+     → 왼쪽에 판을 크게, 오른쪽에 조작·기록을 세로로 세운다. */
+  .ylayout{display:grid;grid-template-columns:minmax(0,1fr) 290px;
+    grid-template-rows:auto auto;gap:0 18px;align-items:start}
+  .yboard{grid-column:1;grid-row:1 / span 2}
+  .ytop{grid-column:2;grid-row:1}
+  .ybot{grid-column:2;grid-row:2}
+  .board{max-width:min(620px, 86vh);margin-bottom:0}
+  .homebox{margin-bottom:8px}
+  .hteam{width:100%;justify-content:flex-start}
+  .sticks{margin-bottom:8px}
   .ybtns{gap:6px;margin-bottom:8px}
   .ybtns .btn{padding:10px 14px}
-  /* 구분선 여백이 26px 이라 판 위에서만 두 번 먹으면 버튼이 밀려난다 */
+  /* 오른쪽 칸은 좁다 — 구분선 여백을 줄여 버튼이 안 밀리게 */
   .sec{margin:12px 4px 7px}
   .sticks{padding:8px;margin-bottom:8px}
   .stick{width:14px;height:34px}
@@ -1008,7 +1018,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.26.1';
+const APP_VERSION = 'v0.26.2';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -4898,8 +4908,15 @@ function vYut(){
           return `<div class="cell ${c.big ? 'big' : ''} ${can ? 'pick' : ''}"
             style="left:${c.x}%;top:${c.y}%" ${can ? `data-act="${hotAct}" data-pos="${i}"` : ''}>
             ${label}
-            ${here.length ? `<div class="pcs">${here.map(x =>
-              `<div class="pc" style="background:${TEAM_COLORS[x.t % TEAM_COLORS.length]}"></div>`).join('')}</div>` : ''}
+            ${here.length ? `<div class="pcs">${(() => {
+              /* ⚠️ 업은 말을 하나씩 다 그리면 4개가 겹칠 때 **칸을 통째로 덮는다** —
+                 어느 칸에 있는지조차 안 보인다. 업기는 흔하므로 개수로 적는다. */
+              const cnt = {};
+              here.forEach(x => { cnt[x.t] = (cnt[x.t] || 0) + 1; });
+              return Object.entries(cnt).map(([ti, n]) =>
+                `<div class="pc" style="background:${TEAM_COLORS[Number(ti) % TEAM_COLORS.length]}"
+                  >${n > 1 ? n : ''}</div>`).join('');
+            })()}</div>` : ''}
           </div>`;
         }).join('')}
       </div>
@@ -4944,7 +4961,14 @@ function vYut(){
     </div>`;
 
   const canMove = m.pieces[t].some(x => x !== YUT_HOME);
+  /* ⚠️ 가로 태블릿은 **세로가 모자라고 가로는 남는다.** 1단으로 쌓으면 판을 계속 줄이게 되어
+     정작 다 같이 봐야 할 말판이 폰보다 작아진다(실측 272px · 말 지름 11px).
+     그래서 ylayout 을 세 덩이로 나눠 두고, 큰 화면에서만 2단으로 배치한다:
+       왼쪽 = 말판(크게)  ·  오른쪽 = 팀·윷짝·결과칩 / 버튼·기록
+     폰과 세로 태블릿에서는 그냥 위에서 아래로 쌓인다(순서 그대로). */
   return `
+    <div class="ylayout">
+    <div class="ytop">
     <div class="homebox">
       ${m.pieces.map((_, ti) => `
         <div class="hteam ${ti === t ? 'on' : ''}">
@@ -4974,9 +4998,11 @@ function vYut(){
           ${h(teamName(t))} 차례</div>
         <div class="s">${m.canThrow ? '그 팀 사람이 <b>자기 폰에서 윷을 던지세요</b>' : ''}</div>
       </div>`}
+    </div>
 
-    ${board}
+    <div class="yboard">${board}</div>
 
+    <div class="ybot">
     <!-- ⚠️ 조작 버튼은 **판 바로 아래**에 둔다. 예전엔 기록 카드 뒤에 있어서
          가로 태블릿(768px)에서 「여기서 대신 던지기」가 통째로 화면 밖으로 밀렸다.
          폰이 없는 사람 대신 던져주는 버튼이라 안 보이면 그 사람은 아예 못 던진다. -->
@@ -5001,6 +5027,8 @@ function vYut(){
     <div style="height:12px"></div>
     <div class="stack">
       <button class="btn gh sm" data-act="pl-quit" style="width:100%">나가기 (판 유지)</button>
+    </div>
+    </div>
     </div>`;
 }
 

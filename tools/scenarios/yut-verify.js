@@ -296,7 +296,21 @@ if (new URLSearchParams(location.search).has('demo')){
         ck('★★말판이 스크롤 없이 다 보인다', fits(b));
         ck('★★「새 말 내보내기」가 화면 안에 있다', fits(b1));
         ck('★★「여기서 대신 던지기」가 화면 안에 있다', fits(b2));
-        ck('  판이 너무 작지 않다 (한 변 240px 이상)', !!b && b.width >= 240);
+        /* ⚠️ 「판이 화면 안에 들어간다」만 검사하면 판을 줄여서 통과시킬 수 있다 —
+           실제로 그렇게 272px 까지 내려가 **폰(453px)보다 작아졌다.** 이 화면은 상 위에
+           세워두고 다 같이 보는 것이라 작아지면 그 순간 쓸모가 없다. 하한을 못 박는다. */
+        ck('★★말판이 충분히 크다 (한 변 420px 이상)', !!b && b.width >= 420);
+        say('  말 지름', (() => { const e = document.querySelector('.pc');
+          return e ? Math.round(e.getBoundingClientRect().width) + 'px' : '없음'; })());
+        /* 업은 말은 하나씩 그리면 칸을 덮는다 → 개수로 적는다 */
+        M.pieces[0] = [7, 7, 7, 7]; render(true);
+        const stack = [...document.querySelectorAll('.cell .pc')]
+          .filter(e => e.textContent.trim() === '4');
+        ck('★★업은 말 4개는 말 하나 + 개수로 표시된다', stack.length === 1);
+        ck('  칸을 덮지 않는다 (말이 칸보다 작다)', (() => {
+          const c = document.querySelector('.cell'), pc = stack[0];
+          return !!c && !!pc && pc.getBoundingClientRect().width < c.getBoundingClientRect().width;
+        })());
       }
     }
 
