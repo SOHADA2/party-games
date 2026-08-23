@@ -307,6 +307,23 @@ if (new URLSearchParams(location.search).has('demo')){
         const stack = [...document.querySelectorAll('.cell .pc')]
           .filter(e => e.textContent.trim() === '4');
         ck('★★업은 말 4개는 말 하나 + 개수로 표시된다', stack.length === 1);
+        /* ⚠️ 판 위 글씨에 **폰트에 없는 희귀 기호**를 쓰면 기기에 따라 네모(□)로 깨진다.
+           실제로 ⤢(U+2922) 를 쓰다가 "말판에 이상한 글씨"라는 제보를 받았다.
+           칸 라벨은 한글·숫자·영문만 쓴다. */
+        {
+          const rare = [];
+          document.querySelectorAll('.cell').forEach(el => {
+            for (const ch of (el.childNodes[0]?.textContent || '').trim()){
+              const o = ch.codePointAt(0);
+              const ok = o < 0x2000                       // 아스키·기호
+                || (o >= 0xAC00 && o <= 0xD7A3)           // 한글 음절
+                || (o >= 0x3130 && o <= 0x318F);          // 한글 자모
+              if (!ok) rare.push(ch + '(U+' + o.toString(16).toUpperCase() + ')');
+            }
+          });
+          ck('★★말판 칸 글씨에 깨질 만한 기호가 없다', rare.length === 0);
+          if (rare.length) say('  깨질 문자:', [...new Set(rare)].join(' '));
+        }
         ck('  칸을 덮지 않는다 (말이 칸보다 작다)', (() => {
           const c = document.querySelector('.cell'), pc = stack[0];
           return !!c && !!pc && pc.getBoundingClientRect().width < c.getBoundingClientRect().width;

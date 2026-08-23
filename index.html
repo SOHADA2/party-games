@@ -556,7 +556,8 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
   border-radius:50%;display:grid;place-items:center;
   background:var(--surf2);border:1.5px solid var(--line2);
   font-size:9px;font-weight:800;color:var(--dim2)}
-.cell.big{width:17%;background:var(--surf3);border-color:var(--amber);color:var(--amber)}
+.cell.big{width:17%;background:var(--surf3);border-color:var(--amber);color:var(--amber);
+  font-size:11px;letter-spacing:-.04em}
 .cell.pick{border-color:var(--mint);background:rgba(61,224,168,.2);cursor:pointer;
   box-shadow:0 0 0 3px rgba(61,224,168,.22)}
 .cell.pick:active{transform:translate(-50%,-50%) scale(.9)}
@@ -861,6 +862,7 @@ details.more .in{padding:0 15px 15px}
      판 아래에 버튼 두 개가 더 붙으므로 51vh 가 상한이다. */
   .board{max-width:min(620px, 51vh)}
   .cell{font-size:12px}
+  .cell.big{font-size:17px}
   .hteam{font-size:16px;padding:11px 16px}
   .rollbig .v{font-size:62px}
   .ylog{font-size:15px}
@@ -1018,7 +1020,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.26.2';
+const APP_VERSION = 'v0.26.3';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -4904,7 +4906,9 @@ function vYut(){
           if (!c) return '';
           const here = yutAt(m.pieces, i);
           const can = hot.includes(i);
-          const label = i === 0 ? '날' : i === 23 ? '방' : YUT_START.includes(i) ? '⤢' : '';
+          /* ⚠️ 예전엔 ⤢(U+2922) 를 썼는데 **폰트에 없는 희귀 문자**라 기기에 따라
+             네모(□)로 깨져 보였다("말판에 이상한 글씨"). 판 위 글씨는 한글로만 쓴다. */
+          const label = i === 0 ? '날' : i === 23 ? '방' : YUT_START.includes(i) ? '지름' : '';
           return `<div class="cell ${c.big ? 'big' : ''} ${can ? 'pick' : ''}"
             style="left:${c.x}%;top:${c.y}%" ${can ? `data-act="${hotAct}" data-pos="${i}"` : ''}>
             ${label}
