@@ -307,22 +307,23 @@ if (new URLSearchParams(location.search).has('demo')){
         const stack = [...document.querySelectorAll('.cell .pc')]
           .filter(e => e.textContent.trim() === '4');
         ck('★★업은 말 4개는 말 하나 + 개수로 표시된다', stack.length === 1);
-        /* ⚠️ 판 위 글씨에 **폰트에 없는 희귀 기호**를 쓰면 기기에 따라 네모(□)로 깨진다.
-           실제로 ⤢(U+2922) 를 쓰다가 "말판에 이상한 글씨"라는 제보를 받았다.
-           칸 라벨은 한글·숫자·영문만 쓴다. */
+        /* ⚠️ 판에는 **글씨를 넣지 않는다**(사장님 지시 — 다 아는 규칙이다).
+           모서리·방은 칸 크기로만 구분한다. 말 위의 「업은 개수」만 예외다.
+           ⚠️ 예전에 ⤢(U+2922) 를 라벨로 쓰다가 기기에서 네모로 깨진 적이 있다 —
+              글씨를 다시 넣을 일이 생기면 한글·숫자·영문만 쓸 것. */
         {
-          const rare = [];
+          const texts = [];
           document.querySelectorAll('.cell').forEach(el => {
-            for (const ch of (el.childNodes[0]?.textContent || '').trim()){
-              const o = ch.codePointAt(0);
-              const ok = o < 0x2000                       // 아스키·기호
-                || (o >= 0xAC00 && o <= 0xD7A3)           // 한글 음절
-                || (o >= 0x3130 && o <= 0x318F);          // 한글 자모
-              if (!ok) rare.push(ch + '(U+' + o.toString(16).toUpperCase() + ')');
-            }
+            // 말(.pc) 안의 개수는 빼고, 칸 자체에 붙은 글자만 본다
+            [...el.childNodes].forEach(n => {
+              if (n.nodeType === 3){ const t = n.textContent.trim(); if (t) texts.push(t); }
+            });
           });
-          ck('★★말판 칸 글씨에 깨질 만한 기호가 없다', rare.length === 0);
-          if (rare.length) say('  깨질 문자:', [...new Set(rare)].join(' '));
+          ck('★★말판 칸에 글씨가 없다', texts.length === 0);
+          if (texts.length) say('  남아 있는 글씨:', [...new Set(texts)].join(' '));
+          ck('  모서리·방은 큰 칸으로 구분된다',
+            document.querySelectorAll('.cell.big').length === 5
+            && document.querySelectorAll('.cell.hub').length === 1);
         }
         ck('  칸을 덮지 않는다 (말이 칸보다 작다)', (() => {
           const c = document.querySelector('.cell'), pc = stack[0];
