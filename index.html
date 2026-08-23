@@ -1090,7 +1090,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.27.0';
+const APP_VERSION = 'v0.27.1';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -4631,6 +4631,26 @@ const offBanner = () => S.online ? '' :
   `<div class="banner warn"><span>⚠️</span><span>인터넷 끊김 — ${S.isHost ? '이 기기에서 계속 진행하고, 연결되면 자동으로 맞춰져요' : '호스트 화면을 봐주세요'}</span></div>`;
 
 /* ── 홈 ── */
+/* 윷놀이 진행 중 배너 — 각자 폰에서 「윷 던지기 / ✋ 잠시!」로 들어가는 **유일한 입구**다.
+   ⚠️ 예전엔 홈에만 있었다. 그런데 참가자는 입장하면 **대기실**에 머무르므로
+      「잠시!」를 누르려면 홈으로 되돌아가야 했다 — 사실상 못 쓰는 기능이었다.
+      그래서 홈과 대기실 **양쪽**에 띄운다.
+   ⚠️ vHome 은 방에 들어가기 **전에도** 그려진다 → S.room 이 null 이다.
+      여기서 S.room.yut 을 옵셔널 체이닝 없이 쓰면 부팅 때 모듈 전체가 죽는다. */
+function yutBanner(){
+  const y = S.room?.yut; if (!y) return '';
+  const mine = myTeam() === y.turn && y.phase === 'play';
+  return `
+    <button class="g" style="${gcVars('#C89BFF')};margin-bottom:10px" data-act="go-yut">
+      <div class="g-ic">🎲</div>
+      <div class="g-b"><div class="g-n">${mine ? '내 차례! 윷을 던지세요' : '훈민정음 윷놀이 진행 중'}</div>
+        <div class="g-m"><span>${y.phase === 'ended'
+          ? h(teamName(y.winner)) + ' 승리'
+          : h(teamName(y.turn)) + ' 차례 · 탭해서 윷 던지기 / ✋ 잠시!'}</span></div></div>
+      <div class="g-ar">›</div>
+    </button>`;
+}
+
 function vHome(){
   const last = (() => { try{ return JSON.parse(localStorage.getItem(LS) || 'null'); }catch{ return null; } })();
   return `
@@ -4644,18 +4664,7 @@ function vHome(){
     ${last ? `<button class="btn gh" data-act="rejoin" style="margin:20px 0 0">
         ↩︎ ${h(last.name||'')}(으)로 ${h(last.code)}번 방 다시 들어가기</button>` : ''}
 
-    <!-- ⚠️ vHome 은 방에 들어가기 **전에도** 그려진다 → S.room 이 null 이다.
-         여기서 S.room.yut 처럼 쓰면 부팅 때 모듈 전체가 죽는다(실제로 그렇게 터뜨렸다). -->
-    ${S.room?.yut ? (() => { const y = S.room.yut; return `
-      <button class="g" style="${gcVars('#C89BFF')};margin-bottom:10px" data-act="go-yut">
-        <div class="g-ic">🎲</div>
-        <div class="g-b"><div class="g-n">${myTeam() === y.turn && y.phase === 'play'
-            ? '내 차례! 윷을 던지세요' : '훈민정음 윷놀이 진행 중'}</div>
-          <div class="g-m"><span>${y.phase === 'ended'
-            ? h(teamName(y.winner)) + ' 승리'
-            : h(teamName(y.turn)) + ' 차례 · 탭해서 윷 던지기/잠시!'}</span></div></div>
-        <div class="g-ar">›</div>
-      </button>`; })() : ''}
+    ${yutBanner()}
     ${installBannerHtml()}
     <div class="sec">시작하기</div>
     <div class="card">
@@ -4725,6 +4734,7 @@ function vLobby(){
       <div class="rc-hint">친구들이 이 코드를 입력하면 바로 들어와요</div>
     </div>
 
+    ${yutBanner()}
     ${installBannerHtml()}
     ${S.isHost && ps.length < 3 ? `
       <button class="instbn" style="background:linear-gradient(150deg,rgba(61,224,168,.15),var(--surf));border-color:rgba(61,224,168,.32)"
@@ -5047,8 +5057,9 @@ function vYut(){
   if (m.halt) return `
     <div class="haltbig">
       <div class="t">✋ 잠시!</div>
-      <div class="s"><b>${h(pname(m.halt.by))}</b>님이
-        <b>${h(teamName(m.halt.team))}</b>의 영어를 지적했습니다.<br>
+      <div class="s">${m.halt.board
+        ? `<b>${h(teamName(m.halt.team))}</b>이 영어를 썼다는 지적입니다.`
+        : `<b>${h(pname(m.halt.by))}</b>님이 <b>${h(teamName(m.halt.team))}</b>의 영어를 지적했습니다.`}<br>
         정말 영어를 썼나요? 다 같이 판단하고 눌러주세요.</div>
     </div>
     <div class="stack">
@@ -5140,6 +5151,11 @@ function vYut(){
         if (use && !hot.length && !waiting)
           out.push(`<button class="btn" data-act="yut-skip">움직일 말이 없어요 — 턴 넘기기</button>`);
         else if (!canMove) out.push(`<button class="btn gh sm" data-act="yut-skip">턴 넘기기</button>`);
+        /* ⚠️ 이 게임의 핵심 규칙이다 — 영어를 쓰면 말 하나가 집으로 돌아간다.
+           다 같이 이 화면을 보고 있으니 **여기서 바로** 지적할 수 있어야 한다.
+           (각자 폰에도 같은 버튼이 있지만, 폰을 꺼내 홈까지 가야 하면 아무도 안 쓴다.) */
+        out.push(`<button class="btn dan sm" data-act="yut-halt-here"
+          >✋ 잠시! — ${h(teamName(t))}이 영어를 썼어요</button>`);
         return out.join('');
       })()}
     </div>
@@ -6486,6 +6502,18 @@ async function act(a, d){
     yutThrowAnim(r, '내 차례');
     set(ref(db, `${ROOT}/rooms/${S.code}/yut/throw`), { ...r, by:S.pid, at:now() }).catch(()=>{});
     break;
+  }
+  /* 태블릿(공용 화면)에서 지적 — 누가 눌렀는지가 아니라 「지적이 들어왔다」가 중요하다.
+     ⚠️ 폰에서 누르는 yut-halt 와 달리 「우리 팀은 못 누른다」 가드를 걸지 않는다.
+        태블릿은 다 같이 둘러앉아 보는 기기라 누른 사람이 곧 상대팀이다
+        (진행 중인 팀이 자기를 지적할 이유가 없다). */
+  case 'yut-halt-here': {
+    const m = YT();
+    if (!S.isHost) return;
+    if (!m || m.phase !== 'play' || m.halt || m.pick) return;
+    m.halt = { by:S.pid, team:m.turn, at:now(), board:true };
+    pushYut({ halt:m.halt });
+    SFX.end(); vib([30,50,30]); render(true); break;
   }
   case 'yut-halt': {
     const m = YT();

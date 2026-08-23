@@ -252,6 +252,29 @@ if (new URLSearchParams(location.search).has('demo')){
       act('yut-start', {});
       yutApplyThrow({ n:'걸', v:3, again:false, sticks:[1,1,1,0] }, 'h1');
       yutMoveFrom(-1, 0);                                 // 1팀 말 하나가 3번 칸
+
+      /* ★ 지적 버튼에 **손이 닿는가** — 이게 안 되면 기능이 있어도 없는 것이다.
+         참가자는 입장하면 대기실에 머무르므로 거기에 입구가 있어야 하고,
+         다 같이 보는 태블릿에서도 바로 누를 수 있어야 한다. */
+      {
+        const board0 = view('play');
+        ck('★★태블릿 판 화면에서 바로 지적할 수 있다', board0.includes('data-act="yut-halt-here"'));
+        const lob = view('lobby');
+        ck('★★대기실에 윷 진행 배너가 있다 (각자 폰의 유일한 입구)',
+          lob.includes('data-act="go-yut"'));
+        ck('  홈에도 그대로 있다', view('home').includes('data-act="go-yut"'));
+        ck('  배너가 「잠시!」로 갈 수 있다고 알려준다', lob.includes('잠시'));
+        // 태블릿에서 누르면 진행 중인 팀이 지적 대상이 된다
+        S.view = 'play'; render(true);
+        act('yut-halt-here', {});
+        ck('★태블릿에서 누르면 판정 단계로 간다',
+          !!m().halt && m().halt.team === m().turn && m().halt.board === true);
+        ck('  판정 화면이 이름 대신 팀을 말한다',
+          view('play').includes('영어를 썼다는 지적'));
+        yutHaltResolve(false);
+        ck('  취소하면 아무 말도 안 빠진다', !m().halt && !m().pick);
+      }
+
       const M = m();
       M.turn = 0; M.halt = { by:'bot1', team:0, at:Date.now() };
       const hh = view('play');
