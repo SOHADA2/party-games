@@ -365,10 +365,18 @@ if (new URLSearchParams(location.search).has('demo')){
     act('yut-move', { pos:'1' });
     ck('★★상대 말을 잡으면 집으로 보낸다', m().pieces[0][0] === -1);
     ck('★잡으면 한 번 더 던진다', m().canThrow === true && m().turn === 1);
+    /* ★★ 던질 게 남았으면 이동이 막힌다 — 실제 윷놀이는 다 던진 뒤에 값을 배분한다 */
+    ck('★★던질 게 남았으면 말을 못 옮긴다', (() => {
+      const before = JSON.stringify(m().pieces);
+      act('yut-move', { pos:'1' });
+      return JSON.stringify(m().pieces) === before;
+    })());
 
-    /* ── 나기(완주) → 승리 ── */
+    /* ── 나기(완주) → 승리 ──
+       ⚠️ canThrow 를 꺼야 한다 — 던질 게 남으면 앱이 이동을 막는다(윷·모는 던지기가 먼저). */
     S.room.yut.pieces = [[0,0,0,0],[19,19,19,19]];
-    S.room.yut.turn = 1; S.room.yut.pending = [{ n:'도', v:1 }]; S.play.useIdx = 0;
+    S.room.yut.turn = 1; S.room.yut.pending = [{ n:'도', v:1 }];
+    S.room.yut.canThrow = false; S.play.useIdx = 0;
     act('yut-move', { pos:'19' });
     ck('★말 4개를 다 내보내면 승리', m().phase === 'ended' && m().winner === 1);
 

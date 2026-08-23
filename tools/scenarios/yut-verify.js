@@ -105,17 +105,13 @@ if (new URLSearchParams(location.search).has('demo')){
         const y = m(), t = y.turn;
         if (!stateOk()){ badState++; break; }
         const pend = y.pending || [];
-        if (!pend.length){
-          if (!y.canThrow){ stuck++; break; }            // 던지지도 옮기지도 못한다 = 멈춤
-          yutApplyThrow(throwYut(), 'h1'); steps++; continue;
-        }
+        // ⚠️ 던질 게 남았으면(윷·모·잡기) **던지기가 먼저다** — 앱도 그때는 이동을 막는다
+        if (y.canThrow){ yutApplyThrow(throwYut(), 'h1'); steps++; continue; }
+        if (!pend.length){ stuck++; break; }             // 던지지도 옮기지도 못한다 = 멈춤
         const onBoard = [...new Set(y.pieces[t].filter(x => x >= 0 && x !== YUT_HOME))];
         const waiting = y.pieces[t].some(x => x === -1);
         const opts = [...onBoard, ...(waiting ? [-1] : [])];
-        if (!opts.length){
-          if (y.canThrow){ yutApplyThrow(throwYut(), 'h1'); steps++; continue; }
-          stuck++; break;                                 // 쓸 값은 있는데 옮길 말이 없다
-        }
+        if (!opts.length){ stuck++; break; }             // 쓸 값은 있는데 옮길 말이 없다
         const pos = opts[(Math.random() * opts.length) | 0];
         const idx = (Math.random() * pend.length) | 0;
         const before = JSON.parse(JSON.stringify(y.pieces));
@@ -157,10 +153,11 @@ if (new URLSearchParams(location.search).has('demo')){
         while (m().phase === 'play' && steps < STEP_CAP){
           const y = m(), t = y.turn; turns.add(t);
           const pend = y.pending || [];
-          if (!pend.length){ if (!y.canThrow) break; yutApplyThrow(throwYut(), 'h1'); steps++; continue; }
+          if (y.canThrow){ yutApplyThrow(throwYut(), 'h1'); steps++; continue; }
+          if (!pend.length) break;
           const onB = [...new Set(y.pieces[t].filter(x => x >= 0 && x !== YUT_HOME))];
           const opts = [...onB, ...(y.pieces[t].some(x => x === -1) ? [-1] : [])];
-          if (!opts.length){ if (y.canThrow){ yutApplyThrow(throwYut(), 'h1'); steps++; continue; } break; }
+          if (!opts.length) break;
           yutMoveFrom(opts[(Math.random() * opts.length) | 0], (Math.random() * pend.length) | 0);
           steps++;
         }
@@ -169,6 +166,30 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('★★3팀 대국도 6판 모두 끝난다', done3 === g3);
       ck('  세 팀이 모두 차례를 받는다', turns.size === 3);
       makeTeams(2);
+    }
+
+    /* ★★ 윷·모가 나오면 **던지기가 먼저** — 중간에 옮기면 배분 자체가 성립하지 않는다 */
+    {
+      act('yut-start', {});
+      yutApplyThrow({ n:'윷', v:4, again:true, sticks:[1,1,1,1] }, 'h1');
+      ck('윷이 나오면 더 던질 수 있다', m().canThrow === true && m().pending.length === 1);
+      yutMoveFrom(-1, 0);
+      ck('★★던질 게 남았으면 말을 못 옮긴다',
+        m().pieces[0].every(x => x === -1) && m().pending.length === 1);
+      S.view = 'play'; render(true);
+      const hb = document.getElementById('view').innerHTML;
+      ck('★던질 게 남았으면 초록 셀도 안 뜬다', !hb.includes('data-act="yut-move"'));
+      ck('  화면이 「한 번 더 던지세요」라고 알려준다', hb.includes('한 번 더 던지세요'));
+      yutApplyThrow({ n:'도', v:1, again:false, sticks:[1,0,0,0] }, 'h1');
+      ck('  다 던지면 값이 두 개 모인다', m().canThrow === false && m().pending.length === 2);
+      act('yut-use', { i:'1' });                          // 도(1칸)로 새 말
+      act('yut-move', { pos:'-1' });
+      ck('★★다 던진 뒤에는 옮길 수 있다', m().pieces[0].filter(x => x === 1).length === 1);
+      ck('  남은 값(윷)이 그대로 있다', m().pending.length === 1 && m().pending[0].n === '윷');
+      act('yut-move', { pos:'-1' });                      // 윷(4칸)으로 또 새 말
+      ck('★★각각 원하는 말에 나눠 준다',
+        m().pieces[0].filter(x => x === 1).length === 1
+        && m().pieces[0].filter(x => x === 4).length === 1);
     }
 
     /* 잡으면 한 번 더 던진다 — 랜덤 대국에 묻히지 않게 못을 박는다 */
@@ -183,6 +204,11 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('★★상대 말을 잡으면 집으로 돌아간다', m().pieces[1][0] === -1);
       ck('★★잡으면 한 번 더 던진다', m().canThrow === true);
       ck('  잡았으면 턴이 안 넘어간다', m().turn === 0);
+      ck('★잡은 뒤에도 던지기가 먼저다 (이동 차단)', (() => {
+        const before = JSON.stringify(m().pieces);
+        yutMoveFrom(3, 0);
+        return JSON.stringify(m().pieces) === before;
+      })());
     }
 
     /* 났을 때 — 완주한 말은 아무도 못 잡는다 */
@@ -214,11 +240,12 @@ if (new URLSearchParams(location.search).has('demo')){
         const usable = acts.filter(a => !/yut-clear|yut-score/.test(a));
         if (!usable.length) noAction++;
         const y = m(), t = y.turn, pend = y.pending || [];
-        if (!pend.length){ if (!y.canThrow) break; yutApplyThrow(throwYut(), 'h1'); continue; }
+        if (y.canThrow){ yutApplyThrow(throwYut(), 'h1'); continue; }
+        if (!pend.length) break;
         const onBoard = [...new Set(y.pieces[t].filter(x => x >= 0 && x !== YUT_HOME))];
         const waiting = y.pieces[t].some(x => x === -1);
         const opts = [...onBoard, ...(waiting ? [-1] : [])];
-        if (!opts.length){ if (y.canThrow){ yutApplyThrow(throwYut(), 'h1'); continue; } break; }
+        if (!opts.length) break;
         yutMoveFrom(opts[(Math.random() * opts.length) | 0], (Math.random() * pend.length) | 0);
       }
       say('화면 검사', seen + '개 상태를 실제로 그림');
@@ -306,23 +333,46 @@ if (new URLSearchParams(location.search).has('demo')){
         M.pieces = [[3, 3, 22, -1], [9, 15, -1, YUT_HOME]];
         M.pending = [{ n:'윷', v:4 }, { n:'도', v:1 }];
         M.last = { n:'윷', v:4, again:true, sticks:[1,1,1,1], by:'h1' };
-        M.canThrow = true; M.turn = 0;
-        S.view = 'play'; render(true);
+        M.turn = 0;
         const box = sel => { const e = document.querySelector(sel); return e && e.getBoundingClientRect(); };
         const fits = r => !!r && r.bottom <= window.innerHeight + 1;
+
+        /* ⚠️ 던지기와 이동은 이제 **동시에 뜨지 않는다**(던지기가 먼저다).
+           그래서 두 상태를 각각 그려서 잰다. */
+        M.canThrow = true; S.view = 'play'; render(true);
+        const bThrow = box('.board');
+        const b2 = box('[data-act="yut-throw-here"]');
+        M.canThrow = false; render(true);
         const b  = box('.board');
         const b1 = box('[data-act="yut-move"][data-pos="-1"]');
-        const b2 = box('[data-act="yut-throw-here"]');
         say('레이아웃', `${W}x${H} · 판 아래 ${b ? Math.round(b.bottom) : '?'}`
           + ` · 새말 ${b1 ? Math.round(b1.bottom) : '없음'}`
           + ` · 대신던지기 ${b2 ? Math.round(b2.bottom) : '없음'}`);
-        ck('★★말판이 스크롤 없이 다 보인다', fits(b));
-        ck('★★「새 말 내보내기」가 화면 안에 있다', fits(b1));
-        ck('★★「여기서 대신 던지기」가 화면 안에 있다', fits(b2));
+        ck('★★말판이 스크롤 없이 다 보인다', fits(b) && fits(bThrow));
+        ck('★★「새 말 내보내기」가 화면 안에 있다 (던지기 끝난 상태)', fits(b1));
+        ck('★★「여기서 대신 던지기」가 화면 안에 있다 (던질 게 남은 상태)', fits(b2));
         /* ⚠️ 「판이 화면 안에 들어간다」만 검사하면 판을 줄여서 통과시킬 수 있다 —
            실제로 그렇게 272px 까지 내려가 **폰(453px)보다 작아졌다.** 이 화면은 상 위에
            세워두고 다 같이 보는 것이라 작아지면 그 순간 쓸모가 없다. 하한을 못 박는다. */
         ck('★★말판이 충분히 크다 (한 변 420px 이상)', !!b && b.width >= 420);
+        /* ⚠️ 가로로 놓였으면 **2단**이어야 한다 — 판이 왼쪽, 조작이 오른쪽.
+           예전엔 `max-height:860px` 으로 걸어서 **큰 태블릿을 가로로 놓으면**
+           (아이패드 프로 1366×1024) 2단이 안 걸리고 세로 배치가 그대로 나왔다. */
+        if (W / H >= 1.25){
+          const side = box('.ytop'), bd2 = box('.yboard');
+          ck('★★가로로 놓으면 2단으로 배치된다 (판 왼쪽 · 조작 오른쪽)',
+            !!side && !!bd2 && side.left >= bd2.right - 4);
+          ck('  조작 칸이 판과 같은 높이에서 시작한다',
+            !!side && !!bd2 && Math.abs(side.top - bd2.top) < 60);
+          /* ⚠️ 넓은 화면에서 판을 #app 밖으로 빼내므로 **가로 스크롤**이 생기면 안 된다 */
+          ck('★가로 스크롤이 생기지 않는다',
+            document.documentElement.scrollWidth <= window.innerWidth + 1);
+        } else {
+          ck('  세로로 놓으면 1단으로 쌓인다', (() => {
+            const side = box('.ytop'), bd2 = box('.yboard');
+            return !!side && !!bd2 && side.left < bd2.right - 4;
+          })());
+        }
         say('  말 지름', (() => { const e = document.querySelector('.pc');
           return e ? Math.round(e.getBoundingClientRect().width) + 'px' : '없음'; })());
         /* 업은 말은 하나씩 그리면 칸을 덮는다 → 개수로 적는다 */

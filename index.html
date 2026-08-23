@@ -1001,25 +1001,38 @@ details.more .in{padding:0 15px 15px}
 
 /* 가로로 세워둔 태블릿(1024×768 등)은 **세로가 모자란다.**
    공용 화면은 스크롤하면 안 되므로(뒤에서 보는 사람은 스크롤을 못 한다) 한 화면에 넣는다. */
-@media (min-width:760px) and (min-height:640px) and (max-height:860px){
-  main{padding:16px 26px calc(30px + var(--sb))}
-  /* 가로 태블릿(768px)에서 판·머리말·윷짝·결과 칩이 한 화면에 들어가야 한다.
-     ⚠️ 말판이 잘리면 안 된다 — 뒤에서 보는 사람은 스크롤을 못 한다. */
-  /* ⚠️ 가로 태블릿은 **세로가 모자라고 가로가 남는다.** 1단으로 쌓으면 판을 계속 줄이게 되어
-     다 같이 봐야 할 말판이 폰보다 작아진다(그렇게 272px 까지 내려갔었다).
-     → 왼쪽에 판을 크게, 오른쪽에 조작·기록을 세로로 세운다. */
+/* ── 가로로 놓인 태블릿 = 윷판 2단 ──────────────────────────
+   ⚠️ 예전엔 `max-height:860px` 으로 걸었다. 「가로 태블릿은 세로가 짧다」고 본 것인데,
+      **큰 태블릿을 가로로 놓으면 세로도 길다**(아이패드 프로 가로 1366×1024).
+      그래서 큰 태블릿 가로에서 2단이 안 걸리고 **세로 배치가 그대로 나왔다.**
+   → 판단 기준은 높이가 아니라 **가로로 놓였는가**다. 가로가 남으면 2단이 맞다.
+      세로 태블릿(820×1180 = 0.69)과 폰은 비율에서 걸러진다. */
+@media (min-width:860px) and (min-aspect-ratio:5/4){
   .ylayout{display:grid;grid-template-columns:minmax(0,1fr) 290px;
     grid-template-rows:auto auto;gap:0 18px;align-items:start}
   .yboard{grid-column:1;grid-row:1 / span 2}
   .ytop{grid-column:2;grid-row:1}
   .ybot{grid-column:2;grid-row:2}
-  .board{max-width:min(620px, 86vh);margin-bottom:0}
+  /* 세로가 길든 짧든 **왼쪽 칸 폭**과 화면 높이 중 작은 쪽에 맞춘다 */
+  .board{max-width:min(620px, 82vh);margin-bottom:0}
   .homebox{margin-bottom:8px}
   .hteam{width:100%;justify-content:flex-start}
   .sticks{margin-bottom:8px}
   .ybtns{gap:6px;margin-bottom:8px}
   .ybtns .btn{padding:10px 14px}
-  /* 오른쪽 칸은 좁다 — 구분선 여백을 줄여 버튼이 안 밀리게 */
+  .sec{margin:12px 4px 7px}
+}
+/* 아주 넓은 가로 화면(아이패드 프로 가로 등) — #app 폭(880) 에 갇히면 판이 520px 에서 멈춘다.
+   ⚠️ 판만 좌우로 빠져나가게 한다. 다른 화면은 880 을 유지해야 글줄이 길어지지 않는다. */
+@media (min-width:1200px) and (min-aspect-ratio:5/4){
+  .ylayout{width:min(1120px, 94vw);margin-left:calc(50% - min(560px, 47vw))}
+}
+
+@media (min-width:760px) and (min-height:640px) and (max-height:860px){
+  main{padding:16px 26px calc(30px + var(--sb))}
+  /* 가로 태블릿(768px)에서 판·머리말·윷짝·결과 칩이 한 화면에 들어가야 한다.
+     ⚠️ 말판이 잘리면 안 된다 — 뒤에서 보는 사람은 스크롤을 못 한다. */
+  /* 오른쪽 칸이 좁아지는 2단에서 구분선 여백을 줄여 버튼이 안 밀리게 */
   .sec{margin:12px 4px 7px}
   .sticks{padding:8px;margin-bottom:8px}
   .stick{width:14px;height:34px}
@@ -1090,7 +1103,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.27.1';
+const APP_VERSION = 'v0.28.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -3172,6 +3185,10 @@ function yutMoveFrom(pos, idx){
   const m = YT(); if (!m || m.phase !== 'play') return;
   if (m.halt) return toast('✋ 잠시! 판정이 먼저예요');
   if (m.pick) return toast('되돌릴 말을 먼저 고르세요');
+  /* ⚠️ 윷·모가 나왔거나 상대를 잡았으면 **한 번 더 던지는 것이 먼저다.**
+     실제 윷놀이는 던질 것을 다 던진 뒤에 모아둔 값을 말들에 나눠 준다 —
+     중간에 옮기게 하면 「도로 이 말, 윷으로 저 말」 하는 배분 자체가 성립하지 않는다. */
+  if (m.canThrow) return toast('한 번 더 던질 수 있어요 — 다 던지고 나서 옮깁니다');
   const use = (m.pending || [])[idx];
   if (!use) return toast('쓸 윷 결과를 먼저 고르세요');
   const t = m.turn;
@@ -5008,7 +5025,8 @@ function vYut(){
   const picking = !!m.pick;
   // ⚠️ 잠시! 판정 화면도 이 board 를 그대로 그린다 — hot 을 비우지 않으면
   //    판정 중에 초록 셀이 그대로 눌린다(핸들러 가드와 이중 방어).
-  const hot = m.halt ? []
+  // ⚠️ 아직 던질 게 남았으면(윷·모·잡기) 말을 고를 수 없다 — 던지기가 먼저다
+  const hot = (m.halt || (m.canThrow && !picking)) ? []
     : picking
     ? [...new Set(m.pieces[m.pick.team].filter(x => x >= 0 && x !== YUT_HOME))]
     : (use ? [...new Set(m.pieces[t].filter(x => x >= 0 && x !== YUT_HOME))] : []);
@@ -5125,8 +5143,9 @@ function vYut(){
           data-act="yut-use" data-i="${k}">${h(x.n)}<small>${x.v}칸</small></button>`).join('')}
       </div>
       <p class="note" style="margin:8px 4px 12px">
-        ${use ? `<b>${h(use.n)}</b> 로 움직일 말을 판에서 고르세요` : ''}
-        ${m.canThrow ? ' · 아직 더 던질 수 있어요' : ''}</p>`
+        ${m.canThrow
+          ? `<b>한 번 더 던지세요</b> — 다 던진 뒤에 모아둔 값을 <b>말마다 나눠</b> 줍니다`
+          : use ? `<b>${h(use.n)}</b> 로 움직일 말을 판에서 고르세요` : ''}</p>`
     : `<div class="rollbig" style="background:rgba(0,0,0,.26);border-color:var(--line2)">
         <div class="v" style="font-size:26px;background:none;-webkit-text-fill-color:currentColor;color:var(--tx)">
           ${h(teamName(t))} 차례</div>
@@ -5145,12 +5164,15 @@ function vYut(){
         const waiting = wait(t);
         const out = [];
         // ⚠️ 집에 있는 말은 판에 칸이 없다 → 버튼이 없으면 말을 아예 못 낸다
-        if (use && waiting) out.push(`<button class="btn pri" data-act="yut-move" data-pos="-1">
+        if (use && waiting && !m.canThrow)
+          out.push(`<button class="btn pri" data-act="yut-move" data-pos="-1">
              🏁 새 말 내보내기 (집에 ${waiting}개)</button>`);
         if (m.canThrow) out.push(`<button class="btn gh sm" data-act="yut-throw-here">🎲 여기서 대신 던지기</button>`);
-        if (use && !hot.length && !waiting)
+        // ⚠️ 던질 게 남아 있으면 초록 셀이 없는 게 정상이다 — 「움직일 말이 없어요」로 오해시키지 않는다
+        if (!m.canThrow && use && !hot.length && !waiting)
           out.push(`<button class="btn" data-act="yut-skip">움직일 말이 없어요 — 턴 넘기기</button>`);
-        else if (!canMove) out.push(`<button class="btn gh sm" data-act="yut-skip">턴 넘기기</button>`);
+        else if (!m.canThrow && !canMove)
+          out.push(`<button class="btn gh sm" data-act="yut-skip">턴 넘기기</button>`);
         /* ⚠️ 이 게임의 핵심 규칙이다 — 영어를 쓰면 말 하나가 집으로 돌아간다.
            다 같이 이 화면을 보고 있으니 **여기서 바로** 지적할 수 있어야 한다.
            (각자 폰에도 같은 버튼이 있지만, 폰을 꺼내 홈까지 가야 하면 아무도 안 쓴다.) */
