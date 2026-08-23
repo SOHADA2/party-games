@@ -595,17 +595,50 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .cell .pcs{position:absolute;inset:-14%;display:flex;flex-wrap:wrap;align-content:center;
   justify-content:center;gap:2px}
 /* 말 — 업은 말은 개수를 적는다(하나씩 그리면 칸을 덮는다).
-   ⚠️ 색은 인라인 background-color 로 오고, 여기 그라데이션은 그 위에 얹는 **광택**이다.
-   ⚠️ 흰 실선 링은 6가지 팀 색이 **어떤 칸 위에서도** 구분되게 하려는 것이다
-      (4팀 앰버 말이 앰버 모서리에 올라가는 경우까지 실측 확인). */
-.pc{width:54%;aspect-ratio:1/1;border-radius:50%;
-  border:1.5px solid rgba(0,0,0,.6);
-  background-image:radial-gradient(circle at 33% 27%, rgba(255,255,255,.6), rgba(255,255,255,0) 58%);
-  box-shadow:0 3px 6px rgba(0,0,0,.6), 0 0 0 1.5px rgba(255,255,255,.18),
-    inset 0 -2px 5px rgba(0,0,0,.32);
-  display:grid;place-items:center;
-  font-size:12px;font-weight:900;color:rgba(0,0,0,.72);line-height:1;
-  text-shadow:0 1px 0 rgba(255,255,255,.3)}
+   ⚠️ 색은 인라인 `pcVars()` 가 --pc/--pcL/--pcD 로 내려준다. 인라인 background 를 주면
+      아래 그라데이션이 통째로 지워지니 **절대 background 를 인라인으로 주지 말 것.**
+   ⚠️ 모양(sk-*)은 독립 클래스라 판 위의 말과 설정 화면 미리보기가 **같은 그림**을 쓴다. */
+.pc{width:54%;aspect-ratio:1/1;display:grid;place-items:center;position:relative;
+  font-size:12px;font-weight:900;line-height:1;
+  color:rgba(0,0,0,.78);text-shadow:0 1px 0 rgba(255,255,255,.5)}
+.minipc{width:17px;height:17px;flex:none;display:inline-block}
+
+/* 바둑돌 — 볼록한 유광 돌. 위에서 빛을 받고 아래로 그늘이 진다 */
+.sk-stone{border-radius:50%;
+  background:
+    radial-gradient(circle at 33% 25%, rgba(255,255,255,.82), rgba(255,255,255,0) 44%),
+    radial-gradient(circle at 50% 118%, rgba(0,0,0,.5), transparent 58%),
+    linear-gradient(158deg, var(--pcL), var(--pc) 56%, var(--pcD));
+  box-shadow:0 3px 7px rgba(0,0,0,.6), 0 0 0 1.5px rgba(255,255,255,.2),
+    inset 0 -3px 6px rgba(0,0,0,.28)}
+/* 유리구슬 — 점 하이라이트 + 아래쪽 반사광으로 유리처럼 */
+.sk-marble{border-radius:50%;
+  background:
+    radial-gradient(circle at 36% 21%, #fff 3%, rgba(255,255,255,.18) 23%, transparent 41%),
+    radial-gradient(circle at 63% 79%, rgba(255,255,255,.34), transparent 38%),
+    radial-gradient(circle at 50% 55%, var(--pcL), var(--pc) 58%, var(--pcD));
+  box-shadow:0 3px 8px rgba(0,0,0,.6), 0 0 0 1.5px rgba(255,255,255,.3),
+    inset 0 0 12px rgba(255,255,255,.32)}
+/* 나무말 — 전통 윷말처럼 모서리가 각진 토큰. 위 모서리에 빛이 걸린다 */
+.sk-wood{border-radius:28%;
+  background:linear-gradient(158deg, var(--pcL), var(--pc) 52%, var(--pcD));
+  box-shadow:0 3px 7px rgba(0,0,0,.62), 0 0 0 1.5px rgba(0,0,0,.45),
+    inset 0 2px 0 rgba(255,255,255,.42), inset 0 -3px 5px rgba(0,0,0,.34)}
+/* 네온 — 앱 컨셉(네온 사인)에 맞춘 발광 알 */
+.sk-neon{border-radius:50%;
+  background:radial-gradient(circle at 50% 42%, #fff 5%, var(--pcL) 30%, var(--pc) 66%, var(--pcD));
+  box-shadow:0 0 17px var(--pcGlow), 0 3px 7px rgba(0,0,0,.55),
+    0 0 0 1.5px rgba(255,255,255,.45), inset 0 0 9px rgba(255,255,255,.48)}
+
+/* 설정 화면 — 팀마다 말 모양 고르기 */
+.skinrow{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.skinrow .sl{font-size:13px;font-weight:800;min-width:44px;display:flex;align-items:center;gap:6px}
+.sks{display:flex;gap:7px;flex:1}
+.sk{flex:1;display:grid;place-items:center;padding:9px 0;border-radius:12px;
+  background:var(--surf);border:1.5px solid var(--line2);transition:transform .12s var(--spring)}
+.sk .pv{width:26px;height:26px}
+.sk.on{border-color:var(--amber);background:rgba(255,184,77,.14)}
+.sk:active{transform:scale(.94)}
 .homebox{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
 .hteam{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:12px;
   background:rgba(0,0,0,.26);border:1px solid var(--line2);font-size:13px;font-weight:800}
@@ -1057,7 +1090,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.26.4';
+const APP_VERSION = 'v0.27.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -3116,8 +3149,9 @@ const yutAt = (pieces, pos) => {
 function yutStart(){
   const n = S.room.teams?.count || 0;
   const pieces = Array.from({ length:n }, () => [-1, -1, -1, -1]);
+  const skins = Array.from({ length:n }, (_, i) => yutSkinOf(S.play?.skins, i));
   S.room.yut = { phase:'play', turn:0, pieces, pending:[], canThrow:true, last:null,
-                 log:[], throw:null, halt:null, pick:null, penalty:{}, winner:null };
+                 log:[], throw:null, halt:null, pick:null, penalty:{}, winner:null, skins };
   set(ref(db, `${ROOT}/rooms/${S.code}/yut`), S.room.yut).catch(()=>{});
 }
 const yutLog = (m, msg) => { m.log = [msg, ...(m.log || [])].slice(0, 8); };
@@ -3725,6 +3759,30 @@ function gcVars(hex){
   const a = v => `rgba(${r},${g},${b},${v})`;
   return `--gc:${hx};--gcSoft:${a(.16)};--gcLine:${a(.30)};--gcGlow:${a(.18)}`;
 }
+
+/* 말 색에서 밝은/어두운 톤을 만들어 준다 — 입체감은 이 세 톤으로 낸다.
+   ⚠️ `color-mix()` 를 쓰면 구형 사파리에서 색이 통째로 날아간다(디자인 규칙).
+      그래서 gcVars 와 같은 방식으로 **JS 가 rgb 를 계산해** 내려준다. */
+function pcVars(hex){
+  const hx = hex || '#8B87A6';
+  const c = String(hx).replace('#','');
+  const n = parseInt(c.length === 3 ? c.split('').map(x=>x+x).join('') : c, 16);
+  const r = (n>>16)&255, g = (n>>8)&255, b = n&255;
+  const lite = f => `rgb(${Math.round(r+(255-r)*f)},${Math.round(g+(255-g)*f)},${Math.round(b+(255-b)*f)})`;
+  const dark = f => `rgb(${Math.round(r*(1-f))},${Math.round(g*(1-f))},${Math.round(b*(1-f))})`;
+  return `--pc:${hx};--pcL:${lite(.45)};--pcD:${dark(.45)};--pcGlow:rgba(${r},${g},${b},.6)`;
+}
+
+/* 말 모양 — 팀마다 고른다.
+   ⚠️ 색만으로 팀을 나누면 **색약인 사람이 구분을 못 한다.** 그래서 실루엣이 서로 다르게
+      잡았다(둥근 돌 / 유리알 / 모서리 각진 토큰 / 발광 알). 기본값도 팀마다 다르게 준다. */
+const YUT_SKINS = [
+  { k:'stone',  name:'바둑돌' },
+  { k:'marble', name:'유리구슬' },
+  { k:'wood',   name:'나무말' },
+  { k:'neon',   name:'네온' },
+];
+const yutSkinOf = (skins, i) => (skins && skins[i]) || YUT_SKINS[i % YUT_SKINS.length].k;
 
 /* ── 컨페티 ── */
 const fx = $('#fx'); const fxc = fx.getContext('2d');
@@ -4491,6 +4549,7 @@ function renderSig(){
       (S.play.picked || []).join(''), S.play.judged || 0, S.play.cur?.t || 0,
       S.play.sen || 0, S.play.card || 0, S.play.cnt ?? 0, S.play.sit || 0,
       S.play.reading ?? -1, S.play.n ?? 0, S.play.cur?.w || 0, S.play.useIdx ?? 0,
+      (S.play.skins || []).join(''),
       !!S.play.show, !!S.play.pol, !!S.play.doc, !!S.play.incHost,
       !!S.play.running, !!S.play.over, S.play.sul || 0,
       (S.play.pool || []).length, (S.play.log || []).length,
@@ -4903,6 +4962,25 @@ function vYut(){
         : `<div class="balbox no"><b>팀을 먼저 나눠주세요</b>
              <span>대기실에서 2팀 이상으로 편성해야 판을 깔 수 있어요.</span></div>`}
     </div>
+
+    ${teams.count >= 2 ? `
+      <div class="sec">말 고르기</div>
+      <div class="card">
+        ${Array.from({ length:teams.count }, (_, ti) => `
+          <div class="skinrow">
+            <span class="sl">${h(teamName(ti))}</span>
+            <div class="sks">
+              ${YUT_SKINS.map(sk => `
+                <button class="sk ${yutSkinOf(p.skins, ti) === sk.k ? 'on' : ''}"
+                  data-act="yut-skin" data-t="${ti}" data-k="${sk.k}" title="${h(sk.name)}">
+                  <span class="pv sk-${sk.k}"
+                    style="${pcVars(TEAM_COLORS[ti % TEAM_COLORS.length])}"></span>
+                </button>`).join('')}
+            </div>
+          </div>`).join('')}
+        <p class="note" style="margin:4px 2px 0">
+          색이 비슷해 보여도 <b>모양이 달라서</b> 멀리서도 구분됩니다 — 안 고르면 팀마다 알아서 달라져요.</p>
+      </div>` : ''}
     <div style="height:14px"></div>
     <div class="stack">
       <button class="btn pri" data-act="yut-start" ${teams.count >= 2 ? '' : 'disabled'}>🎲 판 깔고 시작</button>
@@ -4955,9 +5033,10 @@ function vYut(){
               const cnt = {};
               here.forEach(x => { cnt[x.t] = (cnt[x.t] || 0) + 1; });
               return Object.entries(cnt).map(([ti, n]) =>
-                /* ⚠️ background 가 아니라 background-color 로 준다 —
-                   shorthand 로 주면 CSS 의 광택 그라데이션(background-image)이 지워진다 */
-                `<div class="pc" style="background-color:${TEAM_COLORS[Number(ti) % TEAM_COLORS.length]}"
+                /* ⚠️ 색은 pcVars 가 --pc/--pcL/--pcD 로 내려준다. 인라인 background 금지 —
+                   주면 모양(sk-*)의 그라데이션이 통째로 지워진다. */
+                `<div class="pc sk-${yutSkinOf(m.skins, Number(ti))}"
+                  style="${pcVars(TEAM_COLORS[Number(ti) % TEAM_COLORS.length])}"
                   >${n > 1 ? n : ''}</div>`).join('');
             })()}</div>` : ''}
           </div>`;
@@ -5015,7 +5094,8 @@ function vYut(){
     <div class="homebox">
       ${m.pieces.map((_, ti) => `
         <div class="hteam ${ti === t ? 'on' : ''}">
-          <span class="dot" style="background:${TEAM_COLORS[ti % TEAM_COLORS.length]}"></span>
+          <span class="minipc sk-${yutSkinOf(m.skins, ti)}"
+            style="${pcVars(TEAM_COLORS[ti % TEAM_COLORS.length])}"></span>
           ${h(teamName(ti))} <span style="color:var(--dim2)">난 말 ${done(ti)}/4</span>
           ${wait(ti) ? `<span style="color:var(--dim2)">· 집 ${wait(ti)}</span>` : ''}
           ${(m.penalty || {})[ti] ? `<span style="color:var(--rose)">· 영어 ${m.penalty[ti]}</span>` : ''}
@@ -6350,6 +6430,12 @@ async function act(a, d){
     if (!S.isHost) return toast('말판은 진행자 기기에서 열어주세요');
     if ((S.room.teams?.count || 0) < 2) return toast('대기실에서 팀을 먼저 나눠주세요');
     yutStart(); S.play.phase = 'play'; confetti(60); render(true); break;
+  }
+  case 'yut-skin': {
+    const p = S.play; if (!p) return;
+    p.skins = [...(p.skins || [])];
+    p.skins[Number(d.t)] = d.k;
+    SFX.pass(); vib(8); render(true); break;
   }
   case 'yut-use': S.play.useIdx = Number(d.i); render(true); break;
   case 'yut-move': {

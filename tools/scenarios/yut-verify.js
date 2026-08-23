@@ -332,6 +332,48 @@ if (new URLSearchParams(location.search).has('demo')){
       }
     }
 
+    /* ── 9) 말 고르기 ────────────────────────────────────────
+       ⚠️ 색만으로 팀을 나누면 색약인 사람이 구분을 못 한다 — 모양이 두 번째 단서다.
+          그래서 **기본값부터 팀마다 달라야** 한다(안 고르고 시작하는 게 보통이다). */
+    {
+      makeTeams(4);
+      // ⚠️ 앞 단계에서 판이 깔린 채면 tool-start 가 곧바로 play 로 간다 — 설정 화면을 보려면 비운다
+      S.room.yut = null;
+      S.gameId = 'yut'; go('game'); act('tool-start', {});
+      ck('설정 화면으로 들어간다', S.play?.phase === 'setup');
+      ck('말 모양이 4가지 이상', YUT_SKINS.length >= 4);
+      ck('  모양 키가 안 겹친다', new Set(YUT_SKINS.map(x => x.k)).size === YUT_SKINS.length);
+      const def = [0,1,2,3].map(i => yutSkinOf(null, i));
+      ck('★★안 고르면 팀마다 기본 모양이 다르다', new Set(def).size === 4);
+
+      const setup = view('play');
+      ck('★설정 화면에 말 고르는 버튼이 있다', setup.includes('data-act="yut-skin"'));
+      ck('  팀 수만큼 줄이 나온다', (setup.match(/class="skinrow"/g) || []).length === 4);
+
+      act('yut-skin', { t:'0', k:'neon' });
+      ck('★고르면 바뀐다', S.play.skins[0] === 'neon');
+      ck('  고른 것만 바뀌고 나머지는 그대로', yutSkinOf(S.play.skins, 1) === def[1]);
+
+      act('yut-start', {});
+      ck('★★고른 모양이 방 노드에 저장된다',
+        Array.isArray(m().skins) && m().skins.length === 4 && m().skins[0] === 'neon');
+
+      m().pieces[0] = [7, -1, -1, -1];
+      m().pieces[1] = [9, -1, -1, -1];
+      const bd = view('play');
+      ck('★판 위 말에 모양 클래스가 붙는다', bd.includes('pc sk-neon'));
+      ck('  팀마다 다른 모양이 실제로 그려진다',
+        new Set((bd.match(/pc sk-[a-z]+/g) || [])).size >= 2);
+      ck('  팀 박스에도 그 팀 말이 보인다', bd.includes('minipc sk-'));
+      /* ⚠️ 인라인 background 를 주면 모양의 그라데이션이 통째로 지워진다(색만 남는다).
+         실제로 그렇게 만들었다가 고친 적이 있어서 못을 박는다. */
+      ck('★★말에 인라인 background 를 주지 않는다',
+        !/class="pc sk-[a-z]+"[^>]*style="[^"]*background/.test(bd));
+      ck('  색 톤 세 가지가 인라인으로 내려온다',
+        /--pc:#[0-9A-Fa-f]{6};--pcL:rgb\([^)]*\);--pcD:rgb\([^)]*\)/.test(bd));
+      makeTeams(2);
+    }
+
     /* 정리 */
     act('yut-clear', {});
     ck('판을 정리하면 노드가 비워진다', !S.room.yut);
