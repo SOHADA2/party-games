@@ -1141,7 +1141,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.29.0';
+const APP_VERSION = 'v0.30.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1177,7 +1177,7 @@ const MEDAL = ['🥇','🥈','🥉'];
       그래서 이 배열에 두 글자 단어가 있어도 초성 퀴즈에는 안 나온다.
 ══════════════════════════════════════════════ */
 const WORD_DECKS = {
-  animal:{ name:'동물', emoji:'🐘', use:['body','cho'], words:[
+  animal:{ name:'동물', emoji:'🐘', use:['body','cho','relay'], words:[
     '사자','호랑이','코끼리','기린','원숭이','캥거루','펭귄','악어','하마','코뿔소','낙타','다람쥐',
     '고슴도치','두더지','박쥐','부엉이','독수리','참새','비둘기','오리','거위','닭','돼지','소','말',
     '양','염소','토끼','개구리','뱀','거북이','도마뱀','상어','고래','돌고래','문어','오징어','게',
@@ -1188,7 +1188,7 @@ const WORD_DECKS = {
     '잠자리','메뚜기','귀뚜라미','사마귀','무당벌레','사슴벌레','장수풍뎅이','바퀴벌레','진드기',
     '앵무새','딱따구리','까마귀','갈매기','칠면조','병아리','청설모','너구리','오소리','고라니',
     '멧돼지','두루미','황새','수달','물개','바다거북','전갈','지네','매미','불나방']},
-  job:{ name:'직업', emoji:'💼', use:['body','cho'], words:[
+  job:{ name:'직업', emoji:'💼', use:['body','cho','relay'], words:[
     '의사','간호사','경찰','소방관','선생님','요리사','미용사','가수','배우','화가','사진작가',
     '축구선수','야구선수','발레리나','마술사','광대','판사','변호사','군인','파일럿','승무원',
     '버스기사','택시기사','집배원','농부','어부','목수','프로그래머','유튜버','아나운서','기자',
@@ -1199,7 +1199,7 @@ const WORD_DECKS = {
     '보험설계사','은행원','웹툰작가','개그맨','스타일리스트','안무가','작곡가','작사가',
     '번역가','소설가','평론가','조향사','제과제빵사','환경미화원','택배기사','경호원',
     '해녀','대장장이','도예가','성악가','응급구조사','비행기승무원']},
-  action:{ name:'행동', emoji:'🏃', use:['body','cho'], words:[
+  action:{ name:'행동', emoji:'🏃', use:['body','cho','relay'], words:[
     '하품하다','재채기하다','딸꾹질하다','코골다','이 닦다','세수하다','머리 감다','화장하다',
     '면도하다','손톱 깎다','신발끈 묶다','우산 쓰다','계단 오르다','줄넘기','훌라후프',
     '팔굽혀펴기','윗몸일으키기','수영하다','스키 타다','스케이트','자전거 타다','운전하다',
@@ -1213,7 +1213,7 @@ const WORD_DECKS = {
     '눈 비비다','귀 후비다','손뼉 치다','발 구르다','고개 젓다','윙크하다','휘파람 불다',
     '풍선 불다','촛불 끄다','선물 포장하다','짐 싸다','신문 읽다','커피 내리다','장보다',
     '주사 맞다','머리 말리다','양치하다','손 씻다','이불 개다']},
-  thing:{ name:'사물', emoji:'📦', use:['body','cho'], words:[
+  thing:{ name:'사물', emoji:'📦', use:['body','cho','relay'], words:[
     '우산','안경','손목시계','지갑','열쇠','자물쇠','가위','숟가락','젓가락','컵','접시','냄비',
     '프라이팬','주전자','냉장고','세탁기','청소기','선풍기','에어컨','텔레비전','리모컨','노트북',
     '마우스','키보드','휴대폰','이어폰','스피커','카메라','책','연필','지우개','자','풀','테이프',
@@ -1225,7 +1225,7 @@ const WORD_DECKS = {
     '공기청정기','전기장판','고데기','면도기','손톱깎이','체온계','물티슈','반창고','돗자리',
     '캐리어','배낭','우비','장화','목도리','장갑','모자걸이','침낭','텐트','랜턴','부채',
     '저금통','액자','벽시계','전구','콘센트','충전기','보조배터리']},
-  food:{ name:'음식', emoji:'🍜', use:['body','cho'], words:[
+  food:{ name:'음식', emoji:'🍜', use:['body','cho','relay'], words:[
     '김치','된장찌개','김치찌개','불고기','삼겹살','갈비','냉면','비빔밥','김밥','떡볶이','순대',
     '튀김','어묵','라면','짜장면','짬뽕','탕수육','만두','치킨','피자','햄버거','스파게티',
     '스테이크','초밥','회','우동','돈까스','카레','볶음밥','삼계탕','곱창','족발','보쌈','파전',
@@ -1238,7 +1238,7 @@ const WORD_DECKS = {
     '초콜릿','아메리카노','카페라떼','카푸치노','에스프레소','밀크티','버블티','스무디',
     '레모네이드','파인애플','블루베리','아보카도','복숭아','자두','메론','체리','망고',
     '고구마맛탕','닭갈비','제육볶음','간장게장','물회','전복죽','호박죽','약과','한과']},
-  movie:{ name:'영화·드라마', emoji:'🎬', use:['body','cho'], words:[
+  movie:{ name:'영화·드라마', emoji:'🎬', use:['body','cho','relay'], words:[
     '기생충','부산행','올드보이','극한직업','명량','신과함께','겨울왕국','타이타닉','어벤져스',
     '스파이더맨','아이언맨','배트맨','슈퍼맨','해리포터','반지의 제왕','쥬라기 공원','터미네이터',
     '조커','인터스텔라','인셉션','매트릭스','라이온킹','토이스토리','니모를 찾아서','슈렉',
@@ -1252,7 +1252,7 @@ const WORD_DECKS = {
     '사랑의 불시착','갯마을 차차차','이상한 변호사','재벌집 막내아들','유미의 세포들',
     '지금 우리 학교는','시그널','비밀의 숲','나의 아저씨','또 오해영','치즈인더트랩',
     '슬램덩크','귀멸의 칼날','원피스','드래곤볼','짱구는 못말려','명탐정 코난']},
-  music:{ name:'노래·가수', emoji:'🎵', use:['body','cho'], words:[
+  music:{ name:'노래·가수', emoji:'🎵', use:['body','cho','relay'], words:[
     '방탄소년단','블랙핑크','아이유','싸이','강남스타일','뉴진스','세븐틴','트와이스','에스파',
     '임영웅','나훈아','조용필','이문세','김건모','소녀시대','빅뱅','엑소','아이브','르세라핌',
     '벚꽃엔딩','밤편지','좋은 날','거짓말','산다는 건','트로트','랩','발라드','오페라','국악',
@@ -1262,7 +1262,7 @@ const WORD_DECKS = {
     '만돌린','가야금','거문고','꽹과리','사물놀이','판소리','아리랑','자장가','응원가',
     '교향곡','협주곡','뮤지컬','오케스트라','합창단','아카펠라','클래식','컨트리','록밴드',
     '자진모리','메트로놈','지휘봉','스피커폰','헤드셋','턴테이블','뮤직비디오','앙코르']},
-  char:{ name:'캐릭터', emoji:'🐥', use:['body','cho'], words:[
+  char:{ name:'캐릭터', emoji:'🐥', use:['body','cho','relay'], words:[
     '뽀로로','짱구','도라에몽','피카츄','미키마우스','곰돌이 푸','헬로키티','스폰지밥','엘사',
     '슈퍼마리오','소닉','라이언','어피치','무지','코난','루피','나루토','손오공','헐크','토르',
     '캡틴 아메리카','올라프','스티치','토토로','둘리','아기공룡','텔레토비','뿡뿡이','타요',
@@ -1296,7 +1296,7 @@ const WORD_DECKS = {
      ⚠️ place / idiom 은 `use:['cho']` — **몸으로 말해요에는 안 뜬다.**
         「아르헨티나」를 몸짓으로 표현할 방법이 없기 때문. 태그를 빼면
         몸으로 말해요 설정 화면에 그대로 나타나 게임이 망가진다. */
-  place:{ name:'나라·도시', emoji:'🌍', use:['cho'], words:[
+  place:{ name:'나라·도시', emoji:'🌍', use:['cho','relay'], words:[
     '대한민국','아르헨티나','이탈리아','오스트리아','뉴질랜드','필리핀','인도네시아',
     '말레이시아','싱가포르','베트남','캄보디아','러시아','프랑스','스페인','포르투갈',
     '네덜란드','벨기에','스위스','스웨덴','노르웨이','핀란드','덴마크','아이슬란드',
@@ -1323,7 +1323,7 @@ const WORD_DECKS = {
     '괄목상대','기고만장','다사다난','동문서답','막상막하','반신반의','비일비재',
     '사필귀정','살신성인','설왕설래','아전인수','오매불망','유유자적','이구동성']},
 
-  sport:{ name:'스포츠·취미', emoji:'⚽', use:['body','cho'], words:[
+  sport:{ name:'스포츠·취미', emoji:'⚽', use:['body','cho','relay'], words:[
     '배드민턴','태권도','마라톤','스키점프','스노보드','클라이밍','스쿼시','핸드볼',
     '아이스하키','피겨스케이팅','리듬체조','스카이다이빙','번지점프','패러글라이딩',
     '스킨스쿠버','롤러스케이트','인라인스케이트','트램펄린','철인삼종','다이빙',
@@ -1332,7 +1332,7 @@ const WORD_DECKS = {
     '스쿠버다이빙','서핑보드','줄다리기','피구','족구','발야구','투호','제기',
     '역도','사격','양궁','펜싱','조정','카누','럭비','하키','컬링','봅슬레이']},
 
-  nature:{ name:'자연·날씨', emoji:'🌿', use:['body','cho'], words:[
+  nature:{ name:'자연·날씨', emoji:'🌿', use:['body','cho','relay'], words:[
     '무지개','소나기','천둥번개','함박눈','진눈깨비','미세먼지','눈사람','고드름',
     '아지랑이','봄바람','단풍잎','은하수','보름달','초승달','유성우','오로라',
     '화산폭발','지진해일','폭포수','계곡물','열대우림','산호초','종유석','모래사장',
@@ -1341,7 +1341,7 @@ const WORD_DECKS = {
     '이슬방울','서리','안개','노을','새벽','일출','일몰','태풍','장마','폭염',
     '한파','황사','우박','서릿발','물안개','구름떼','별자리','북극성','반딧불이']},
 
-  spot:{ name:'가게·장소', emoji:'🏬', use:['body','cho'], words:[
+  spot:{ name:'가게·장소', emoji:'🏬', use:['body','cho','relay'], words:[
     '놀이공원','백화점','도서관','박물관','미술관','영화관','수족관','동물원','식물원',
     '목욕탕','찜질방','피시방','만화방','편의점','문구점','우체국','경찰서','소방서',
     '지하철역','버스정류장','기차역','주유소','세차장','미용실','이발소','세탁소',
@@ -3672,6 +3672,44 @@ const GAMES = [
 · 말 <b>4개를 먼저 다 완주</b>시킨 팀이 이깁니다.`
   },
   {
+    id:'relay', name:'한 단어 릴레이', emoji:'🔗', color:'#A8E063', mode:'team', weight:1.5,
+    role:null, mc:'help', mcWhy:'맞히는 사람은 화면을 보면 안 된다 — 지금 안 뛰는 사람이나 상대팀이 화면을 들고 설명자 2명에게만 보여준다',
+    tag:'팀전 · 3대 3 · 한 단어씩', tool:'deck', toolLabel:'▶ 제시어 띄우고 시작',
+    privScreen:true,          // 화면에 정답이 있다 → 설명자에게만 보여준다
+    line:'설명자 둘이 한 단어씩 번갈아 던져서 팀원에게 맞힌다.',
+    prep:'없음', minP:6, mins:'15~25분',
+    how:[
+      '팀마다 3명 — 맞히는 사람 1명, 설명하는 사람 2명',
+      '설명자 둘만 제시어를 본다 — 맞히는 사람은 등을 돌린다',
+      '설명자가 한 단어씩 번갈아 말한다 (A → B → A → B …)',
+      '두 단어를 말하거나 단어가 아니면 반칙 — 그 문제는 넘어간다',
+    ],
+    win:'제한 시간 안에 많이 맞힌 팀 순서대로',
+    rules:
+`설명자 <b>둘</b>이 <b>한 단어씩 번갈아</b> 던져서 팀원에게 맞히는 게임.
+
+<b>사람 배치 (3대 3이 기본)</b>
+· 한 팀 3명 중 <b>1명은 맞히는 사람</b>, <b>2명은 설명하는 사람</b>입니다.
+· 맞히는 사람은 <b>화면을 보면 안 됩니다</b> — 등을 돌리거나 반대편에 앉으세요.
+· 앱이 맞히는 사람을 정해줍니다. 마음에 안 들면 다시 뽑으면 됩니다.
+
+<b>설명하는 법 — 여기가 이 게임의 전부입니다</b>
+· 설명자 둘이 <b>한 번에 한 단어씩</b>, <b>번갈아</b> 말합니다. (A → B → A → B …)
+· 예를 들어 제시어가 「소방차」라면 — A "빨강" · B "불" · A "사이렌" …
+· 순서를 건너뛰거나 혼자 두 번 말하면 안 됩니다.
+
+<b>반칙</b>
+· <b>두 단어 이상</b>을 한 번에 말하면 반칙입니다. ("빨간 차" ✕ / "빨강" ○)
+· <b>단어가 아닌 것</b>도 반칙입니다. 문장·몸짓·손짓·소리 흉내 전부 안 됩니다.
+· 반칙이 나오면 <b>그 문제는 넘어갑니다.</b> 상대팀이 지켜보고 판정하세요.
+
+<b>승패</b>
+· 팀마다 같은 시간을 쓰고, <b>많이 맞힌 팀</b>이 이깁니다.
+
+<b>팀이 4명 이상이면</b>
+· 맞히는 사람 1명은 그대로, 나머지가 전부 순서대로 돌아가며 한 단어씩 말하면 됩니다.`
+  },
+  {
     id:'body', name:'몸으로 말해요 / 한글자로 말해요', emoji:'🕺', color:'#3DE0A8', mode:'team', weight:1.5,
     role:'사회자', mc:'need', mcWhy:'설명자는 두 손으로 몸짓을 해야 하고, 맞히는 팀은 화면을 보면 안 된다 — 제3자가 화면을 들고 설명자에게만 보여줘야 한다',
     tag:'팀전 · 사회자 전담', tool:'deck',
@@ -4187,6 +4225,9 @@ function makeTeams(count){
       최종 순위만 기존 scores 흐름으로 저장한다.
 ══════════════════════════════════════════════ */
 const DEFAULT_CATS = ['animal','job','thing','food'];
+/* 한 단어 릴레이 기본 범위 — 한 단어로 설명이 되는 것들만.
+   ⚠️ 속담·사자성어는 `use` 에 relay 를 안 달았다(문장·한자라 한 단어로 못 잇는다). */
+const RELAY_CATS = ['animal','food','thing','job','movie','char','spot','nature'];
 
 /* 「한글자로 말해요」에서 앱이 뽑아주는 글자.
    ⚠️ 아무 글자나 넣으면 안 된다 — 억양·길이만으로 표현이 되는 **소리 흉내에 가까운 글자**라야
@@ -4199,6 +4240,24 @@ const ONE_LETTERS = ['짜','뿅','쿵','삐','옹','빵','딩','랄','뭐','헐'
 /* 아직 안 쓴 글자 중에서 하나. 다 쓰면 처음부터(팀 수가 글자 수를 넘길 일은 없지만 방어). */
 /* 이번 팀 차례의 글자를 준비해 둔다. ⚠️ 렌더 중에 뽑으면 안 된다 —
    render()는 스냅샷마다 불리므로 글자가 매번 바뀌어 버린다. 턴이 바뀔 때만 뽑는다. */
+/* 그 팀의 선수 pid (사회자 기기는 뺀다) */
+const teamPids = i => Object.entries(S.room.teams?.assign || {})
+  .filter(([pid,t]) => Number(t) === i && S.room.players[pid] && !isSpec(S.room.players[pid]))
+  .map(([pid]) => pid);
+
+/* 한 단어 릴레이 — 팀에서 **맞히는 사람 1명**을 정한다. 나머지가 설명자다.
+   ⚠️ 렌더에서 뽑으면 안 된다(render 는 스냅샷마다 불린다) — 턴이 바뀌는 시점에 정해둔다.
+      한글자 모드의 ensureLetter 와 같은 자리·같은 방식이다. */
+function ensureGuesser(){
+  const p = S.play; if (!p || p.mode !== 'relay') return;
+  const t = p.order[p.turn];
+  const ps = teamPids(t);
+  if (!ps.length) return;
+  if (!p.guesser) p.guesser = {};
+  if (!p.guesser[t] || !ps.includes(p.guesser[t]))
+    p.guesser[t] = ps[Math.floor(Math.random() * ps.length)];
+}
+
 function ensureLetter(){
   const p = S.play; if (!p || p.mode !== 'oneword') return;
   const t = p.order[p.turn];
@@ -4218,8 +4277,11 @@ function startDeckTool(){
   const teams = S.room.teams || {count:0};
   S.play = {
     gameId:S.gameId, kind:'deck', phase:'setup',
-    mode:'body',                 // 'body' | 'oneword'
-    cats:[...DEFAULT_CATS], sec:60,
+    // ⚠️ 한 단어 릴레이는 **방식이 고정**이다(고르는 화면을 띄우지 않는다).
+    //    몸으로/한글자는 같은 게임 안의 두 방식이라 setup 에서 고른다.
+    mode: S.gameId === 'relay' ? 'relay' : 'body',   // 'body' | 'oneword' | 'relay'
+    cats: S.gameId === 'relay' ? [...RELAY_CATS] : [...DEFAULT_CATS], sec:60,
+    guesser:{},
     order:Array.from({length:teams.count}, (_,i) => i),
     turn:0, letters:{}, results:{},
     deck:[], di:0, cur:'', hits:[], left:0, _t:null,
@@ -4604,7 +4666,7 @@ function renderSig(){
       (S.play.picked || []).join(''), S.play.judged || 0, S.play.cur?.t || 0,
       S.play.sen || 0, S.play.card || 0, S.play.cnt ?? 0, S.play.sit || 0,
       S.play.reading ?? -1, S.play.n ?? 0, S.play.cur?.w || 0, S.play.useIdx ?? 0,
-      (S.play.skins || []).join(''),
+      (S.play.skins || []).join(''), S.play.guesser || 0,
       !!S.play.show, !!S.play.pol, !!S.play.doc, !!S.play.incHost,
       !!S.play.running, !!S.play.over, S.play.sul || 0,
       (S.play.pool || []).length, (S.play.log || []).length,
@@ -5761,14 +5823,18 @@ function vDeck(){
 
     ${stockBox(p.gameId, wordCount, 30, '제시어')}
 
-    <div class="sec">방식</div>
-    <div class="seg">
-      <button data-act="pl-mode" data-v="body" class="${p.mode==='body'?'on':''}">🕺 몸으로 말해요</button>
-      <button data-act="pl-mode" data-v="oneword" class="${p.mode==='oneword'?'on':''}">🗣 한글자로 말해요</button>
-    </div>
-    <p class="note" style="margin:-2px 4px 0">${p.mode==='body'
-      ? '말 없이 몸동작만으로 설명합니다.'
-      : '팀이 정한 <b style="color:var(--elec)">한 글자</b>만 써서 설명합니다. 억양·연기는 자유.'}</p>
+    ${p.mode==='relay' ? `
+      <p class="note" style="margin:2px 4px 0">설명자 <b>둘이 한 단어씩 번갈아</b> 던집니다 —
+        두 단어를 말하거나 단어가 아니면 <b style="color:var(--rose)">반칙</b>이에요.</p>`
+    : `
+      <div class="sec">방식</div>
+      <div class="seg">
+        <button data-act="pl-mode" data-v="body" class="${p.mode==='body'?'on':''}">🕺 몸으로 말해요</button>
+        <button data-act="pl-mode" data-v="oneword" class="${p.mode==='oneword'?'on':''}">🗣 한글자로 말해요</button>
+      </div>
+      <p class="note" style="margin:-2px 4px 0">${p.mode==='body'
+        ? '말 없이 몸동작만으로 설명합니다.'
+        : '팀이 정한 <b style="color:var(--elec)">한 글자</b>만 써서 설명합니다. 억양·연기는 자유.'}</p>`}
 
     <div class="sec">제한 시간</div>
     <div class="seg">
@@ -5778,7 +5844,7 @@ function vDeck(){
     </div><div>
     <div class="sec">제시어 <span class="n">${wordCount}개</span></div>
     <div class="catgrid">
-      ${deckKeys('body').map(k => `
+      ${deckKeys(p.mode==='relay' ? 'relay' : 'body').map(k => `
         <button class="cat ${p.cats.includes(k)?'on':''}" data-act="pl-cat" data-v="${k}">
           <span class="e">${WORD_DECKS[k].emoji}</span>
           <span>${h(WORD_DECKS[k].name)}</span>
@@ -5803,9 +5869,38 @@ function vDeck(){
         <span class="t">${t+1}팀 차례</span>
         <span class="r">${p.turn+1} / ${p.order.length}</span>
       </div>
+      <div class="two"><div>
+
       <div class="card">
         <p class="note" style="font-size:14px;color:var(--dim)">${h(members(t)) || '팀원 없음'}</p>
       </div>
+
+      ${p.mode==='relay' ? (() => {
+        const ps = teamPids(t), gp = p.guesser?.[t];
+        const tellers = ps.filter(x => x !== gp);
+        return `
+        <div class="sec">역할</div>
+        <div class="card">
+          <div class="pickres" style="margin-bottom:12px">
+            <div class="pickres-l">맞히는 사람</div>
+            <div class="pickres-v">${h(gp ? pname(gp) : '—')}</div>
+          </div>
+          <p class="note" style="margin-bottom:10px">
+            <b>설명 순서</b> — ${tellers.length
+              ? tellers.map(x => h(pname(x))).join(' → ') + ' → ' + h(pname(tellers[0]))
+              : '설명할 사람이 없어요'}<br>
+            한 사람이 <b>한 단어</b>씩, 순서대로 번갈아 던지세요.</p>
+          ${ps.length < 3 ? `<div class="balbox warn">
+            <b>이 팀이 ${ps.length}명이에요</b>
+            <span>릴레이는 설명자가 2명 이상이어야 굴러갑니다 — 3명 이상으로 팀을 다시 나눠주세요.</span>
+          </div>` : ''}
+          <button class="btn gh sm" data-act="pl-reguess" style="width:100%">🎲 다른 사람이 맞히기</button>
+        </div>
+        <div class="mcbox">
+          <span class="i">🙈</span>
+          <span><b>맞히는 사람은 화면을 보면 안 됩니다</b>
+            <span class="s">등을 돌리거나 반대편에 앉으세요. 설명자 둘만 화면을 봅니다.</span></span>
+        </div>`; })() : ''}
 
       ${p.mode==='oneword' ? `
         <div class="sec">이 팀의 한 글자</div>
@@ -5818,20 +5913,26 @@ function vDeck(){
           <button class="btn gh sm" data-act="pl-reletter" style="width:100%">🎲 다른 글자로 바꾸기</button>
         </div>` : ''}
 
+      </div><div>
+
       <div style="text-align:center;padding:26px 18px;border-radius:var(--r-l);
         background:linear-gradient(150deg,rgba(255,107,74,.14),rgba(255,184,77,.05));
         border:1px solid rgba(255,184,77,.3);margin-bottom:14px">
         <div style="font-size:34px;margin-bottom:10px">📱</div>
         <div style="font-weight:800;font-size:15px;line-height:1.6;word-break:keep-all">
-          설명할 사람만 화면을 보세요<br>
-          <span style="color:var(--dim);font-weight:600;font-size:13.5px">맞히는 팀은 보면 안 됩니다 — 화면을 돌려 잡으세요</span>
+          ${p.mode==='relay' ? `설명하는 두 사람만 화면을 보세요<br>
+            <span style="color:var(--dim);font-weight:600;font-size:13.5px">맞히는 사람 쪽으로 화면을 돌리지 마세요</span>`
+          : `설명할 사람만 화면을 보세요<br>
+            <span style="color:var(--dim);font-weight:600;font-size:13.5px">맞히는 팀은 보면 안 됩니다 — 화면을 돌려 잡으세요</span>`}
         </div>
       </div>
 
       <div class="stack">
         <button class="btn pri" data-act="pl-begin">${p.sec}초 시작</button>
         <button class="btn gh" data-act="pl-quit">그만두기</button>
-      </div>`;
+      </div>
+
+      </div></div>`;
   }
 
   /* 3) 진행 중 */
@@ -5852,6 +5953,16 @@ function vDeck(){
         <div class="thit">맞춘 개수 ${hit}</div>
       </div>
 
+      <div class="two"><div>
+
+      ${p.mode==='relay' ? (() => {
+        const ps = teamPids(t), gp = p.guesser?.[t];
+        const tellers = ps.filter(x => x !== gp);
+        return `<div class="lastq" style="margin-bottom:10px">
+          <span>🙈 <b>${h(gp ? jo(pname(gp), '이', '가') : '—')}</b> 맞힙니다 ·
+            설명 ${tellers.map(x => h(pname(x))).join(' → ') || '—'}</span>
+        </div>`; })() : ''}
+
       <div class="wcard priv">
         <div>
           ${p.mode==='oneword' && p.letters[t]
@@ -5861,12 +5972,17 @@ function vDeck(){
         </div>
       </div>
 
+      </div><div>
       <div class="wbtns">
         <button class="bigbtn pass" data-act="pl-mark" data-v="0">패스</button>
         <button class="bigbtn ok" data-act="pl-mark" data-v="1">정답!</button>
       </div>
+      ${p.mode==='relay' ? `<div style="height:10px"></div>
+        <button class="btn dan sm" data-act="pl-foul" style="width:100%">
+          ✋ 반칙 — 두 단어를 말했거나 단어가 아니었어요</button>` : ''}
       <div style="height:10px"></div>
-      <button class="btn gh sm" data-act="pl-stop" style="width:100%">시간 전에 끝내기</button>`;
+      <button class="btn gh sm" data-act="pl-stop" style="width:100%">시간 전에 끝내기</button>
+      </div></div>`;
   }
 
   /* 4) 턴 종료 */
@@ -5874,15 +5990,19 @@ function vDeck(){
     const t = p.order[p.turn];
     const list = p.results[t] || [];
     const hit = list.filter(x => x.ok).length;
+    const fouls = list.filter(x => x.foul).length;
     const isLast = p.turn >= p.order.length - 1;
     return `
       <div class="pickres">
         <div class="pickres-l">${t+1}팀 결과</div>
         <div class="pickres-v">${hit}개</div>
       </div>
+      ${p.mode==='relay' && fouls ? `<p class="note" style="text-align:center;margin:-6px 0 14px">
+          ✋ 반칙 ${fouls}번 — 한 단어가 아니었어요</p>` : ''}
       ${list.length ? `<div class="sec">제시어</div>
         ${list.map(x => `<div class="sumrow ${x.ok?'':'no'}">
-            <span class="m">${x.ok?'✅':'⛔'}</span><span class="w">${h(x.w)}</span></div>`).join('')}`
+            <span class="m">${x.ok?'✅':x.foul?'✋':'⛔'}</span><span class="w">${h(x.w)}</span>
+            ${x.foul?'<span class="note" style="margin-left:auto;font-weight:700">반칙</span>':''}</div>`).join('')}`
         : '<div class="empty"><div class="empty-e">😶</div><div class="empty-t">한 개도 못 넘겼어요</div></div>'}
       <div style="height:18px"></div>
       <button class="btn pri" data-act="pl-next">
@@ -6516,7 +6636,8 @@ async function act(a, d){
     // ⚠️ 다른 게임 전용 카테고리가 섞여 들어오지 않게 막는다
     //    (몸으로 말해요에 사자성어가 들어가면 표현할 방법이 없다)
     {
-      const tool = S.play?.kind === 'cho' ? 'cho' : 'body';
+      const tool = S.play?.kind === 'cho' ? 'cho'
+        : S.play?.mode === 'relay' ? 'relay' : 'body';
       if (!deckKeys(tool).includes(d.v)) return;
     }
     const c = S.play.cats;
@@ -6526,8 +6647,8 @@ async function act(a, d){
   }
   case 'pl-start': {
     if (!S.play.cats.length) return toast('카테고리를 하나 이상 골라주세요');
-    Object.assign(S.play, { phase:'ready', turn:0, results:{}, letters:{} });
-    ensureLetter();
+    Object.assign(S.play, { phase:'ready', turn:0, results:{}, letters:{}, guesser:{} });
+    ensureLetter(); ensureGuesser();
     buildDeck();                       // 판 전체가 하나의 덱을 이어 쓴다(팀 간 중복 방지)
     if (!S.play.deck.length) return toast('낼 제시어가 없어요 — 카테고리를 더 골라주세요');
     nextWord();                        // 첫 장을 미리 뽑아둔다(턴 시작마다 뽑으면 한 장씩 샌다)
@@ -6761,6 +6882,23 @@ async function act(a, d){
   }
 
   case 'pl-mark': markWord(d.v === '1'); break;
+  /* ⚠️ 반칙은 「그 문제를 넘긴다」로 처리한다 — 앱이 소리를 들을 수 없으니 판정은 사람이 한다.
+     기록에는 반칙으로 남겨 턴 종료 화면에서 몇 번 났는지 보인다. */
+  case 'pl-foul': {
+    const p = S.play; if (!p || p.phase !== 'run') return;
+    p.hits.push({ w:p.cur.w, ok:false, foul:true });
+    SFX.end(); vib([25,40,25]); toast('✋ 반칙 — 이 문제는 넘어갑니다');
+    nextWord(); render(true); break;
+  }
+  case 'pl-reguess': {
+    const p = S.play; if (!p || p.mode !== 'relay') return;
+    const t = p.order[p.turn], ps = teamPids(t);
+    if (ps.length < 2) return toast('팀에 사람이 더 있어야 해요');
+    const cur = p.guesser?.[t];
+    const pool = ps.filter(x => x !== cur);
+    p.guesser = { ...(p.guesser || {}), [t]: pool[Math.floor(Math.random() * pool.length)] };
+    SFX.go(); vib(12); render(true); break;
+  }
   case 'pl-stop': endTurn(); break;
   case 'pl-next': {
     const p = S.play;
@@ -6769,7 +6907,7 @@ async function act(a, d){
       // 이 판에 실제로 화면에 뜬 제시어만 기록한다(안 넘긴 카드는 아직 안 쓴 것)
       markUsed(p.gameId, Object.values(p.results).flat().map(x => x.w));
     }
-    else { p.turn++; p.phase = 'ready'; ensureLetter(); }
+    else { p.turn++; p.phase = 'ready'; ensureLetter(); ensureGuesser(); }
     render(); break;
   }
   case 'pl-save': deckToScore(); break;

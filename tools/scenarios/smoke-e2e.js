@@ -86,6 +86,79 @@ if (new URLSearchParams(location.search).has('demo')){
     act('score-save', {});
     ck('점수 저장', Object.keys(S.room.scores).length === 1);
 
+    /* ── 2.5) 🔗 한 단어 릴레이 (deck · relay 모드) ──
+       ⚠️ 같은 덱 도구를 쓰지만 **역할이 나뉜다**: 팀 3명 중 1명이 맞히고 2명이 설명한다.
+          맞히는 사람이 화면을 보면 그 판이 끝나므로 `.priv` 를 반드시 유지해야 한다. */
+    {
+      const g = G('relay');
+      ck('★릴레이가 등록돼 있다', !!g && g.mode === 'team' && g.tool === 'deck');
+      ck('  3대 3이 기본이라 최소 6명', g.minP === 6);
+      /* 한 단어로 못 잇는 범위는 아예 안 뜬다 */
+      ck('★★릴레이에 속담·사자성어가 안 뜬다',
+        !deckKeys('relay').includes('proverb') && !deckKeys('relay').includes('idiom'));
+      ck('  그래도 범위가 10종 이상 남는다', deckKeys('relay').length >= 10);
+      ck('  기본 범위가 릴레이용으로 잡혀 있다',
+        RELAY_CATS.every(k => deckKeys('relay').includes(k)));
+
+      S.gameId = 'relay'; go('game'); act('tool-start', {});
+      ck('릴레이 진입', S.play?.kind === 'deck' && S.play.mode === 'relay');
+      const setupHtml = view('play');
+      ck('★방식 고르는 칸이 없다 (릴레이는 고정)', !setupHtml.includes('data-act="pl-mode"'));
+      ck('  설정 화면이 반칙 규칙을 알려준다', setupHtml.includes('반칙'));
+
+      act('pl-start', {});
+      const t0 = S.play.order[S.play.turn];
+      const ps0 = teamPids(t0);
+      const gp = S.play.guesser[t0];
+      /* ⚠️ 한 번만 보면 **운으로 통과한다** — 전 팀 × 40회를 돌려서 본다.
+         (전원에서 뽑도록 되돌려놓고 한 번만 보면 절반은 그냥 지나간다. 실제로 겪었다.) */
+      let stray = 0;
+      for (let i = 0; i < 40; i++){
+        S.play.guesser = {};
+        for (let ti = 0; ti < S.play.order.length; ti++){
+          const save = S.play.turn; S.play.turn = ti; ensureGuesser(); S.play.turn = save;
+          const tt = S.play.order[ti];
+          if (!teamPids(tt).includes(S.play.guesser[tt])) stray++;
+        }
+      }
+      ck(`★★맞히는 사람은 늘 그 팀 안에서 나온다 (남의 팀 ${stray}회)`, stray === 0);
+      S.play.guesser = { [t0]: gp };
+      ck('  나머지가 설명자다', ps0.filter(x => x !== gp).length === ps0.length - 1);
+      const readyHtml = view('play');
+      ck('  준비 화면에 맞히는 사람이 뜬다', readyHtml.includes(pname(gp)));
+      ck('  「화면을 보면 안 된다」를 안내한다', readyHtml.includes('화면을 보면 안'));
+
+      act('pl-reguess', {});
+      ck('★다시 뽑으면 다른 사람이 맞힌다', S.play.guesser[t0] !== gp);
+
+      act('pl-begin', {});
+      const runHtml = view('play');
+      ck('릴레이 진행 시작', S.play.phase === 'run' && !!S.play.cur?.w);
+      ck('★★제시어는 .priv 안에만 있다 (맞히는 사람이 보면 안 된다)',
+        /wcard[^"]*priv/.test(runHtml));
+      ck('  진행 중에도 역할이 보인다', runHtml.includes(pname(S.play.guesser[t0])));
+      ck('★반칙 버튼이 있다', runHtml.includes('data-act="pl-foul"'));
+
+      const w0 = S.play.cur.w;
+      act('pl-foul', {});
+      ck('★★반칙이면 그 문제는 넘어간다', S.play.cur.w !== w0);
+      ck('  반칙이 기록에 남는다',
+        S.play.hits.length === 1 && S.play.hits[0].foul === true && S.play.hits[0].ok === false);
+      act('pl-mark', { v:'1' }); act('pl-mark', { v:'1' });
+      ck('  정답은 따로 센다', S.play.hits.filter(x => x.ok).length === 2);
+      act('pl-stop', {});
+      const endHtml = view('play');
+      ck('★턴 종료 화면이 반칙을 알려준다', /반칙\s*1번/.test(endHtml));
+      act('pl-next', {});
+      act('pl-begin', {}); act('pl-mark', { v:'1' }); act('pl-stop', {}); act('pl-next', {});
+      ck('두 팀 다 돌면 done', S.play.phase === 'done');
+      act('pl-save', {});
+      ck('★릴레이는 팀 순위로 넘어간다', S.view === 'score' && S.draft?.mode === 'team');
+      ck('  많이 맞힌 팀이 앞', S.draft.order[0] === t0);
+      act('score-cancel', {});
+      S.room.used = {};
+    }
+
     /* ── 3) 멕썸노이즈 · 컵 레이스 (race-* 공유) ── */
     for (const gid of ['noise','cup']){
       S.gameId = gid; go('game'); act('tool-start', {});
