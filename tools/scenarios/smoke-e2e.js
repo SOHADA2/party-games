@@ -87,8 +87,10 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('점수 저장', Object.keys(S.room.scores).length === 1);
 
     /* ── 2.5) 🔗 한 단어 릴레이 (deck · relay 모드) ──
-       ⚠️ 같은 덱 도구를 쓰지만 **역할이 나뉜다**: 팀 3명 중 1명이 맞히고 2명이 설명한다.
-          맞히는 사람이 화면을 보면 그 판이 끝나므로 `.priv` 를 반드시 유지해야 한다. */
+       ⚠️ 앱은 **제시어와 시간만** 챙긴다. 누가 맞히고 누가 먼저 말하는지는 사람이 정한다
+          (사장님 지시 — "단어를 번갈아 말하는 건 우리끼리 알아서 할 문제라서").
+          그래도 **규칙은 화면에 적혀 있어야** 하고, 맞히는 사람이 같은 팀이라
+          제시어는 `.priv` 를 반드시 유지해야 한다. */
     {
       const g = G('relay');
       ck('★릴레이가 등록돼 있다', !!g && g.mode === 'team' && g.tool === 'deck');
@@ -99,57 +101,37 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('  그래도 범위가 10종 이상 남는다', deckKeys('relay').length >= 10);
       ck('  기본 범위가 릴레이용으로 잡혀 있다',
         RELAY_CATS.every(k => deckKeys('relay').includes(k)));
+      /* 규칙을 적어주는 게 이 게임에서 앱이 하는 일의 절반이다 */
+      ck('★★상세 화면이 한 단어씩·번갈아를 설명한다',
+        ['한 단어', '번갈아'].every(x => g.how.join(' ').includes(x)));
+      ck('★★상세 화면이 반칙 기준을 적어준다',
+        g.rules.includes('두 단어') && g.rules.includes('단어가 아닌'));
 
       S.gameId = 'relay'; go('game'); act('tool-start', {});
       ck('릴레이 진입', S.play?.kind === 'deck' && S.play.mode === 'relay');
       const setupHtml = view('play');
       ck('★방식 고르는 칸이 없다 (릴레이는 고정)', !setupHtml.includes('data-act="pl-mode"'));
-      ck('  설정 화면이 반칙 규칙을 알려준다', setupHtml.includes('반칙'));
 
       act('pl-start', {});
-      const t0 = S.play.order[S.play.turn];
-      const ps0 = teamPids(t0);
-      const gp = S.play.guesser[t0];
-      /* ⚠️ 한 번만 보면 **운으로 통과한다** — 전 팀 × 40회를 돌려서 본다.
-         (전원에서 뽑도록 되돌려놓고 한 번만 보면 절반은 그냥 지나간다. 실제로 겪었다.) */
-      let stray = 0;
-      for (let i = 0; i < 40; i++){
-        S.play.guesser = {};
-        for (let ti = 0; ti < S.play.order.length; ti++){
-          const save = S.play.turn; S.play.turn = ti; ensureGuesser(); S.play.turn = save;
-          const tt = S.play.order[ti];
-          if (!teamPids(tt).includes(S.play.guesser[tt])) stray++;
-        }
-      }
-      ck(`★★맞히는 사람은 늘 그 팀 안에서 나온다 (남의 팀 ${stray}회)`, stray === 0);
-      S.play.guesser = { [t0]: gp };
-      ck('  나머지가 설명자다', ps0.filter(x => x !== gp).length === ps0.length - 1);
       const readyHtml = view('play');
-      ck('  준비 화면에 맞히는 사람이 뜬다', readyHtml.includes(pname(gp)));
-      ck('  「화면을 보면 안 된다」를 안내한다', readyHtml.includes('화면을 보면 안'));
-
-      act('pl-reguess', {});
-      ck('★다시 뽑으면 다른 사람이 맞힌다', S.play.guesser[t0] !== gp);
+      ck('★★준비 화면이 방식을 다시 알려준다',
+        readyHtml.includes('한 단어') && readyHtml.includes('번갈아'));
+      ck('★★맞히는 사람은 팀이 정한다 (앱이 안 뽑는다)',
+        !S.play.guesser && !readyHtml.includes('data-act="pl-reguess"'));
 
       act('pl-begin', {});
       const runHtml = view('play');
       ck('릴레이 진행 시작', S.play.phase === 'run' && !!S.play.cur?.w);
       ck('★★제시어는 .priv 안에만 있다 (맞히는 사람이 보면 안 된다)',
         /wcard[^"]*priv/.test(runHtml));
-      ck('  진행 중에도 역할이 보인다', runHtml.includes(pname(S.play.guesser[t0])));
-      ck('★반칙 버튼이 있다', runHtml.includes('data-act="pl-foul"'));
+      ck('  진행 중에도 「보면 안 된다」를 알려준다', runHtml.includes('보면 안'));
+      ck('★반칙은 패스로 처리한다 (전용 버튼 없음)',
+        !runHtml.includes('data-act="pl-foul"') && runHtml.includes('data-act="pl-mark"'));
 
-      const w0 = S.play.cur.w;
-      act('pl-foul', {});
-      ck('★★반칙이면 그 문제는 넘어간다', S.play.cur.w !== w0);
-      ck('  반칙이 기록에 남는다',
-        S.play.hits.length === 1 && S.play.hits[0].foul === true && S.play.hits[0].ok === false);
-      act('pl-mark', { v:'1' }); act('pl-mark', { v:'1' });
-      ck('  정답은 따로 센다', S.play.hits.filter(x => x.ok).length === 2);
-      act('pl-stop', {});
-      const endHtml = view('play');
-      ck('★턴 종료 화면이 반칙을 알려준다', /반칙\s*1번/.test(endHtml));
-      act('pl-next', {});
+      const t0 = S.play.order[S.play.turn];
+      act('pl-mark', { v:'1' }); act('pl-mark', { v:'0' }); act('pl-mark', { v:'1' });
+      ck('  맞춘 것만 센다', S.play.hits.filter(x => x.ok).length === 2);
+      act('pl-stop', {}); act('pl-next', {});
       act('pl-begin', {}); act('pl-mark', { v:'1' }); act('pl-stop', {}); act('pl-next', {});
       ck('두 팀 다 돌면 done', S.play.phase === 'done');
       act('pl-save', {});

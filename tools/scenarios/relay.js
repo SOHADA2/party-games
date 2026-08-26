@@ -3,7 +3,7 @@
  *   ?demo=1&v=<단계>   단계: setup · ready · run · turnEnd · done
  *   ?long=1            가장 긴 제시어를 강제로 띄운다 — 넘침 확인
  *
- * ⚠️ 이 게임은 **한 팀 안에서** 화면을 보는 사람이 갈린다(설명자 2명만 본다).
+ * ⚠️ 이 게임은 **한 팀 안에서** 화면을 보는 사람이 갈린다(설명하는 둘만 본다).
  *    그래서 제시어 카드는 `.priv` 다 — 큰 화면에서도 커지면 안 된다.
  *    반대로 역할·타이머·점수는 다 같이 보므로 커져야 한다. 태블릿 폭으로도 찍을 것:
  *      node tools/shot.mjs "/_demo.html?demo=1&v=run" -w 1024 -h 768
@@ -30,7 +30,7 @@ if (new URLSearchParams(location.search).has('demo')){
         S.play.cur = pool.reduce((m, x) => x.w.length > m.w.length ? x : m, pool[0]);
       }
       if (v === 'turnEnd' || v === 'done'){
-        act('pl-mark', { v:'1' }); act('pl-foul', {}); act('pl-mark', { v:'1' });
+        act('pl-mark', { v:'1' }); act('pl-mark', { v:'0' }); act('pl-mark', { v:'1' });
         act('pl-stop', {});
       }
       if (v === 'done'){
