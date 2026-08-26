@@ -16,7 +16,9 @@ if (new URLSearchParams(location.search).has('demo')){
   const say = (...a) => L.push(a.join(' '));
   const ck  = (label, cond) => { if (!cond) bad++; L.push(label + ': ' + (cond ? 'OK' : '✕FAIL')); return cond; };
   try{
-    window.confirm = () => true;
+    window.confirm = () => { throw new Error('confirm() 을 쓰면 안 된다 — 앱 안 경고창(S.ask)으로 물어야 한다'); };
+    /* 되돌릴 수 없는 액션은 이제 경고창을 띄운다 → 「예」까지 눌러야 실제로 실행된다 */
+    const quit = () => { act('pl-quit', {}); if (S.ask) act('ask-yes', {}); };
     S.pid = 'h1'; S.code = '0000'; S.isHost = true; S.online = true;
     S.room = emptyRoom(); S.room.host = 'h1';
     S.room.players.h1 = { name:'나', joinedAt:1, seen:Date.now(), host:true };
@@ -291,13 +293,13 @@ if (new URLSearchParams(location.search).has('demo')){
       S.play.deck.length === choWords(['movie']).length - r1.length);
 
     /* 초기화 버튼 — 「다음에 다시 시작하는」 용도 */
-    act('used-reset', {});
+    act('used-reset', {}); act('ask-yes', {});
     ck('★초기화하면 기록이 지워진다', usedWords('chosung').size === 0);
     act('tool-start', {}); S.play.cats = ['movie']; S.play.n = 10;
     act('cho-start', {});
     ck('  초기화 후에는 전체 풀에서 다시 낸다',
       S.play.deck.length === choWords(['movie']).length);
-    act('pl-quit', {});
+    quit();
 
     /* ③ 남은 게 모자라면 자동으로 비우고 처음부터 (멈추면 안 된다) */
     S.room.used = { chosung: choWords(['movie']).map(x => x.w).slice(0, -2) };
@@ -307,7 +309,7 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('★모자라면 자동으로 한 바퀴 돈다', S.play.wrapped === true);
     ck('  자동 순환 시 기록이 비워진다', usedWords('chosung').size === 0);
     ck('  그래도 문제는 정상 출제된다', !!S.play.cur?.w && S.play.deck.length >= 10);
-    act('pl-quit', {});
+    quit();
     S.room.used = {};
 
     /* ② 같은 판에서 팀끼리 제시어가 겹치면 안 된다 (몸으로 말해요) */
@@ -355,7 +357,7 @@ if (new URLSearchParams(location.search).has('demo')){
     const t1 = S.play.order[1];
     ck('★다음 팀도 자동으로 받는다', !!S.play.letters[t1]);
     ck('★★팀끼리 글자가 겹치지 않는다', S.play.letters[t0] !== S.play.letters[t1]);
-    act('pl-quit', {});
+    quit();
     S.room.used = {};
     }
 
@@ -487,7 +489,7 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('★집에 있는 말을 내보내는 버튼이 있다',
       document.getElementById('view').innerHTML.includes('data-pos="-1"'));
 
-    act('yut-clear', {});
+    act('yut-clear', {}); act('ask-yes', {});
     ck('정리하면 판이 사라진다', !S.room.yut);
     S.view = 'game';
     }
@@ -719,7 +721,7 @@ if (new URLSearchParams(location.search).has('demo')){
       const used2 = usedWords('quiz');
       ck('★다음 판 덱에 이미 나온 문제가 없다',
         S.play.deck.every(x => !used2.has(x.w)));
-      act('pl-quit', {});
+      quit();
       S.room.used = {};
     }
 
@@ -785,12 +787,12 @@ if (new URLSearchParams(location.search).has('demo')){
 
     act('tool-start', {});
     ck('★도구 순번에서 제외', !S.play.order.includes(P[0]) && S.play.order.length === before - 1);
-    act('pl-quit', {});
+    quit();
 
     S.gameId='smile'; go('game'); act('tool-start', {});
     act('sm-sul', { pid:P[1] });
     ck('★스마일 대상 풀에서 제외', !S.play.pool.includes(P[0]));
-    act('pl-quit', {});
+    quit();
 
     S.gameId='act'; go('game'); act('tool-start', {});
     for (let i = 0; i < before; i++) act('ac-next', {});
@@ -830,6 +832,55 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('★선수가 1명 남으면 관전 전환 차단',
       (act('spec-toggle', {}), !isSpec(S.room.players[P[0]])));
     others.forEach(pid => { delete S.room.players[pid].spec; });
+
+    /* ── 8.5) ⚠️ 경고창 — 되돌릴 수 없는 것은 먼저 물어본다 ──
+       사장님 지시: "방 나가기나 게임 나가기를 할 때 점수가 사라질 수 있다는 경고창."
+       ⚠️ 「물어본다」만으로는 부족하다 — **무엇이 사라지는지**를 적어야 경고다. */
+    {
+      S.ask = null;
+      players().forEach(([pid]) => { delete S.room.players[pid].spec; });
+      /* ① 게임 나가기 — 진행 중일 때만 */
+      S.gameId = 'chosung'; go('game'); act('tool-start', {});
+      act('pl-quit', {});
+      ck('  아무것도 안 했으면 그냥 나간다', !S.ask && S.play === null);
+
+      S.gameId = 'chosung'; go('game'); act('tool-start', {});
+      S.play.n = 3; act('cho-start', {}); act('cho-hit', { pid:P[1] });
+      act('pl-quit', {});
+      ck('★★진행 중에 나가면 경고창이 뜬다', !!S.ask && S.play !== null);
+      const askHtml = view('play');
+      ck('★★무엇이 사라지는지 적혀 있다', /사라져/.test(askHtml) && askHtml.includes('asklose'));
+      /* ⚠️ 「취소가 있다」를 data-act 문자열로만 보면 안 된다 — 배경(.askov)에도 ask-no 가 있어서
+            버튼을 지워도 통과한다. **버튼**이 있는지를 본다. */
+      ck('  「예/아니오」 버튼이 둘 다 있다',
+        /<button[^>]+data-act="ask-yes"/.test(askHtml) && /<button[^>]+data-act="ask-no"/.test(askHtml));
+      act('ask-no', {});
+      ck('★취소하면 게임이 그대로 남는다', !S.ask && S.play !== null && S.play.log.length === 1);
+      act('pl-quit', {}); act('ask-yes', {});
+      ck('★확인하면 그때 나간다', !S.ask && S.play === null);
+
+      /* ② 방 나가기 — 참가자는 다시 들어오면 새 사람이 된다(점수가 끊긴다) */
+      act('leave', {});
+      ck('★★방 나가기도 경고창이 뜬다', !!S.ask && S.code === '0000');
+      const lv = view('lobby');
+      ck('  진행자에게는 「순위를 저장할 수 없다」를 알린다', lv.includes('순위를 저장할 수 없어요'));
+      act('ask-no', {});
+      ck('★취소하면 방에 남는다', !S.ask && S.code === '0000');
+      S.isHost = false; act('leave', {});
+      ck('★참가자에게는 「내 점수가 사라진다」를 알린다',
+        S.ask.lose.join(' ').includes('내 점수'));
+      act('ask-no', {}); S.isHost = true;
+
+      /* ③ 화면을 옮기면 열려 있던 경고창은 사라진다 */
+      act('leave', {}); go('board');
+      ck('  화면이 바뀌면 경고창이 닫힌다', !S.ask);
+
+      /* ④ 점수 전부 지우기 */
+      act('reset-scores', {});
+      ck('★점수 지우기도 경고창이 뜬다', !!S.ask && Object.keys(S.room.scores).length > 0);
+      act('ask-yes', {});
+      ck('  확인하면 지워진다', Object.keys(S.room.scores).length === 0);
+    }
 
     /* ── 9) 정리 ── */
     ck('타이머 정리', S.play === null || !S.play._t);

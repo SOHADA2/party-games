@@ -17,7 +17,6 @@ if (new URLSearchParams(location.search).has('demo')){
   const say = (...a) => L.push(a.join(' '));
   const ck  = (label, cond) => { if (!cond) bad++; L.push(label + ': ' + (cond ? 'OK' : '✕FAIL')); return cond; };
   try{
-    window.confirm = () => true;
     S.pid = 'h1'; S.code = '0000'; S.isHost = true; S.online = true;
     S.room = emptyRoom(); S.room.host = 'h1';
     S.room.players.h1 = { name:'나', joinedAt:1, seen:Date.now(), host:true };
@@ -448,7 +447,7 @@ if (new URLSearchParams(location.search).has('demo')){
     }
 
     /* 정리 */
-    act('yut-clear', {});
+    act('yut-clear', {}); act('ask-yes', {});
     ck('판을 정리하면 노드가 비워진다', !S.room.yut);
     clearBots();
     ck('봇 정리', players().length === 1);
