@@ -833,6 +833,79 @@ if (new URLSearchParams(location.search).has('demo')){
       (act('spec-toggle', {}), !isSpec(S.room.players[P[0]])));
     others.forEach(pid => { delete S.room.players[pid].spec; });
 
+    /* ── 8.4) 🏅 팀 점수가 개인 점수로 쌓인다 + 🗂 지난 기록 ──
+       사장님 지시: "개인전 점수 위주 · 팀 점수를 받으면 개인 점수에 반영돼서 랭킹이 맺어지는 시스템"
+                    "방에서 모두 나가더라도 다시 확인할 수 있도록 메인화면에 시간과 일자를 표시" */
+    {
+      localStorage.removeItem('partygames_rooms');
+      S.room.scores = {}; S.room.teams = { count:2, assign:{} };
+      players().forEach(([pid], i) => { S.room.teams.assign[pid] = i % 2; });
+      const T0 = P.filter(pid => Number(S.room.teams.assign[pid]) === 0);
+      const T1 = P.filter(pid => Number(S.room.teams.assign[pid]) === 1);
+
+      /* 팀전 한 판 — 1팀(index 0)이 1등 */
+      S.room.scores.t1 = { gameId:'body', mode:'team', order:[0,1], weight:1.5,
+        assign:JSON.parse(JSON.stringify(S.room.teams.assign)), at:1 };
+      const pt1 = calcPoints();
+      ck('★★팀 1등 점수를 팀원 전원이 똑같이 받는다',
+        T0.every(pid => pt1[pid] === 15) && T0.length >= 2);
+      ck('  진 팀도 팀 순위대로 받는다', T1.every(pid => pt1[pid] === 10.5));
+      ck('★한 판이 나에게 준 점수를 따로 셀 수 있다', scorePt(S.room.scores.t1, T0[0]) === 15);
+
+      /* 개인전 한 판을 더해도 같은 리더보드에 합산된다 */
+      S.room.scores.s1 = { gameId:'chosung', mode:'solo', order:[T1[0], T0[0]], weight:1, at:2 };
+      const pt2 = calcPoints();
+      ck('★★개인전과 팀전이 한 리더보드에 합산된다',
+        pt2[T1[0]] === 10.5 + 10 && pt2[T0[0]] === 15 + 7);
+      /* ⚠️ 팀을 다시 짜도 과거 팀전 점수는 안 깨진다(그 시점 assign 을 저장해두기 때문) */
+      S.room.teams = { count:2, assign:Object.fromEntries(P.map((p,i) => [p, (i+1) % 2])) };
+      ck('★★팀을 다시 짜도 과거 팀전 점수가 그대로다', calcPoints()[T0[0]] === 15 + 7);
+
+      /* 🗂 지난 기록 — 방이 사라져도 이 기기에 남는다 */
+      S.view = 'board'; render(true);
+      const rec = JSON.parse(localStorage.getItem('partygames_rooms') || '[]');
+      ck('★★점수가 있으면 이 기기에 기록이 남는다', rec.length === 1 && rec[0].code === '0000');
+      ck('  최종 순위가 점수 내림차순으로 들어간다',
+        rec[0].rows.length === players().length && rec[0].rows[0].p >= rec[0].rows[1].p);
+      ck('  진행한 게임도 같이 남는다', rec[0].games.length === 2);
+      ck('  날짜·시간을 만들 수 있다', /월 .*일/.test(fmtDay(rec[0].last)) && /[0-9]:[0-9]/.test(fmtTime(rec[0].last)));
+
+      /* 홈 화면 — 시간과 일자가 보여야 한다 */
+      go('home');
+      const hh = view('home');
+      ck('★★홈 화면에 지난 기록이 뜬다', hh.includes('지난 기록'));
+      ck('★★날짜와 시간이 적혀 있다',
+        hh.includes(fmtDay(rec[0].last).split(' ')[0]) && hh.includes(fmtTime(rec[0].last)));
+      ck('  1등과 인원·판 수를 요약해준다',
+        hh.includes(rec[0].rows[0].n) && hh.includes(`${rec[0].games.length}판`));
+
+      /* 방이 없어도 열린다 — 상세는 저장된 값만 쓴다 */
+      act('hist-open', { i:'0' });
+      const keepRoom = S.room, keepCode = S.code;
+      S.room = null; S.code = null; render(true);
+      const hv = view('hist');
+      ck('★★방이 사라져도 지난 기록이 열린다',
+        hv.includes(rec[0].rows[0].n) && hv.includes(fmtPt(rec[0].rows[0].p)));
+      S.room = keepRoom; S.code = keepCode;
+
+      /* ⚠️ 지금 들어가 있는 방의 기록은 살아 있는 값이라 지울 수 없다(지워도 다시 쌓인다) */
+      act('hist-del', { i:'0' });
+      ck('★지금 있는 방의 기록은 못 지운다',
+        !S.ask && JSON.parse(localStorage.getItem('partygames_rooms')).length === 1);
+      ck('  홈에서도 그 줄엔 ✕ 가 없다', !/rec-x[^]{0,80}data-i="0"/.test(view('home')));
+
+      /* 방을 나간 뒤에는 지울 수 있다 — 되돌릴 수 없으니 물어본다 */
+      const keepC = S.code; S.code = null;
+      act('hist-del', { i:'0' });
+      ck('★기록 지우기도 경고창이 뜬다',
+        !!S.ask && JSON.parse(localStorage.getItem('partygames_rooms')).length === 1);
+      act('ask-yes', {});
+      ck('  확인하면 지워진다', JSON.parse(localStorage.getItem('partygames_rooms') || '[]').length === 0);
+      S.code = keepC;
+      localStorage.removeItem('partygames_rooms'); _histSig = '';
+      S.room.teams = { count:0, assign:{} }; go('lobby');
+    }
+
     /* ── 8.5) ⚠️ 경고창 — 되돌릴 수 없는 것은 먼저 물어본다 ──
        사장님 지시: "방 나가기나 게임 나가기를 할 때 점수가 사라질 수 있다는 경고창."
        ⚠️ 「물어본다」만으로는 부족하다 — **무엇이 사라지는지**를 적어야 경고다. */

@@ -509,6 +509,24 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .hist-n{font-weight:800;font-size:14px;letter-spacing:-.025em;margin-bottom:2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+.hist-my{flex:none;font-weight:900;font-size:14px;color:var(--mint);letter-spacing:-.02em}
+
+/* 지난 기록 — 방이 사라져도 이 기기에 남는 최종 순위 */
+.rec{display:flex;align-items:center;gap:12px;width:100%;text-align:left;position:relative;
+  padding:13px 14px;border-radius:var(--r-m);background:var(--surf);border:1px solid var(--line);
+  margin-bottom:8px;box-shadow:var(--lift)}
+.rec:active{transform:scale(.98)}
+.rec-d{width:44px;flex:none;text-align:center}
+.rec-d b{display:block;font-weight:900;font-size:17px;letter-spacing:-.03em;line-height:1.1}
+.rec-d span{display:block;font-size:10.5px;color:var(--dim2);font-weight:700;margin-top:2px}
+.rec-b{flex:1;min-width:0}
+.rec-t{font-weight:800;font-size:14px;letter-spacing:-.025em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec-s{font-size:12px;color:var(--dim2);font-weight:600;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec-x{position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:8px;
+  display:grid;place-items:center;color:var(--dim2);font-size:11px}
+
 /* 빈 상태 */
 .empty{text-align:center;padding:40px 20px;color:var(--dim2)}
 .empty-e{font-size:44px;opacity:.35;margin-bottom:14px}
@@ -1170,7 +1188,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.31.0';
+const APP_VERSION = 'v0.32.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -3825,11 +3843,53 @@ const G = id => GAMES.find(g => g.id === id);
    상태
 ══════════════════════════════════════════════ */
 const LS = 'partygames_session';
+/* 지난 기록 — 방이 사라져도(모두 나가거나 12시간 뒤 코드가 재사용돼도) 최종 순위는 이 기기에 남는다.
+   ⚠️ RTDB 가 아니라 **localStorage** 다. 방 노드는 언젠가 사라지지만 이건 안 사라진다.
+      그래서 「모두 나가도 다시 확인할 수 있게」가 성립한다. */
+const LSR = 'partygames_rooms';
+const HIST_MAX = 30;
+const histAll = () => { try{ return JSON.parse(localStorage.getItem(LSR) || '[]'); }catch{ return []; } };
+const histPut = list => { try{ localStorage.setItem(LSR, JSON.stringify(list.slice(0, HIST_MAX))); }catch{} };
+
+const WD = ['일','월','화','수','목','금','토'];
+function fmtDay(ts){ const d = new Date(ts); return `${d.getMonth()+1}월 ${d.getDate()}일 (${WD[d.getDay()]})`; }
+function fmtTime(ts){
+  const d = new Date(ts), hh = d.getHours();
+  return `${hh < 12 ? '오전' : '오후'} ${((hh + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+/* 점수가 바뀔 때마다 이 기기에 최종 순위를 갈무리해 둔다.
+   ⚠️ render() 가 스냅샷마다 불리므로 **서명이 바뀔 때만** 쓴다(localStorage 는 동기 I/O 다). */
+let _histSig = '';
+function snapRoom(){
+  if (!S.code || !S.room) return;
+  const scores = Object.entries(S.room.scores || {});
+  if (!scores.length) return;                       // 남길 게 없다
+  const pts = calcPoints();
+  const sig = S.code + '|' + scores.length + '|' +
+    playing().map(([pid,p]) => p.name + (pts[pid]||0)).join(',');
+  if (sig === _histSig) return;
+  _histSig = sig;
+  const rec = {
+    code: S.code,
+    at: S.room.createdAt || now(),
+    last: now(),
+    rows: playing().map(([pid,p]) => ({ n:p.name, p:Math.round((pts[pid]||0)*10)/10 }))
+            .sort((a,b) => b.p - a.p || a.n.localeCompare(b.n)),
+    games: scores.sort((a,b) => (a[1].at||0) - (b[1].at||0)).map(([,sc]) => ({
+      g: sc.gameId, m: sc.mode,
+      top: (sc.order || []).slice(0,3).map(o => sc.mode==='team' ? `${Number(o)+1}팀` : pname(o)),
+    })),
+  };
+  const list = histAll().filter(x => !(x.code === rec.code && x.at === rec.at));
+  list.unshift(rec); histPut(list);
+}
 const S = {
   view:'home', code:null, pid:null, isHost:false, online:true,
   room:null, gameId:null, draft:null, unsub:null, hb:null, _lastPick:{},
   play:null,   // 진행 도구 상태 (호스트 기기 로컬 전용 — 제시어가 남의 폰에 새면 안 됨)
   ask:null,    // 경고창 { emoji, title, lose[], safe, ok, go, d } — go 가 「예」를 눌렀을 때 부를 액션
+  histI:0,     // 지난 기록 상세에서 보고 있는 항목
 };
 
 const $ = s => document.querySelector(s);
@@ -4098,7 +4158,9 @@ async function newCode(){
     const c = String(Math.floor(1000 + Math.random()*9000));
     try{
       const v = (await get(roomRef(c))).val();
-      if (!v || (now() - (v.touchedAt || v.createdAt || 0)) > 12*3600*1000) return c;
+      // ⚠️ 숙소는 **하룻밤을 잔다** — 밤에 놀고 다음 날 오후에 이어 하면 12시간이 쉽게 넘는다.
+      //    그 사이 남이 같은 코드를 받아가면 그 방 점수가 통째로 날아간다. 그래서 48시간.
+      if (!v || (now() - (v.touchedAt || v.createdAt || 0)) > 48*3600*1000) return c;
     }catch{ return c; }
   }
   return String(Math.floor(1000 + Math.random()*9000));
@@ -4199,6 +4261,20 @@ function clearBots(){
   if (Object.keys(upd).length) update(roomRef(S.code), upd).catch(()=>{});
   pushHostState();
   return Object.keys(upd).length;
+}
+
+/* 한 판(sc)이 어떤 사람(pid)에게 준 점수. calcPoints 와 **같은 규칙**을 쓴다.
+   ⚠️ 팀전은 그 시점 assign 스냅샷으로 판단한다 — 나중에 팀을 다시 짜도 과거 점수가 안 깨진다. */
+function scorePt(sc, pid){
+  const w = sc.weight ?? (G(sc.gameId)?.weight ?? 1);
+  let got = 0;
+  (sc.order || []).forEach((entry, i) => {
+    const base = rankPt(i) * w;
+    if (sc.mode === 'team'){
+      if (Number(sc.assign?.[pid]) === Number(entry)) got += base;
+    }else if (entry === pid) got += base;
+  });
+  return got;
 }
 
 function calcPoints(){
@@ -4670,7 +4746,7 @@ function renderSig(){
     r?.yut || 0,
     S.draft?.order || 0, S._lastPick || 0,
     // ⚠️ 경고창을 빼면 창이 뜨지도 닫히지도 않는다
-    S.ask?.go || 0,
+    S.ask?.go || 0, S.histI,
     // ⚠️ 타이머의 left/elapsed(매 틱 변화)는 넣지 않는다 — 재렌더 폭주가 된다.
     //    타이머 숫자는 각 도구의 인터벌이 DOM을 직접 갱신한다.
     S.play ? [S.play.kind, S.play.phase, S.play.turn ?? 0, S.play.di ?? 0,
@@ -4728,7 +4804,7 @@ function askLeave(){
     : ['다시 들어오면 <b>새 사람으로 취급돼요</b>',
        `지금까지 쌓은 <b>내 점수${pts ? ` ${fmtPt(pts)}점` : ''}이 사라져요</b>`];
   S.ask = { emoji:'🚪', title:'방에서 나갈까요?', lose:mine,
-    safe:'다른 사람들의 점수와 방은 그대로 남아요.',
+    safe:'지금까지의 순위는 <b>홈 화면 「지난 기록」</b>에 남아서 나중에 다시 볼 수 있어요.',
     ok:'그래도 나가기', go:'leave-go' };
   render(true);
 }
@@ -4746,15 +4822,17 @@ function render(force){
   code.style.display = inRoom ? '' : 'none';
   code.innerHTML = inRoom
     ? `${h(S.code)}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></svg>` : '';
-  back.style.display = ['games','game','play','score','board','settings','yut'].includes(S.view) ? '' : 'none';
+  back.style.display = ['games','game','play','score','board','settings','yut','hist'].includes(S.view) ? '' : 'none';
   title.textContent = ({ home:'숙소 게임', lobby:'대기실', games:'게임 고르기',
     game:G(S.gameId)?.name || '게임', play:G(S.gameId)?.name || '진행 중',
-    score:'순위 입력', board:'종합 순위', settings:'설정', yut:'윷 던지기' })[S.view] || '숙소 게임';
+    score:'순위 입력', board:'종합 순위', settings:'설정', yut:'윷 던지기',
+    hist:'지난 기록' })[S.view] || '숙소 게임';
 
   const v = $('#view');
   const keep = grabFocus();
   v.innerHTML = ({ home:vHome, lobby:vLobby, games:vGames, game:vGame, play:vPlay,
-    score:vScore, board:vBoard, settings:vSettings, yut:vYutPhone })[S.view]() + vAsk();
+    score:vScore, board:vBoard, settings:vSettings, yut:vYutPhone,
+    hist:vHist })[S.view]() + vAsk();
 
   // 화면 전환일 때만 진입 애니메이션. 제자리 갱신은 애니메이션 없이 조용히 교체한다.
   if (viewChanged){
@@ -4765,6 +4843,7 @@ function render(force){
 
   bind(v);
   restoreFocus(keep);
+  snapRoom();          // 점수가 바뀌었으면 이 기기에 최종 순위를 갈무리해 둔다
 }
 
 /* 접속 끊김 표시는 시간이 흘러야 바뀌므로(서명에 seen을 안 넣음) 주기적으로 확인만 한다.
@@ -4776,6 +4855,7 @@ $('#hd-back').onclick = () => {
   if (S.view === 'play'){ act('pl-quit', {}); return; }
   if (S.view === 'score'){ S.draft = null; go('game'); }
   else if (S.view === 'game') go('games');
+  else if (S.view === 'hist') go('home');
   else go('lobby');
 };
 $('#hd-code').onclick = shareRoom;
@@ -4814,6 +4894,69 @@ function yutBanner(){
     </button>`;
 }
 
+/* 홈의 「지난 기록」 — 방이 사라져도 여기서 다시 본다 */
+function histHtml(){
+  const list = histAll();
+  if (!list.length) return '';
+  return `<div class="sec" style="margin-top:22px">지난 기록 <span class="n">${list.length}</span></div>
+    ${list.slice(0, 6).map((r,i) => `
+      <button class="rec" data-act="hist-open" data-i="${i}">
+        <div class="rec-d"><b>${new Date(r.last).getDate()}</b><span>${fmtDay(r.last).split(' ')[0]}</span></div>
+        <div class="rec-b">
+          <div class="rec-t">${r.rows?.[0] ? `🥇 ${h(r.rows[0].n)} ${fmtPt(r.rows[0].p)}점` : '기록'}
+            ${r.code === S.code ? '<span class="chip hot">지금 방</span>' : ''}</div>
+          <div class="rec-s">${fmtTime(r.last)} · ${r.rows?.length || 0}명 · ${r.games?.length || 0}판 · ${h(r.code)}번 방</div>
+        </div>
+        ${r.code === S.code ? '' : `<span class="rec-x" data-act="hist-del" data-i="${i}">✕</span>`}
+      </button>`).join('')}
+    ${list.length > 6 ? `<p class="note" style="text-align:center">아래 ${list.length - 6}개는 새 기록이 쌓이면 밀려납니다</p>` : ''}`;
+}
+
+/* 지난 기록 상세 — 저장해둔 최종 순위 그대로. 방이 없어도 열린다. */
+function vHist(){
+  const r = histAll()[S.histI];
+  if (!r) return `<div class="empty"><div class="empty-e">🗂</div>
+    <div class="empty-t">기록을 찾을 수 없어요</div>
+    <div style="height:14px"></div>
+    <button class="btn" data-act="go-home">홈으로</button></div>`;
+  const rows = r.rows || [];
+  return `
+    <div class="two"><div>
+    <div class="card" style="text-align:center">
+      <div style="font-weight:900;font-size:20px;letter-spacing:-.03em">${h(fmtDay(r.last))}</div>
+      <p class="note" style="margin-top:5px">${fmtTime(r.last)} · ${h(r.code)}번 방 · ${rows.length}명 · ${(r.games||[]).length}판</p>
+    </div>
+    ${rows.length ? `<div class="lb">${rows.map((x,i) => `
+      <div class="lb-r" style="animation-delay:${i*35}ms">
+        <div class="lb-rk">${i+1}</div>
+        ${av(x.n, x.n, 'sm')}
+        <div class="lb-n">${h(x.n)}</div>
+        <div class="lb-p">${fmtPt(x.p)}<small>점</small></div>
+      </div>`).join('')}</div>` : ''}
+    </div><div>
+    <div class="sec">진행한 게임 <span class="n">${(r.games||[]).length}</span></div>
+    ${(r.games||[]).map(x => {
+      const g = G(x.g);
+      return `<div class="hist" style="${gcVars(g?.color)}">
+        <div class="hist-ic">${g?.emoji||'🎲'}</div>
+        <div class="hist-b">
+          <div class="hist-n">${h(g?.name || x.g)}${x.m==='team'?'<span class="chip">팀전</span>':''}</div>
+          <div class="note" style="font-size:12px">${(x.top||[]).map((n,i) => `${MEDAL[i]} ${h(n)}`).join('  ')}</div>
+        </div>
+      </div>`;
+    }).join('')}
+    <div style="height:16px"></div>
+    <div class="card">
+      <p class="note">이 기록은 <b>이 기기에만</b> 저장돼 있어요. 방이 사라져도 남지만,
+        앱을 지우거나 브라우저 기록을 지우면 같이 사라집니다.</p>
+      ${r.code === S.code ? `<p class="note" style="margin-top:8px;color:var(--amber)">
+          지금 들어가 있는 방이라 <b>계속 갱신됩니다</b> — 방을 나가면 이 시점으로 굳어요.</p>`
+        : `<div style="height:10px"></div>
+      <button class="btn dan sm" data-act="hist-del" data-i="${S.histI}" style="width:100%">이 기록 지우기</button>`}
+    </div>
+    </div></div>`;
+}
+
 function vHome(){
   const last = (() => { try{ return JSON.parse(localStorage.getItem(LS) || 'null'); }catch{ return null; } })();
   return `
@@ -4830,6 +4973,7 @@ function vHome(){
 
     ${yutBanner()}
     ${installBannerHtml()}
+    ${histHtml()}
     </div><div>
     <div class="sec">시작하기</div>
     <div class="card">
@@ -6359,15 +6503,17 @@ function vBoard(){
       const g = G(sc.gameId);
       const names = (sc.order||[]).slice(0,3).map((o,i) =>
         `${MEDAL[i]} ${sc.mode==='team' ? `${Number(o)+1}팀` : h(pname(o))}`).join('  ');
+      const mine = scorePt(sc, S.pid);
       return `<div class="hist" style="${gcVars(g?.color)}">
         <div class="hist-ic">${g?.emoji||'🎲'}</div>
         <div class="hist-b">
-          <div class="hist-n">${h(g?.name || sc.gameId)}</div>
+          <div class="hist-n">${h(g?.name || sc.gameId)}${sc.mode==='team'
+            ? '<span class="chip">팀전</span>' : ''}</div>
           <div class="note" style="font-size:12px">${names}</div>
         </div>
+        ${mine ? `<div class="hist-my">+${fmtPt(mine)}</div>` : ''}
         ${S.isHost ? `<button class="pl-x" data-act="del-score" data-sid="${sid}">✕</button>` : ''}
-      </div>
-    </div></div>`;
+      </div>`;
     }).join('') : `<div class="empty">
         <div class="empty-e">🏁</div>
         <div class="empty-t">아직 기록이 없어요</div>
@@ -6378,8 +6524,11 @@ function vBoard(){
     <div class="card">
       <div class="sec" style="margin:0 0 9px">점수 방식</div>
       <p class="note">1등 <b style="color:var(--amber)">10점</b> · 2등 7점 · 3등 5점 · 4등 3점 · 5등 2점 · 이하 1점<br>
-      여기에 게임별 배점(×0.5 ~ ×1.5)을 곱합니다. 팀전은 팀 순위 점수를 팀원 전원에게 똑같이 줍니다.</p>
-    </div>`;
+      여기에 게임별 배점(×0.5 ~ ×1.5)을 곱합니다.</p>
+      <p class="note" style="margin-top:8px"><b style="color:var(--mint)">팀전도 개인 점수로 쌓입니다</b> —
+      팀 순위 점수를 팀원 전원이 <b>똑같이</b> 받아요. 그래서 팀을 새로 짜도 순위는 안 깨집니다.</p>
+    </div>
+    </div></div>`;
 }
 
 /* ── 설정 ── */
@@ -7105,6 +7254,28 @@ async function act(a, d){
     S.room.rotation = {}; S._lastPick = {};
     pushHostState(); render(); toast('순번을 초기화했어요'); break;
   }
+  /* 지난 기록 — 방이 사라져도 이 기기에 남아 있는 최종 순위 */
+  case 'hist-open': S.histI = Number(d.i) || 0; go('hist'); break;
+  case 'go-home': go('home'); break;
+  case 'hist-del': {
+    const i = Number(d.i) || 0, r = histAll()[i];
+    if (!r) return;
+    // ⚠️ 지금 들어가 있는 방의 기록은 살아 있는 값이라, 지워도 다음 렌더에 다시 쌓인다
+    if (r.code === S.code) return toast('지금 들어가 있는 방이에요 — 방을 나가면 지울 수 있어요');
+    S.ask = { emoji:'🗂', title:`${fmtDay(r.last)} 기록을 지울까요?`,
+      lose:['이 <b>최종 순위와 진행한 게임 목록이 사라져요</b>',
+            '방은 이미 없을 수 있어서 <b>되살릴 수 없어요</b>'],
+      safe:'다른 날짜의 기록은 그대로 남아요.', ok:'이 기록 지우기', go:'hist-del-go', d:{ i } };
+    render(true); break;
+  }
+  case 'hist-del-go': {
+    const i = Number(d.i) || 0;
+    const list = histAll(); list.splice(i, 1); histPut(list);
+    _histSig = '';                       // 지운 뒤 같은 방에 있으면 다시 쌓이게 한다
+    if (S.view === 'hist') go('home'); else render(true);
+    toast('기록을 지웠어요'); break;
+  }
+
   case 'leave': askLeave(); break;
   case 'leave-go': leaveRoom(); break;
   }
