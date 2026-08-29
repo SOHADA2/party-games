@@ -541,6 +541,19 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
   transition:transform .14s var(--spring),border-color .16s,background .16s}
 .seg button:active{transform:scale(.96)}
 .seg button.on{border-color:var(--hot);background:rgba(255,107,74,.13);color:#FFB59B}
+/* 숫자 고르기 — 프리셋만으로는 모자란다(「17문제만」이 안 됨). ±로 1씩 맞춘다. */
+.stepper{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.stepper button{width:54px;height:54px;flex:none;border-radius:15px;background:var(--surf);
+  border:1.5px solid var(--line);font-weight:900;font-size:24px;line-height:1;
+  box-shadow:var(--lift);transition:transform .14s var(--spring),border-color .16s}
+.stepper button:active{transform:scale(.93)}
+.stepper button:disabled{opacity:.32}
+.stepper .v{flex:1;text-align:center;font-weight:900;letter-spacing:-.04em;
+  font-size:30px;line-height:1.1}
+.stepper .v small{font-size:14px;font-weight:800;color:var(--dim2);margin-left:3px}
+.stepper .v span{display:block;font-size:11.5px;font-weight:700;color:var(--dim2);
+  letter-spacing:0;margin-top:2px}
+
 .catgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .cat{display:flex;align-items:center;gap:9px;padding:13px 12px;border-radius:14px;
   background:var(--surf);border:1.5px solid var(--line);font-weight:700;font-size:14px;
@@ -1188,7 +1201,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.32.0';
+const APP_VERSION = 'v0.33.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -5724,9 +5737,9 @@ function vCho(){
     ${stockBox(p.gameId, usable, p.n, '문제')}
 
     <div class="sec">문제 수</div>
-    <div class="seg">
-      ${[10,15,20].map(n => `<button data-act="cho-n" data-v="${n}" class="${p.n===n?'on':''}">${n}문제</button>`).join('')}
-    </div>
+    ${nPicker('cho-n', p.n, usable, [5,10,15,20,30])}
+    <p class="note" style="margin:0 4px">한 문제에 대략 20초 —
+      <b>${p.n}문제면 ${Math.max(1, Math.round(Math.min(p.n, usable) / 3))}분쯤</b> 걸려요.</p>
 
     <div class="sec">출제 범위 <span class="n">${usable}문제</span></div>
     <div class="catgrid">
@@ -5847,6 +5860,33 @@ function vCho(){
 }
 
 /* ── 🧠 상식 퀴즈 ── */
+/* 문제 수 고르기 — 초성 퀴즈·상식 퀴즈가 같이 쓴다.
+   ⚠️ 상한은 **실제 낼 수 있는 문제 수**로 묶는다. 40을 고를 수 있는데 12문제밖에 없으면
+      「시작하기 — 12문제」와 어긋나 보인다.
+   ⚠️ ± 은 20 아래에서는 1씩, 그 위로는 5씩 간다 — 「10문제만」은 정확해야 하지만
+      30이냐 32냐는 아무도 안 따진다. 1씩만 가면 40 맞추는 데 스무 번을 눌러야 한다. */
+const N_MAX = 50;
+const nCap = usable => Math.max(1, Math.min(N_MAX, usable || 1));
+const nStep = v => v < 20 ? 1 : 5;
+function nPicker(act, n, usable, presets){
+  const max = nCap(usable), cur = Math.min(n, max);
+  const dn = cur <= 20 ? cur - 1 : Math.max(20, cur - nStep(cur));
+  const up = cur < 20 ? cur + 1 : cur + 5;
+  return `
+    <div class="stepper">
+      <button data-act="${act}" data-v="${dn}" ${cur <= 1 ? 'disabled' : ''}>−</button>
+      <div class="v">${cur}<small>문제</small>
+        ${cur >= max && max === usable ? `<span>이 범위에서 낼 수 있는 전부예요</span>` : ''}</div>
+      <button data-act="${act}" data-v="${up}" ${cur >= max ? 'disabled' : ''}>＋</button>
+    </div>
+    <div class="seg">
+      ${presets.filter(x => x <= max).map(x =>
+        `<button data-act="${act}" data-v="${x}" class="${cur===x?'on':''}">${x}</button>`).join('')}
+      ${max < presets[0] || (max <= 30 && !presets.includes(max))
+        ? `<button data-act="${act}" data-v="${max}" class="${cur===max?'on':''}">전부 ${max}</button>` : ''}
+    </div>`;
+}
+
 function vQuiz(){
   const p = S.play;
   const g = G(p.gameId);
@@ -5864,9 +5904,9 @@ function vQuiz(){
     ${stockBox(p.gameId, usable, p.n, '문제')}
 
     <div class="sec">문제 수</div>
-    <div class="seg">
-      ${[10,15,20].map(n => `<button data-act="quiz-n" data-v="${n}" class="${p.n===n?'on':''}">${n}문제</button>`).join('')}
-    </div>
+    ${nPicker('quiz-n', p.n, usable, [5,10,15,20,30])}
+    <p class="note" style="margin:0 4px">한 문제에 대략 30초 —
+      <b>${p.n}문제면 ${Math.max(1, Math.round(Math.min(p.n, usable) * 0.5))}분쯤</b> 걸려요.</p>
 
     </div><div>
     <div class="sec">출제 범위 <span class="n">${usable}문제</span></div>
@@ -6972,7 +7012,11 @@ async function act(a, d){
   }
 
   /* 🔠 초성 퀴즈 */
-  case 'cho-n': S.play.n = Number(d.v); render(); break;
+  case 'cho-n': {
+    const max = nCap(choWords(S.play.cats).length);
+    S.play.n = Math.max(1, Math.min(max, Number(d.v) || 1));
+    render(true); break;
+  }
   case 'cho-start': {
     const p = S.play;
     if (!p.cats.length) return toast('범위를 하나 이상 골라주세요');
@@ -7014,7 +7058,11 @@ async function act(a, d){
   }
 
   /* 🧠 상식 퀴즈 */
-  case 'quiz-n': S.play.n = Number(d.v); render(); break;
+  case 'quiz-n': {
+    const max = nCap(quizPool(S.play.cats).length);
+    S.play.n = Math.max(1, Math.min(max, Number(d.v) || 1));
+    render(true); break;
+  }
   case 'quiz-cat': {
     const c = S.play.cats, i = c.indexOf(d.v);
     i < 0 ? c.push(d.v) : c.splice(i, 1);

@@ -833,6 +833,51 @@ if (new URLSearchParams(location.search).has('demo')){
       (act('spec-toggle', {}), !isSpec(S.room.players[P[0]])));
     others.forEach(pid => { delete S.room.players[pid].spec; });
 
+    /* ── 8.35) 🔢 문제 수 고르기 (상식 퀴즈 · 초성 퀴즈 공용) ──
+       사장님 지시: "상식 퀴즈 푸는 문제를 개수 설정할 수 있게 해줘" */
+    {
+      S.gameId = 'quiz'; go('game'); act('tool-start', {});
+      const setup = view('play');
+      ck('★★문제 수를 ±로 고를 수 있다',
+        /data-act="quiz-n"[^>]*>−/.test(setup) && /data-act="quiz-n"[^>]*>＋/.test(setup));
+      ck('  빠른 선택도 같이 있다', (setup.match(/data-act="quiz-n"/g) || []).length >= 5);
+
+      const base = S.play.n;
+      act('quiz-n', { v:String(base + 1) });
+      ck('  ＋ 로 1문제씩 올라간다', S.play.n === base + 1);
+      act('quiz-n', { v:'5' });
+      ck('★빠른 선택은 그 숫자로 딱 맞춘다', S.play.n === 5);
+      act('quiz-n', { v:'4' });
+      ck('  ＋/− 는 1씩 (20 아래)', S.play.n === 4);
+
+      /* 20 위로는 5씩 — 40을 맞추려고 스무 번 누르게 하면 안 된다 */
+      act('quiz-n', { v:'20' }); act('quiz-n', { v:'25' });
+      ck('★20 위로는 5씩 움직인다', S.play.n === 25);
+
+      /* 경계 */
+      act('quiz-n', { v:'0' });
+      ck('★0문제로는 못 내려간다', S.play.n === 1);
+      act('quiz-n', { v:'999' });
+      ck('★★낼 수 있는 것보다 많이 고를 수 없다',
+        S.play.n === Math.min(50, quizPool(S.play.cats).length));
+
+      /* 범위를 좁혀도 상한이 따라온다 */
+      act('quiz-n', { v:'30' });
+      const start = view('play');
+      ck('  시작 버튼이 고른 개수를 그대로 말한다', start.includes(`시작하기 — ${S.play.n}문제`));
+      act('quiz-start', {});
+      ck('★★고른 개수만큼만 낸다', S.play.n === 30 && S.play.deck.length >= 30);
+      quit();
+
+      /* 초성 퀴즈도 같은 위젯을 쓴다 */
+      S.gameId = 'chosung'; go('game'); act('tool-start', {});
+      ck('★초성 퀴즈도 ± 로 고른다', /data-act="cho-n"[^>]*>＋/.test(view('play')));
+      act('cho-n', { v:'7' });
+      ck('  같은 방식으로 동작한다', S.play.n === 7);
+      quit();
+      S.room.used = {};
+    }
+
     /* ── 8.4) 🏅 팀 점수가 개인 점수로 쌓인다 + 🗂 지난 기록 ──
        사장님 지시: "개인전 점수 위주 · 팀 점수를 받으면 개인 점수에 반영돼서 랭킹이 맺어지는 시스템"
                     "방에서 모두 나가더라도 다시 확인할 수 있도록 메인화면에 시간과 일자를 표시" */
