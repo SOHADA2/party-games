@@ -445,9 +445,9 @@ if (new URLSearchParams(location.search).has('demo')){
     const other = Object.entries(S.room.teams.assign).find(([,t]) => Number(t) !== 0)?.[0];
     const mine0 = Object.entries(S.room.teams.assign).find(([,t]) => Number(t) === 0)?.[0];
     const meWas = S.pid;
-    S.pid = other; act('yut-halt', {}); S.pid = meWas;
+    S.pid = other; act('yut-halt', { team:'0' }); S.pid = meWas;
     ck('★상대팀이 「잠시!」를 걸 수 있다', !!m().halt && m().halt.team === 0);
-    S.pid = mine0; act('yut-halt', {}); S.pid = meWas;
+    S.pid = mine0; act('yut-halt', { team:'0' }); S.pid = meWas;
     ck('★우리 팀은 「잠시!」를 못 건다 (이미 걸린 것만 남음)', m().halt.by === other);
     // 판정 중에는 판이 잠긴다 — 핸들러와 화면 양쪽 다
     S.room.yut.pending = [{ n:'도', v:1 }]; S.play.useIdx = 0;
@@ -488,6 +488,55 @@ if (new URLSearchParams(location.search).has('demo')){
     S.pid = meWas; S.view = 'play'; render(true);
     ck('★집에 있는 말을 내보내는 버튼이 있다',
       document.getElementById('view').innerHTML.includes('data-pos="-1"'));
+
+    /* ★★ 영어는 차례와 상관없이 나온다 — 2팀 차례에도 1팀을 지적할 수 있어야 한다 */
+    {
+      S.room.yut.halt = null; S.room.yut.pick = null; S.room.yut.penalty = {};
+      S.room.yut.pieces = [[3,7,-1,-1],[1,-1,-1,-1]];
+      S.room.yut.turn = 1;                      // 지금은 2팀 차례
+      const ph2 = view('play');
+      ck('★★태블릿에 팀마다 지적 버튼이 있다',
+        [0,1].every(ti => new RegExp(`data-act="yut-halt-here" data-team="${ti}"`).test(ph2)));
+      act('yut-halt-here', { team:'0' });
+      ck('★★2팀 차례에도 1팀을 지적할 수 있다', m().halt?.team === 0 && m().turn === 1);
+      ck('  판정 화면이 「차례와 상관없다」를 알려준다',
+        view('play').includes('차례와 상관없습니다'));
+      act('yut-halt-ok', {});
+      ck('★인정하면 1팀이 되돌릴 말을 고른다', m().pick?.team === 0);
+      act('yut-pickback', { pos:'7' });
+      ck('★★1팀 말이 집으로 갔다 (차례는 그대로 2팀)',
+        m().pieces[0].filter(x => x === -1).length === 3 && m().turn === 1);
+      ck('  2팀 말은 그대로다', m().pieces[1][0] === 1);
+      ck('  벌점은 1팀에 붙는다', m().penalty[0] === 1 && !m().penalty[1]);
+
+      /* 폰에서도 우리 팀만 빼고 고를 수 있다 */
+      const meW = S.pid; S.pid = mine0; S.view = 'yut'; render(true);
+      const phone2 = view('yut');
+      ck('★폰에도 팀을 고르는 지적 버튼이 있다',
+        phone2.includes('data-act="yut-halt" data-team="1"'));
+      ck('★★폰에서 우리 팀은 아예 안 보인다',
+        !phone2.includes('data-act="yut-halt" data-team="0"'));
+      S.pid = meW; S.view = 'play';
+    }
+
+    /* 🔄 재시작 — 말·기록·벌점이 처음으로 */
+    {
+      S.room.yut.pieces = [[3,7,9,-1],[1,4,-1,-1]];
+      S.room.yut.turn = 1; S.room.yut.penalty = { 0:2 };
+      S.room.yut.log = ['뭔가 있었다'];
+      act('yut-restart', {});
+      ck('★★재시작은 먼저 물어본다', !!S.ask && m().pieces[0].includes(7));
+      ck('  무엇이 사라지는지 적혀 있다', S.ask.lose.join(' ').includes('벌점'));
+      act('ask-no', {});
+      ck('  취소하면 판이 그대로다', m().pieces[0].includes(7));
+      act('yut-restart', {}); act('ask-yes', {});
+      ck('★★확인하면 말이 전부 집으로 간다',
+        m().pieces.every(ps => ps.every(x => x === -1)));
+      ck('  차례·기록·벌점도 처음으로', m().turn === 0 && !m().log.length
+        && !Object.keys(m().penalty || {}).length);
+      ck('  팀 수와 말 모양은 그대로', m().pieces.length === 2 && (m().skins || []).length === 2);
+      ck('★진행 화면에 재시작 버튼이 있다', view('play').includes('data-act="yut-restart"'));
+    }
 
     act('yut-clear', {}); act('ask-yes', {});
     ck('정리하면 판이 사라진다', !S.room.yut);

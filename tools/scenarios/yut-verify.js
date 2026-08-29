@@ -292,7 +292,7 @@ if (new URLSearchParams(location.search).has('demo')){
         ck('  배너가 「잠시!」로 갈 수 있다고 알려준다', lob.includes('잠시'));
         // 태블릿에서 누르면 진행 중인 팀이 지적 대상이 된다
         S.view = 'play'; render(true);
-        act('yut-halt-here', {});
+        act('yut-halt-here', { team:String(m().turn) });
         ck('★태블릿에서 누르면 판정 단계로 간다',
           !!m().halt && m().halt.team === m().turn && m().halt.board === true);
         ck('  판정 화면이 이름 대신 팀을 말한다',
@@ -350,6 +350,16 @@ if (new URLSearchParams(location.search).has('demo')){
         ck('★★말판이 스크롤 없이 다 보인다', fits(b) && fits(bThrow));
         ck('★★「새 말 내보내기」가 화면 안에 있다 (던지기 끝난 상태)', fits(b1));
         ck('★★「여기서 대신 던지기」가 화면 안에 있다 (던질 게 남은 상태)', fits(b2));
+        /* ✋ 지적·🔄 재시작도 눌러야 하는 버튼이다 — 화면 밖으로 밀리면 못 쓴다 */
+        ck('★★팀별 「잠시!」 버튼이 화면 안에 있다',
+          fits(box('[data-act="yut-halt-here"][data-team="0"]'))
+          && fits(box(`[data-act="yut-halt-here"][data-team="${M.pieces.length-1}"]`)));
+        /* ⚠️ 재시작은 **가로에서만** 화면 안을 요구한다. 세로 태블릿은 세로로만 쌓여
+              아래로 밀리는데, 이건 가끔 진행자만 누르는 버튼이라 스크롤해도 된다.
+              스크롤이 없어야 하는 건 판·던지기·지적까지다. */
+        if (W >= H) ck('★★「처음부터 다시 시작」이 화면 안에 있다 (가로)',
+          fits(box('[data-act="yut-restart"]')));
+        ck('  재시작 버튼이 화면에 있기는 하다', !!box('[data-act="yut-restart"]'));
         /* ⚠️ 「판이 화면 안에 들어간다」만 검사하면 판을 줄여서 통과시킬 수 있다 —
            실제로 그렇게 272px 까지 내려가 **폰(453px)보다 작아졌다.** 이 화면은 상 위에
            세워두고 다 같이 보는 것이라 작아지면 그 순간 쓸모가 없다. 하한을 못 박는다. */

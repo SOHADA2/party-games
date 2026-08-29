@@ -717,6 +717,16 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
   background:linear-gradient(135deg,#FF5C7C,#FF8F5C);color:#2A0A12;border:0;
   box-shadow:0 8px 24px rgba(255,92,124,.3)}
 .haltbtn:active{transform:scale(.97)}
+/* ✋ 잠시! — **어느 팀이** 영어를 썼는지 고른다. 자기 차례가 아닌 팀도 지적할 수 있다
+   (영어는 아무 때나 나온다 — 2팀 차례에 1팀이 떠들면 1팀이 벌을 받아야 한다). */
+.haltrow{display:flex;flex-wrap:wrap;gap:7px}
+.haltrow button{flex:1 1 auto;min-width:88px;padding:12px 10px;border-radius:13px;
+  font-weight:800;font-size:14px;background:rgba(255,92,124,.1);
+  border:1.5px solid rgba(255,92,124,.4);color:#FF9DAE;box-shadow:var(--lift);
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  transition:transform .14s var(--spring),background .16s}
+.haltrow button:active{transform:scale(.96)}
+.haltrow button .dot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--tc)}
 
 /* 유튜브 뮤직으로 나가는 버튼 — 진짜 <a> 다(새 탭으로 열어야 앱 상태가 유지된다) */
 .ytbtn{text-decoration:none;color:inherit;margin-bottom:0}
@@ -985,8 +995,11 @@ details.more .in{padding:0 15px 15px}
   /* 말판은 다 같이 보는 것이라 크게. ⚠️ 단 **세로를 넘기면 안 된다** —
      뒤에서 보는 사람은 스크롤을 못 한다(v0.14.0 원칙). vh 로 상한을 건다. */
   /* ⚠️ 56vh 면 세로 태블릿에서 조작 버튼이 화면 밖으로 밀린다(실측 40px 초과).
-     판 아래에 버튼 두 개가 더 붙으므로 51vh 가 상한이다. */
-  .board{max-width:min(620px, 51vh)}
+     v0.35.0 에서 판 아래에 **팀별 「✋ 잠시!」 줄**이 더 붙었다 — 그만큼 더 내려야
+     세로 태블릿에서도 지적 버튼까지 화면 안에 들어온다. 실측으로 46vh(48vh 면 잘린다).
+     ⚠️ 「🔄 처음부터 다시 시작」은 세로에서 아래로 밀린다 — 이건 **가끔 진행자만 누르는**
+        버튼이라 스크롤해도 된다. 스크롤이 없어야 하는 건 판·던지기·지적까지다. */
+  .board{max-width:min(620px, 46vh)}
   .hteam{font-size:16px;padding:11px 16px}
   .rollbig .v{font-size:62px}
   .ylog{font-size:15px}
@@ -1201,7 +1214,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.34.0';
+const APP_VERSION = 'v0.35.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -3247,6 +3260,12 @@ const myTeam = () => {
   return a[S.pid] != null ? Number(a[S.pid]) : -1;
 };
 const teamName = t => `${t + 1}팀`;
+/* ✋ 지적 대상 팀. 값이 없거나 범위를 벗어나면 null(무시).
+   ⚠️ 예전엔 m.turn 을 그대로 썼다 — 그러면 「2팀 차례에 1팀 지적」이 아예 불가능하다. */
+function yutHaltTeam(m, v){
+  const t = Number(v);
+  return Number.isInteger(t) && t >= 0 && t < (m.pieces || []).length ? t : null;
+}
 const yutAt = (pieces, pos) => {
   const out = [];
   (pieces || []).forEach((arr, t) => arr.forEach((p, i) => { if (p === pos) out.push({ t, i }); }));
@@ -5419,7 +5438,10 @@ function vYut(){
       <div class="t">✋ 잠시!</div>
       <div class="s">${m.halt.board
         ? `<b>${h(teamName(m.halt.team))}</b>이 영어를 썼다는 지적입니다.`
-        : `<b>${h(pname(m.halt.by))}</b>님이 <b>${h(teamName(m.halt.team))}</b>의 영어를 지적했습니다.`}<br>
+        : `<b>${h(pname(m.halt.by))}</b>님이 <b>${h(teamName(m.halt.team))}</b>의 영어를 지적했습니다.`}
+        ${m.halt.team !== m.turn
+          ? `<br><span style="color:var(--amber)">지금은 ${h(teamName(m.turn))} 차례지만,
+             영어는 차례와 상관없습니다.</span>` : ''}<br>
         정말 영어를 썼나요? 다 같이 판단하고 눌러주세요.</div>
     </div>
     <div class="stack">
@@ -5449,7 +5471,7 @@ function vYut(){
     <div style="height:14px"></div>
     <div class="stack">
       <button class="btn pri" data-act="yut-score">🏆 순위 입력하기</button>
-      <button class="btn" data-act="yut-start">🔄 새 판</button>
+      <button class="btn" data-act="yut-restart-go">🔄 새 판</button>
       <button class="btn gh" data-act="yut-clear">🧹 정리 — 종료</button>
     </div>`;
 
@@ -5517,12 +5539,21 @@ function vYut(){
           out.push(`<button class="btn gh sm" data-act="yut-skip">턴 넘기기</button>`);
         /* ⚠️ 이 게임의 핵심 규칙이다 — 영어를 쓰면 말 하나가 집으로 돌아간다.
            다 같이 이 화면을 보고 있으니 **여기서 바로** 지적할 수 있어야 한다.
-           (각자 폰에도 같은 버튼이 있지만, 폰을 꺼내 홈까지 가야 하면 아무도 안 쓴다.) */
-        out.push(`<button class="btn dan sm" data-act="yut-halt-here"
-          >✋ 잠시! — ${h(teamName(t))}이 영어를 썼어요</button>`);
+           (각자 폰에도 같은 버튼이 있지만, 폰을 꺼내 홈까지 가야 하면 아무도 안 쓴다.)
+           ⚠️ **지금 차례인 팀만 지적할 수 있으면 안 된다** — 영어는 아무 때나 나온다.
+              2팀 차례에 1팀이 떠들면 1팀 말이 돌아가야 한다. 그래서 팀을 고르게 한다. */
+        out.push(`<div class="sec" style="margin:14px 0 8px">✋ 잠시! — 영어를 쓴 팀</div>
+          <div class="haltrow">${m.pieces.map((_, ti) => `
+            <button data-act="yut-halt-here" data-team="${ti}" style="--tc:${TEAM_COLORS[ti % TEAM_COLORS.length]}">
+              <span class="dot"></span>${h(teamName(ti))}
+              ${(m.penalty || {})[ti] ? `<span class="chip">${m.penalty[ti]}</span>` : ''}
+            </button>`).join('')}</div>`);
         return out.join('');
       })()}
     </div>
+
+    <button class="btn gh sm" data-act="yut-restart" style="width:100%;margin-top:12px">
+      🔄 처음부터 다시 시작</button>
 
     <div class="sec">기록</div>
     <div class="card"><div class="ylog">${(m.log || []).length
@@ -5582,10 +5613,14 @@ function vYutPhone(){
                  : '윷·모가 나오면 <b>한 번 더</b> 던집니다'}</p>`}
 
     ${!ended && !m.halt && !m.pick ? `
-      <div class="sec">영어를 썼나요?</div>
-      <button class="haltbtn" data-act="yut-halt">✋ 잠시!</button>
+      <div class="sec">✋ 잠시! — 영어를 쓴 팀</div>
+      <div class="haltrow">${m.pieces.map((_, ti) => ti === mt ? '' : `
+        <button data-act="yut-halt" data-team="${ti}" style="--tc:${TEAM_COLORS[ti % TEAM_COLORS.length]}">
+          <span class="dot"></span>${h(teamName(ti))}
+          ${(m.penalty || {})[ti] ? `<span class="chip">${m.penalty[ti]}</span>` : ''}
+        </button>`).join('')}</div>
       <p class="note" style="text-align:center;margin-top:9px">
-        상대팀이 영어를 쓰면 누르세요 — 인정되면 <b>그 팀이 말 1개를 골라</b> 집으로 돌려보냅니다.<br>
+        <b>차례와 상관없이</b> 누르세요 — 인정되면 <b>그 팀이 말 1개를 골라</b> 집으로 돌려보냅니다.<br>
         <span style="color:var(--dim2)">우리 팀은 지적할 수 없어요</span></p>` : ''}
 
     <div class="sec">기록</div>
@@ -6996,18 +7031,34 @@ async function act(a, d){
     const m = YT();
     if (!S.isHost) return;
     if (!m || m.phase !== 'play' || m.halt || m.pick) return;
-    m.halt = { by:S.pid, team:m.turn, at:now(), board:true };
+    const t = yutHaltTeam(m, d.team); if (t == null) return;
+    m.halt = { by:S.pid, team:t, at:now(), board:true };
     pushYut({ halt:m.halt });
     SFX.end(); vib([30,50,30]); render(true); break;
   }
   case 'yut-halt': {
     const m = YT();
-    if (!m || m.phase !== 'play' || m.halt) return;
-    if (myTeam() === m.turn) return toast('우리 팀은 지적할 수 없어요');
-    const payload = { by:S.pid, team:m.turn, at:now() };
+    if (!m || m.phase !== 'play' || m.halt || m.pick) return;
+    const t = yutHaltTeam(m, d.team); if (t == null) return;
+    if (myTeam() === t) return toast('우리 팀은 지적할 수 없어요');
+    const payload = { by:S.pid, team:t, at:now() };
     if (S.isHost){ m.halt = payload; pushYut({ halt:payload }); }
     else set(ref(db, `${ROOT}/rooms/${S.code}/yut/halt`), payload).catch(()=>{});
     SFX.end(); vib([30,50,30]); toast('✋ 잠시! — 태블릿에서 판단합니다'); break;
+  }
+  /* 🔄 재시작 — 말을 전부 집으로, 기록·벌점까지 처음부터. 팀과 말 모양은 그대로 둔다. */
+  case 'yut-restart': {
+    if (!S.isHost) return toast('말판은 진행자 기기에서 다시 시작해주세요');
+    S.ask = { emoji:'🔄', title:'윷판을 처음부터 다시 시작할까요?',
+      lose:['말 위치·기록·<b>영어 벌점이 전부 사라져요</b>',
+            '지금 판은 <b>순위에 반영되지 않아요</b>'],
+      safe:'팀과 말 모양은 그대로예요. 끝까지 두면 「순위 입력하기」로 올릴 수 있어요.',
+      ok:'처음부터 다시', go:'yut-restart-go' };
+    render(true); break;
+  }
+  case 'yut-restart-go': {
+    yutStart(); S.play.phase = 'play';
+    SFX.go(); confetti(40); toast('처음부터 다시 시작합니다'); render(true); break;
   }
 
   /* 🎵 노래 맞히기 */
