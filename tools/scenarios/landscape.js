@@ -53,14 +53,14 @@ if (new URLSearchParams(location.search).has('demo')){
           if (g.tool === 'smile'){ act('sm-sul', { pid:players()[1][0] }); }
         } catch(e){}
         show('play'); fits('★★진행 화면: ' + nm);
-        S.play = null;
+        stopPlayTimer(); S.play = null;
       }
 
       /* ⚠️ 덱 도구는 run 만 보면 놓친다 — 역할을 알려주는 **준비 화면**이 제일 길다.
             릴레이는 역할 카드가 얹혀서 실제로 넘쳤다. */
       S.gameId = 'relay'; go('game'); act('tool-start', {}); act('pl-start', {});
       show('play'); fits('★★릴레이 준비 화면이 한 화면에 들어간다');
-      S.play = null;
+      stopPlayTimer(); S.play = null;
 
       S.draft = { mode:'solo', order:players().map(([p])=>p), gameId:'quiz', weight:1 };
       show('score'); fits('★순위 입력이 한 화면에 들어간다');

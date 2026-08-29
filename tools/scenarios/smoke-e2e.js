@@ -694,6 +694,44 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('못 맞힌 문제는 by:null', S.play.log[0].by === null && S.play.log.length === 1);
       ck('  넘어가면 다음 문제', S.play.phase === 'run');
 
+      /* ── ⏱ 생각 시간 5초 — 다 되면 진행자가 안 눌러도 정답이 나온다 ──
+         사장님 지시: "이거 게임 5초로 바로 결과 나오게 해줘" */
+      {
+        ck('★★기본 생각 시간이 5초다', S.play.sec === 5);
+        const runH = view('play');
+        ck('  진행 화면에 남은 시간이 보인다',
+          runH.includes('id="t-sec"') && runH.includes('id="t-bar"'));
+        ck('  시간이 다 되면 정답이 나온다고 알려준다', runH.includes('정답이 자동으로'));
+        ck('★문제가 뜨면 타이머가 돈다', !!S.play._t && S.play.left === 5);
+
+        /* 시간이 다 됐을 때 — 진행자가 아무것도 안 눌러도 정답 단계로 간다 */
+        quizAutoShow();
+        ck('★★5초가 지나면 정답이 자동 공개된다', S.play.phase === 'reveal');
+        ck('  그때 정답이 화면에 뜬다', view('play').includes(S.play.cur.a));
+        ck('★공개되면 타이머는 멈춘다', !S.play._t);
+
+        /* 먼저 맞혔으면 기다릴 필요가 없다 — 직접 공개하면 타이머가 끊긴다 */
+        act('quiz-hit', { pid:P[2] });
+        ck('  다음 문제에서 타이머가 다시 돈다', S.play.phase === 'run' && !!S.play._t);
+        act('quiz-show', {});
+        ck('★★직접 공개하면 타이머가 끊긴다', S.play.phase === 'reveal' && !S.play._t);
+        act('quiz-undo', {});
+        ck('  되돌려도 정답이 보이는 채로 시간이 안 흐른다',
+          S.play.phase === 'reveal' && !S.play._t);
+
+        /* 「끄기」면 진행자가 누를 때까지 정답이 안 나온다 */
+        act('quiz-hit', { pid:P[2] });
+        act('quiz-sec', { v:'0' });
+        ck('★생각 시간을 끄면 타이머가 안 돈다', S.play.sec === 0 && !S.play._t);
+        ck('  그 상태에서도 정답은 아직 안 나온다',
+          S.play.phase === 'run' && !view('play').includes(S.play.cur.a));
+        act('quiz-sec', { v:'5' });
+        ck('  다시 켜면 그 자리에서 돈다', S.play.sec === 5 && !!S.play._t);
+        /* 뒤 검사가 이어지도록 「못 맞힌 1문제」 상태로 되돌려 둔다 */
+        S.play.log = [{ w:'세계에서 가장 긴 강은?', a:'나일강', c:'world', by:null }];
+        S.play.n = 3;
+      }
+
       /* 목표 수를 채우면 자동 종료 */
       act('quiz-show', {}); act('quiz-hit', { pid:P[2] });
       act('quiz-show', {}); act('quiz-hit', { pid:P[2] });

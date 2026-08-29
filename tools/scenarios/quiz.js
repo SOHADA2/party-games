@@ -3,6 +3,8 @@
  *   ?demo=1&v=<단계>   단계: setup · run · reveal · done
  *   ?cat=<범위>        한 범위만 켜서 본다(길이 최악 케이스 확인용)
  *   ?q=long            가장 긴 문제(37자)를 강제로 띄운다 — 넘침 확인
+ *   ?sec=<초>          생각 시간. **스냅샷 기본은 0(끄기)** — 안 그러면 헤드리스 가상시간이
+ *                      5초를 훌쩍 넘겨서 run 을 찍으려 해도 정답이 이미 공개돼 있다.
  *
  * ⚠️ 이 게임은 화면을 **다 같이** 본다(.priv 없음). 그래서 태블릿 폭으로도 찍어볼 것:
  *   node tools/shot.mjs "/_demo.html?demo=1&v=run" -w 1024 -h 768
@@ -20,6 +22,7 @@ if (new URLSearchParams(location.search).has('demo')){
   if (v !== 'setup'){
     const P = playing().map(([pid]) => pid);
     S.play.n = Number(q.get('n') || 8);
+    S.play.sec = q.get('sec') != null ? Number(q.get('sec')) : 0;
     if (q.get('cat')) S.play.cats = [q.get('cat')];
     act('quiz-start', {});
     // 한 문제는 맞히고 넘겨서 「직전」 줄까지 나오게 한다

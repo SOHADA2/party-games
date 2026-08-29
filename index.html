@@ -1201,7 +1201,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.33.0';
+const APP_VERSION = 'v0.34.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -4474,7 +4474,8 @@ function startQuizTool(){
   S.play = {
     gameId:S.gameId, kind:'quiz', phase:'setup',
     cats:[...QUIZ_CATS], n:15,
-    deck:[], di:0, cur:null, log:[], _t:null,
+    sec:5,                       // 생각 시간(초). 0 이면 진행자가 직접 공개한다
+    left:0, deck:[], di:0, cur:null, log:[], _t:null,
   };
   go('play');
 }
@@ -4498,7 +4499,15 @@ function quizNextCard(){
 function quizNext(){
   const p = S.play;
   if (p.log.length >= p.n) quizFinish();
-  else { quizNextCard(); p.phase = 'run'; render(true); }
+  else { quizNextCard(); p.phase = 'run'; render(true); startCountdown(quizAutoShow); }
+}
+/* 시간이 다 되면 진행자가 안 눌러도 정답이 나온다 — 「바로 결과」 */
+function quizAutoShow(){
+  const p = S.play;
+  if (!p || p.kind !== 'quiz' || p.phase !== 'run') return;
+  stopPlayTimer();                       // 어디서 불려도 시간이 계속 흐르면 안 된다
+  p.phase = 'reveal'; p.left = 0;
+  SFX.end(); vib([30,50,30]); render(true);
 }
 function quizFinish(){
   const p = S.play;
@@ -4607,16 +4616,35 @@ function nextWord(){
 function stopPlayTimer(){ if (S.play?._t){ clearInterval(S.play._t); S.play._t = null; } }
 
 function renderTimer(){
-  const p = S.play; if (!p || p.phase !== 'run') return;
+  const p = S.play; if (!p || p.phase !== 'run' || !p.sec) return;
   const bar = document.getElementById('t-bar'), sec = document.getElementById('t-sec');
   if (!bar || !sec) return;
   const pct = Math.max(0, p.left / p.sec) * 100;
   bar.style.width = pct + '%';
   const s = Math.max(0, Math.ceil(p.left));
   if (sec.textContent !== s + '초') sec.textContent = s + '초';
-  const warn = p.left <= 10;
+  // ⚠️ 경고 구간을 10초로 고정하면 5초 타이머는 처음부터 끝까지 빨갛다 — 길이에 비례시킨다
+  const warn = p.left <= Math.min(10, p.sec * 0.4);
   bar.parentElement.classList.toggle('warn', warn);
   sec.classList.toggle('warn', warn);
+}
+
+/* 생각 시간 카운트다운 — 다 되면 onEnd() 를 부른다(상식 퀴즈의 자동 정답 공개).
+   ⚠️ p.left 는 **renderSig() 에 넣지 않는다** — 매 틱 전체 재렌더가 돌아 화면이 깜빡인다.
+      숫자는 renderTimer() 가 #t-sec / #t-bar 를 직접 갈아끼운다(200ms). */
+function startCountdown(onEnd){
+  const p = S.play;
+  stopPlayTimer();
+  if (!p || !p.sec) return;              // 「끄기」면 타이머 없이 진행자가 직접 공개한다
+  p.left = p.sec;
+  let lastTick = Math.ceil(p.left);
+  p._t = setInterval(() => {
+    p.left -= 0.2;
+    const t = Math.ceil(p.left);
+    if (t !== lastTick){ lastTick = t; if (t > 0 && t <= 5) SFX.tick(); }
+    if (p.left <= 0){ stopPlayTimer(); onEnd(); return; }
+    renderTimer();
+  }, 200);
 }
 
 function beginTurn(){
@@ -5905,8 +5933,18 @@ function vQuiz(){
 
     <div class="sec">문제 수</div>
     ${nPicker('quiz-n', p.n, usable, [5,10,15,20,30])}
-    <p class="note" style="margin:0 4px">한 문제에 대략 30초 —
-      <b>${p.n}문제면 ${Math.max(1, Math.round(Math.min(p.n, usable) * 0.5))}분쯤</b> 걸려요.</p>
+    <p class="note" style="margin:0 4px 16px">한 문제에 대략 ${p.sec ? p.sec + 20 : 30}초 —
+      <b>${p.n}문제면 ${Math.max(1, Math.round(Math.min(p.n, usable) * (p.sec ? p.sec + 20 : 30) / 60))}분쯤</b> 걸려요.</p>
+
+    <div class="sec">생각 시간</div>
+    <div class="seg">
+      ${[5,10,15,0].map(x => `<button data-act="quiz-sec" data-v="${x}"
+        class="${p.sec===x?'on':''}">${x ? x + '초' : '끄기'}</button>`).join('')}
+    </div>
+    <p class="note" style="margin:0 4px">${p.sec
+      ? `문제가 뜨고 <b>${p.sec}초</b>가 지나면 <b>정답이 자동으로 나옵니다.</b>
+         먼저 맞혔으면 「정답 공개」를 눌러 바로 넘어가세요.`
+      : '진행자가 「정답 공개」를 누를 때까지 <b>정답이 안 나옵니다.</b> 천천히 생각할 때 쓰세요.'}</p>
 
     </div><div>
     <div class="sec">출제 범위 <span class="n">${usable}문제</span></div>
@@ -5993,6 +6031,12 @@ function vQuiz(){
       <span class="t">🧠 상식 퀴즈</span>
       <span class="r">${p.log.length + 1} / ${p.n}</span>
     </div>
+    ${p.sec && !revealing ? `
+      <div class="tbar"><i id="t-bar" style="width:${Math.max(0, (p.left||0) / p.sec) * 100}%"></i></div>
+      <div class="trow">
+        <div class="tsec" id="t-sec">${Math.max(0, Math.ceil(p.left||0))}초</div>
+        <div class="thit">시간이 다 되면 정답 공개</div>
+      </div>` : ''}
     ${lastHtml}
 
     <div class="wcard${revealing ? ' rv' : ''}">
@@ -6028,7 +6072,8 @@ function vQuiz(){
            <button class="btn gh sm" data-act="quiz-done" style="width:100%">지금 끝내기</button>
          </div>
          <p class="note" style="text-align:center;margin:11px 0 0">
-           아는 사람이 <b>소리쳐서</b> 답하세요 · 공개하면 다 같이 보고 판정합니다</p>`}
+           아는 사람이 <b>소리쳐서</b> 답하세요 ·
+           ${p.sec ? `<b>${p.sec}초</b> 뒤에 정답이 자동으로 나옵니다` : '공개하면 다 같이 보고 판정합니다'}</p>`}
     </div></div>`;
 }
 
@@ -7075,12 +7120,18 @@ async function act(a, d){
     if (!p.deck.length) return toast('그 범위에는 낼 문제가 없어요 — 범위를 더 골라주세요');
     if (p.wrapped) toast('문제를 한 바퀴 다 썼어요 — 처음부터 다시 돕니다');
     quizNextCard(); p.phase = 'run';
-    SFX.go(); vib(20); render(true); break;
+    SFX.go(); vib(20); render(true); startCountdown(quizAutoShow); break;
   }
   /* ⚠️ 정답 공개가 먼저다 — 그 다음에 누가 맞혔는지 고른다(위 설계 주석 참조) */
   case 'quiz-show': {
     const p = S.play; if (p.phase !== 'run') return;
+    stopPlayTimer();                       // 진행자가 먼저 눌렀으면 카운트다운은 끝난다
     p.phase = 'reveal'; SFX.pass(); vib(8); render(true); break;
+  }
+  case 'quiz-sec': {
+    S.play.sec = Math.max(0, Number(d.v) || 0);
+    if (S.play.phase === 'run') startCountdown(quizAutoShow);
+    render(true); break;
   }
   case 'quiz-hit': {
     const p = S.play; if (p.phase !== 'reveal') return;
@@ -7096,6 +7147,7 @@ async function act(a, d){
     // 다른 사람을 잘못 눌렀을 때 — 정답이 뜬 상태(reveal)로 되돌려 다시 고르게 한다
     const p = S.play;
     const x = p.log.pop(); if (!x) return;
+    stopPlayTimer();                       // 되돌아간 곳은 정답이 보이는 화면이라 시간이 흐르면 안 된다
     p.cur = { w:x.w, a:x.a, c:x.c }; p.phase = 'reveal';
     SFX.pass(); vib(8); render(true); break;
   }
