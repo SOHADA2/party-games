@@ -85,11 +85,32 @@ if (has('--dom')){
   const child = spawn(EDGE, [
     '--headless=new', '--disable-gpu', '--no-sandbox', `--user-data-dir=${ud}`,
     `--remote-debugging-port=${port}`, '--remote-allow-origins=*',
-    '--window-size=420,900', `http://localhost:${PORT}${path}`,
+    /* ⚠️ 크기를 고정하지 말 것 — 가로 태블릿 레이아웃 검사(landscape·yut-verify)는
+          창이 가로여야 돌아간다. CDP 로 바꿔 쓰면서 한 번 고정값으로 굳었었다. */
+    `--window-size=${W},${H}`, `http://localhost:${PORT}${path}`,
   ], { stdio:'ignore' });
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
-  const kill = async () => { try{ child.kill('SIGKILL'); }catch{} await sleep(300); await rm(ud, { recursive:true, force:true }).catch(()=>{}); };
+  /* ⚠️ 크로미움은 **자식 프로세스를 여럿 띄운다.** 부모만 죽이면 나머지가 그대로 남는다.
+        `--dom` 을 수십 번 돌리고 나면 msedge 가 수백 개 쌓이고, 그때부터
+        **스크린샷이 조용히 실패한다**(`✔` 는 찍히는데 png 가 안 생긴다).
+        윈도우는 **프로필 폴더로 골라서**, 그 외는 프로세스 그룹으로 죽인다. */
+  const killTree = () => new Promise(res => {
+    if (process.platform !== 'win32'){
+      try{ process.kill(-child.pid, 'SIGKILL'); }catch{ try{ child.kill('SIGKILL'); }catch{} }
+      return res();
+    }
+    /* ⚠️ pid 로는 못 잡는다 — msedge.exe 는 **자기가 띄운 새 프로세스에 일을 넘기고 먼저 죽는다.**
+          그래서 `taskkill /T` 가 이미 없는 부모를 죽이고 끝난다. 대신 **이번 실행만의
+          프로필 폴더**(`--user-data-dir`)를 명령줄에 달고 있는 것만 골라 죽인다.
+          사용자가 평소 쓰는 브라우저는 이 폴더를 모르므로 안전하다. */
+    const ps = `Get-CimInstance Win32_Process -Filter "Name='msedge.exe' or Name='chrome.exe'" `
+      + `| Where-Object { $_.CommandLine -like '*${ud}*' } `
+      + `| ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`;
+    execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps],
+      { timeout: 20000 }, () => res());
+  });
+  const kill = async () => { await killTree(); try{ child.kill('SIGKILL'); }catch{} await sleep(300); await rm(ud, { recursive:true, force:true }).catch(()=>{}); };
 
   // 디버깅 포트가 열릴 때까지, 그리고 우리 페이지 탭이 잡힐 때까지
   let target = null;

@@ -658,7 +658,19 @@ if (new URLSearchParams(location.search).has('demo')){
     /* ★ 정답 누출 — 진행 화면 어디에도 원문이 있으면 안 된다 */
     const runHtml = view('play');
     ck('★진행 화면에 초성이 뜬다', runHtml.includes(cho(S.play.cur.w)));
-    ck('★★진행 화면에 정답이 없다', !runHtml.includes(S.play.cur.w));
+    /* ⚠️ 뽑힌 낱말 **하나**만 보면 무작위로 통과/실패가 갈린다(실제로 그랬다).
+       덱 전체를 돌려 「어떤 낱말이 걸려도 안 새는가」를 본다. */
+    /* ⚠️ 화면에는 참가자 이름도 있다. 테스트 봇 이름이 동물이라 「다람쥐」가 제시어로 뽑히면
+       **정답이 아니라 이름 때문에** 걸린다 — 그래서 제시어와 무관한 기준 화면을 먼저 떠서 뺀다. */
+    const _keepCur = S.play.cur, _leak = [];
+    S.play.cur = { ...S.play.cur, w:' 없는낱말 ' };
+    const _base = view('play');
+    for (const it of S.play.deck){
+      S.play.cur = it;
+      if (view('play').includes(it.w) && !_base.includes(it.w)) _leak.push(it.w);
+    }
+    S.play.cur = _keepCur;
+    ck('★★진행 화면에 정답이 없다' + (_leak.length ? ' — 새는 낱말 ' + _leak.slice(0,6).join('/') : ''), !_leak.length);
     ck('★.priv 를 안 붙였다 (전원이 봐야 하는 화면)', !/wcard[^"]*priv/.test(runHtml));
 
     /* 맞히면 +1 하고 바로 다음 문제 */
@@ -879,7 +891,7 @@ if (new URLSearchParams(location.search).has('demo')){
     const bd = view('board');
     ck('★리더보드가 안 죽음', bd.includes('종합') || bd.includes('점'));
     ck('★알 수 없는 게임은 id로 표시', bd.includes('mafia'));
-    ck('gcVars 기본색 폴백', gcVars(undefined).startsWith('--gc:#8B87A6'));
+    ck('gcVars 기본색 폴백', gcVars(undefined).startsWith('--gc:#8A8279'));
     delete S.room.scores.zz_old;
 
     /* ── 8) ★ 사회자(관전) 기기 — 태블릿을 공용 화면으로 세워둘 때 ──
