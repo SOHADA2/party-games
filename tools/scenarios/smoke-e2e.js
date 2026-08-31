@@ -1146,6 +1146,71 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('  확인하면 지워진다', Object.keys(S.room.scores).length === 0);
     }
 
+    /* ★★★ 진행자(호스트)를 다른 기기로 넘긴다 — 태블릿이 「화면」만 되던 문제
+       ⚠️ 진행자 = 점수·순서·게임 도구가 **돌아가는 기기**. 사회자(화면) 와는 다른 것이라
+          방을 폰으로 만들면 태블릿은 화면만 되고 도구는 폰에 남았다(사장님 지적). */
+    {
+      const P = players().map(([pid]) => pid);
+      const other = P.find(x => x !== 'h1');
+
+      /* 진행자 기기에는 넘겨받기 버튼이 없다 */
+      S.isHost = true; S.pid = 'h1'; S.room.host = 'h1'; S.play = null;
+      ck('★진행자 기기에는 「넘겨받기」가 없다', !view('lobby').includes('data-act="host-take"'));
+
+      /* 참가자 기기에는 지금 진행자가 누구인지와 넘겨받기가 보인다 */
+      S.pid = other; S.isHost = false;
+      const lb = view('lobby');
+      ck('★★참가자 기기에 지금 진행자가 누구인지 보인다',
+        lb.includes('🎛 진행자') && lb.includes(pname('h1')));
+      ck('★★거기서 바로 넘겨받을 수 있다', lb.includes('data-act="host-take"'));
+
+      /* 진행 중인 도구가 있으면 못 넘긴다 — 그 판이 통째로 사라지기 때문 */
+      S.play = { kind:'deck', gameId:'body', phase:'run' };
+      act('host-take', {});
+      ck('★★진행 중인 게임이 있으면 안 넘어간다', !S.ask && S.isHost === false);
+      S.play = null;
+
+      /* 경고창 → 확인 */
+      act('host-take', {});
+      ck('★넘기기 전에 경고창이 뜬다', !!S.ask && S.ask.go === 'host-take-go');
+      ck('  무엇이 바뀌는지 적혀 있다',
+        (S.ask.lose || []).join(' ').includes('일반 참가자'));
+      globalThis.__W = [];
+      act('ask-yes', {});
+      ck('★★★이 기기가 진행자가 된다', S.isHost === true && S.room.host === S.pid);
+      ck('★★서버에도 host 를 올린다',
+        (globalThis.__W || []).some(x => x[2] && x[2].host === S.pid));
+      ck('★★옛 진행자 표시도 같이 내린다 (진행자가 둘로 보이지 않게)',
+        (globalThis.__W || []).some(x => x[2] && x[2]['players/h1/host'] === null)
+        && S.room.players.h1.host === false);
+      ck('  참가자 목록에 진행자는 한 명뿐이다',
+        Object.entries(S.room.players).filter(([pid,p]) => p.host || pid === S.room.host).length === 1);
+
+      /* 옛 진행자 기기는 스냅샷을 받는 순간 내려와야 한다 */
+      const keepPid = S.pid;
+      S.pid = 'h1'; S.isHost = true;                       // 옛 진행자 흉내
+      S.play = { kind:'deck', gameId:'body', phase:'run' }; S.view = 'play';
+      applySnapshot({ createdAt:1, host:keepPid, status:'lobby',
+        players:S.room.players, teams:S.room.teams, scores:S.room.scores,
+        rotation:S.room.rotation, used:S.room.used, yut:null });
+      ck('★★★옛 진행자는 스냅샷을 받는 순간 내려온다', S.isHost === false);
+      ck('★★옛 기기에 남아 있던 도구 화면도 닫는다 (혼자 진행하는 척하지 않게)',
+        !S.play && S.view !== 'play');
+
+      /* 태블릿 통합 — 진행자 + 사회자(화면)를 한 번에 */
+      S.pid = keepPid; S.isHost = false; S.room.host = 'h1';
+      S.room.players[keepPid].spec = false;
+      act('host-take', { spec:'1' }); act('ask-yes', {});
+      ck('★★★「이 태블릿으로 진행하기」는 진행자와 사회자(화면)를 한 번에 켠다',
+        S.isHost === true && isSpec(S.room.players[keepPid]) === true);
+      ck('  사회자가 됐으니 팀에서도 빠진다', S.room.teams.assign[keepPid] == null);
+
+      /* 원래대로 */
+      S.room.players[keepPid].spec = false;
+      S.pid = 'h1'; S.isHost = true; S.room.host = 'h1';
+      S.room.players.h1.host = true;
+    }
+
     /* ── 9) 정리 ── */
     ck('타이머 정리', S.play === null || !S.play._t);
     ck('봇 정리', (clearBots() > 0) && players().length === 1);

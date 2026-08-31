@@ -16,6 +16,9 @@ if (new URLSearchParams(location.search).has('demo')){
   const L = []; let bad = 0;
   const say = (...a) => L.push(a.join(' '));
   const ck  = (label, cond) => { if (!cond) bad++; L.push(label + ': ' + (cond ? 'OK' : '✕FAIL')); return cond; };
+  /* ⚠️ 본문이 async 다 — 던지기 **연출이 끝나야** 판에 반영되는 경로(yutConsume)를
+        기다려서 봐야 하기 때문이다. shot.mjs 는 제목에 합격/실패 표시가 뜰 때까지 기다린다. */
+  (async () => {
   try{
     S.pid = 'h1'; S.code = '0000'; S.isHost = true; S.online = true;
     S.room = emptyRoom(); S.room.host = 'h1';
@@ -189,6 +192,74 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('★★각각 원하는 말에 나눠 준다',
         m().pieces[0].filter(x => x === 1).length === 1
         && m().pieces[0].filter(x => x === 4).length === 1);
+    }
+
+    /* ★★★ 폰에서 던진 것이 태블릿 판까지 실제로 이어지는가 (두 기기 배선 전 구간)
+       ⚠️ **네트워크 자체는 안 탄다** — 검증 사본은 Firebase 를 막는다. 대신 앱이 서버로
+          **보내려 한 내용을 기록**해서, 그걸 그대로 호스트 쪽에 흘려넣어 판까지 따라간다.
+          「폰이 올바른 곳에 올바른 걸 쓰는가」 → 「호스트가 판에 반영하는가」 →
+          「반영된 것이 폰의 전달 표시로 돌아오는가」 세 토막을 이어서 본다. */
+    {
+      act('yut-start', {});
+      const M = m(); M.turn = 0;
+      const me = Object.entries(S.room.teams.assign).find(([, t]) => Number(t) === 0)[0];
+      const keepPid = S.pid, keepHost = S.isHost;
+
+      /* (1) 참가자 폰이 된다 — 호스트가 아니고, 지금 차례인 1팀 사람이다 */
+      S.pid = me; S.isHost = false; S.view = 'yut';
+      globalThis.__W = [];
+      act('yut-throw', {});
+
+      const w = (globalThis.__W || []).filter(x => x[0] === 'set' && /yut\/throw$/.test(x[1] || ''));
+      ck('★★★폰이 서버의 yut/throw 로 올린다', w.length === 1);
+      const payload = w[0] && w[0][2];
+      ck('  올린 내용에 결과·던진 사람·시각이 다 있다',
+        !!payload && typeof payload.n === 'string' && typeof payload.v === 'number'
+        && payload.by === me && typeof payload.at === 'number'
+        && Array.isArray(payload.sticks) && payload.sticks.length === 4);
+      ck('★★참가자는 판(pieces·turn)에 직접 쓰지 않는다',
+        !(globalThis.__W || []).some(x => x[2] && (x[2].pieces || x[2].turn !== undefined)));
+      ck('  폰이 「보내는 중」을 띄운다', !!S.yutSent && S.yutSent.at === payload.at);
+      ck('  아직 판은 그대로다 (호스트가 반영하기 전)', (m().pending || []).length === 0);
+
+      /* (2) 태블릿(호스트)이 받는다 — subscribe 가 스냅샷에서 하는 일과 같다 */
+      S.pid = keepPid; S.isHost = true;
+      m().throw = payload;
+      /* ⚠️ 던지는 연출이 도는 동안에는 yutConsume 이 **일부러 아무것도 안 한다**
+         (연출이 겹치면 판이 꼬인다). 진짜 앱에서는 다음 스냅샷에서 다시 부른다 —
+         그 되풀이까지 그대로 흉내 낸다. 한 번만 불러 보고 「안 된다」고 하면 오진이다. */
+      let tries = 0;
+      for (; tries < 80 && !m().last; tries++) await (yutConsume() || sleep(60));
+      ck('  연출 중이면 미뤘다가 다음 기회에 반영한다 (되풀이 호출이 먹힌다)', tries < 80);
+      const M2 = m();
+      ck('★★★태블릿이 받아서 판에 올린다',
+        (M2.pending || []).length === 1 && M2.pending[0].n === payload.n);
+      ck('★★받은 뒤 throw 를 지운다 (같은 던지기가 되풀이되지 않게)', !M2.throw);
+      ck('  기록에도 「누가 무엇을」이 남는다', (M2.log || []).some(x => x.includes(payload.n)));
+
+      /* (3) 반영된 결과가 **던진 폰의 전달 표시**로 돌아온다 */
+      ck('★★★던진 시각이 그대로 돌아온다 (폰이 도착을 아는 유일한 열쇠)',
+        !!M2.last && M2.last.at === payload.at);
+      S.pid = me; S.isHost = false;
+      const ph = view('yut');
+      ck('★★★폰에 「태블릿 판에 올라갔어요」가 뜬다',
+        ph.includes('deliv ok') && ph.includes('판에 올라갔'));
+
+      /* 못 받은 경우 — 조용히 넘어가면 안 된다(그게 「연동되는지 모르겠다」의 정체였다) */
+      S.yutSent = { at: payload.at - 999999, n:'윷', ok:null };
+      const ph2 = view('yut');
+      ck('★★★안 올라가면 「태블릿이 못 받았어요」로 바뀐다',
+        ph2.includes('deliv bad') && ph2.includes('못 받았'));
+      S.yutSent = { at: now(), n:'윷', ok:false };
+      ck('  올리기 자체가 실패하면 곧바로 알려준다', view('yut').includes('deliv bad'));
+      S.yutSent = null;
+
+      /* 진행자 기기가 꺼져 있으면 던져도 소용없다 — 던지기 전에 알려준다 */
+      const hp = S.room.players[S.room.host], keepSeen = hp.seen;
+      hp.seen = 1;
+      ck('★★진행자 기기가 끊기면 폰이 먼저 경고한다', view('yut').includes('진행자 기기가 끊겨'));
+      hp.seen = keepSeen;
+      S.pid = keepPid; S.isHost = keepHost;
     }
 
     /* ★★ 집(아직 안 낸 말) — 버튼이 아니라 **실제 말을 눌러서** 내보낸다 */
@@ -527,4 +598,5 @@ if (new URLSearchParams(location.search).has('demo')){
   document.title = L.join('\n');
   document.body.innerHTML = '<pre style="white-space:pre-wrap;font:12px/1.6 monospace;padding:14px">'
     + L.join('\n').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</pre>';
+  })();
 }

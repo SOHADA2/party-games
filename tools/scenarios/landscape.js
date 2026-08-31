@@ -36,6 +36,11 @@ if (new URLSearchParams(location.search).has('demo')){
         ck(label + (o ? ` (넘침 ${o}px)` : ''), o <= (tol ?? 12)); };
 
       show('lobby'); fits('★★대기실이 한 화면에 들어간다');
+      /* ⚠️ 태블릿이 **아직 진행자가 아닐 때**가 진짜 상황이다 — 그때만 「진행자 넘겨받기」
+         카드와 「이 태블릿으로 진행하기」가 같이 뜬다. 그쪽이 더 길다. */
+      { const keep = S.isHost; S.isHost = false; S.room.host = players()[1][0];
+        show('lobby'); fits('★★넘겨받기 카드가 떠도 대기실이 한 화면에 들어간다');
+        S.isHost = keep; S.room.host = 'h1'; }
 
       /* 진행 도구 — 「다 같이 보는」 화면이다. 여기가 넘치면 게임이 안 굴러간다. */
       for (const g of GAMES){

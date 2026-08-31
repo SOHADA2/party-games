@@ -33,9 +33,12 @@ const STUBS = {
   initializeApp: '() => ({})',
   getDatabase:   '() => ({})',
   ref:           '(...a) => ({ _p:a.slice(1).join("/") })',
-  set:      '() => Promise.resolve()',
-  update:   '() => Promise.resolve()',
-  remove:   '() => Promise.resolve()',
+  /* ⚠️ 그냥 삼키지 않고 **무엇을 어디에 썼는지 기록**한다.
+        「폰이 서버에 제대로 올렸는가」를 검사에서 확인할 수 있어야 하기 때문이다
+        (네트워크 자체는 여전히 안 탄다 — 기록되는 건 앱이 보내려 한 내용이다). */
+  set:      '(r, v) => { (globalThis.__W ||= []).push(["set", r && r._p, v]); return Promise.resolve(); }',
+  update:   '(r, v) => { (globalThis.__W ||= []).push(["update", r && r._p, v]); return Promise.resolve(); }',
+  remove:   '(r) => { (globalThis.__W ||= []).push(["remove", r && r._p]); return Promise.resolve(); }',
   push:     '() => Promise.resolve()',
   get:      '() => Promise.resolve({ val: () => null, exists: () => false })',
   onValue:  '() => () => {}',
