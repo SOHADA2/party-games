@@ -1404,7 +1404,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.39.0';
+const APP_VERSION = 'v0.39.1';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -3803,7 +3803,7 @@ const GAMES = [
 `화면에 <b>초성만</b> 뜬다. 먼저 맞히는 사람이 1점.
 
 <b>진행</b>
-· 폰이나 태블릿을 가운데 두고 <b>다 같이 화면을 봅니다.</b>
+· <b>진행자 기기</b>(폰·태블릿·노트북 아무거나)를 가운데 두고 다 같이 화면을 봅니다.
 · 초성을 보고 아는 사람이 <b>소리쳐서</b> 답합니다. 손 들 필요도 없어요.
 · 진행자가 맞힌 사람을 탭하면 1점이 오르고 <b>바로 다음 문제</b>로 넘어갑니다.
 · 아무도 못 맞히겠으면 <b>「아무도 못 맞힘」</b> — 정답을 보여주고 넘어갑니다.
@@ -3838,7 +3838,7 @@ const GAMES = [
 `화면에 <b>상식 문제</b>가 뜬다. 먼저 맞히는 사람이 1점.
 
 <b>진행</b>
-· 폰이나 태블릿을 가운데 두고 <b>다 같이 화면을 봅니다.</b>
+· <b>진행자 기기</b>(폰·태블릿·노트북 아무거나)를 가운데 두고 다 같이 화면을 봅니다.
 · 문제를 보고 아는 사람이 <b>소리쳐서</b> 답합니다. 손 들 필요도 없어요.
 · 진행자가 <b>「정답 공개」</b>를 누르면 정답이 뜹니다.
 · 정답을 다 같이 보고 <b>맞힌 사람을 탭</b>하면 1점, 바로 다음 문제로 넘어갑니다.
@@ -3881,7 +3881,7 @@ const GAMES = [
 <b>★ 사회자가 꼭 필요합니다</b>
 · 노래를 틀려면 <b>곡 제목을 볼 수밖에 없습니다.</b> 트는 사람은 답을 다 알게 돼요.
 · 그래서 <b>겨루지 않는 사람 한 명</b>이 폰을 맡아야 합니다.
-· ⚠️ <b>이 게임만은 태블릿을 가운데 두지 마세요.</b> 정답이 화면에 있습니다 —
+· ⚠️ <b>이 게임만은 진행자 기기를 가운데 두지 마세요.</b> 정답이 화면에 있습니다 —
   사회자가 자기 폰으로 진행하세요.
 
 <b>진행</b>
@@ -3912,14 +3912,14 @@ const GAMES = [
   },
   {
     id:'yut', name:'훈민정음 윷놀이', emoji:'🎲', color:'#8878AE', mode:'team', weight:2,
-    role:null, mc:'help', mcWhy:'말판은 다 같이 보는 화면이라 아무나 조작해도 된다 — 태블릿을 가운데 두세요',
-    tag:'팀전 · 태블릿 말판 + 각자 폰', tool:'yut', toolLabel:'▶ 판 깔고 시작',
+    role:null, mc:'help', mcWhy:'말판은 다 같이 보는 화면이라 아무나 조작해도 된다 — 진행자 기기를 가운데 두세요',
+    tag:'팀전 · 진행자 화면 말판 + 각자 폰', tool:'yut', toolLabel:'▶ 판 깔고 시작',
     line:'윷을 던져 말을 옮기는데, 영어를 쓰면 말이 처음으로 돌아간다.',
-    prep:'태블릿(말판) · 각자 폰', minP:4, mins:'20~30분',
+    prep:'진행자 기기(말판) · 각자 폰', minP:4, mins:'20~30분',
     how:[
-      '태블릿을 가운데 두고 말판을 띄운다 — 각자 폰으로 접속한다',
+      '진행자 기기를 가운데 두고 말판을 띄운다 — 각자 폰으로 접속',
       '자기 팀 차례가 되면 폰에서 윷을 던진다',
-      '태블릿에서 움직일 말을 골라 옮긴다 (같은 칸 말은 업고 간다)',
+      '진행자 화면에서 움직일 말을 골라 옮긴다 (같은 칸 말은 업고 간다)',
       '영어를 쓴 사람이 있으면 상대팀이 폰에서 「✋ 잠시!」를 누른다',
     ],
     win:'말 4개를 먼저 다 완주시킨 팀이 이긴다',
@@ -3933,7 +3933,8 @@ const GAMES = [
 · 영어였는지 아닌지는 <b>다 같이 판단</b>하고, 진행자가 인정/취소를 누릅니다.
 
 <b>기기</b>
-· <b>태블릿</b>을 가운데 두고 말판을 띄웁니다. 말은 여기서 옮겨요.
+· <b>진행자 기기</b>(태블릿·노트북·남는 폰 아무거나)를 가운데 두고 말판을 띄웁니다.
+  말은 여기서 옮겨요.
 · <b>각자 폰</b>으로 같은 방에 들어와 자기 차례에 윷을 던집니다.
 · 폰에는 「✋ 잠시!」 버튼이 늘 떠 있습니다.
 
@@ -5371,8 +5372,10 @@ function vLobby(){
     <!-- ⚠️ 「진행자」와 「사회자(화면)」는 **다른 것**이라 헷갈렸다(사장님 지적).
          · 진행자 = 점수·순서·게임 도구가 **돌아가는 기기**(방을 만든 기기가 기본)
          · 사회자(화면) = 겨루지 않고 **화면만 보여주는 기기**
-         태블릿을 상에 두고 쓰려면 **둘 다** 태블릿이어야 하는데 방을 폰으로 만들면
-         태블릿은 화면만 되고 도구는 폰에 남았다. 그래서 **넘길 수 있게** 했다.
+         가운데 둘 기기로 쓰려면 **둘 다** 그 기기여야 하는데 방을 폰으로 만들면
+         가운데 둔 기기는 화면만 되고 도구는 폰에 남았다. 그래서 **넘길 수 있게** 했다.
+         ⚠️ 화면 글에 「태블릿」이라고 쓰지 말 것 — **노트북·남는 폰도 똑같이 쓴다**(사장님 지적).
+            부르는 이름은 **진행자 기기 / 진행자 화면**으로 통일한다.
          ⚠️ 넘겨받는 길은 **하나만** 둔다. 카드와 큰 버튼을 같이 띄웠더니 같은 일을 하는
             것이 둘이 되어 가로 태블릿에서 대기실이 150px 넘쳤다(실측). -->
     ${S.isHost
@@ -5382,8 +5385,9 @@ function vLobby(){
       ? `<button class="instbn" style="margin-top:12px" data-act="host-take" data-spec="1">
           <div class="instbn-ic">📺</div>
           <div style="flex:1;min-width:0">
-            <div class="instbn-t">이 태블릿으로 진행하기</div>
-            <div class="instbn-s">지금은 ${h(pname(S.room.host) || '다른 기기')}님 기기가 진행자예요 —
+            <div class="instbn-t">이 기기를 진행자 화면으로</div>
+            <div class="instbn-s">가운데 두고 다 같이 보는 기기(태블릿·노트북·남는 폰)라면 이걸로 —
+              지금은 ${h(pname(S.room.host) || '다른 기기')}님 기기가 진행자예요.
               진행자 + 사회자(화면)를 한 번에 넘겨받습니다</div>
           </div>
           <div class="g-ar">›</div>
@@ -5391,7 +5395,7 @@ function vLobby(){
       : `<div class="hostrow">
           <div class="b">
             <b>🎛 진행자 — ${h(pname(S.room.host) || '다른 기기')}님 기기</b>
-            <span>점수·순서·게임 도구가 그 기기에서 돌아갑니다</span>
+            <span>점수·순서·게임 도구가 그 기기에서 돌아갑니다 — 가운데 둘 기기로 옮기려면 넘겨받으세요</span>
           </div>
           <button class="btn sm" data-act="host-take">넘겨받기</button>
         </div>`}
@@ -5413,7 +5417,7 @@ function vLobby(){
     </div>
     <p class="note" style="margin:8px 4px 0">${meSpec
       ? '겨루지 않아요 — 팀·술래 뽑기·순위에서 빠집니다'
-      : '태블릿을 상 위에 두고 다 같이 볼 때는 「사회자(화면)」로 바꾸세요'}</p>
+      : '이 기기를 상 위에 두고 다 같이 볼 때는 「사회자(화면)」로 바꾸세요'}</p>
 
 
     ${S.isHost && ps.length < 3 ? `
@@ -5869,7 +5873,7 @@ function vYutPhone(){
   const m = YT();
   if (!m) return `<div class="empty"><div class="empty-e">🎲</div>
       <div class="empty-t">아직 판이 안 깔렸어요</div>
-      <div class="note">태블릿에서 「판 깔고 시작」을 누르면 여기에 윷이 나타납니다</div></div>`;
+      <div class="note">진행자 화면에서 「판 깔고 시작」을 누르면 여기에 윷이 나타납니다</div></div>`;
 
   const mt = myTeam();
   const mine = mt >= 0 && mt === m.turn;
@@ -5888,9 +5892,9 @@ function vYutPhone(){
         다음 차례에 그게 이번 것인 줄 안다. 다만 **못 받은 것은 계속 보여준다**(다시 던져야 하니까). */
   const deliv = !sent || ended || (!mine && !failed) ? '' : `
     <div class="deliv ${delivered ? 'ok' : failed ? 'bad' : ''}">
-      ${delivered ? `✓ 태블릿 판에 올라갔어요 — <b>${h(sent.n)}</b>`
-        : failed ? `⚠ 태블릿이 아직 못 받았어요 — <b>태블릿 화면이 켜져 있는지</b> 확인하고 다시 던져주세요`
-        : `<span class="sp"></span> 태블릿으로 보내는 중… <b>${h(sent.n)}</b>`}
+      ${delivered ? `✓ 진행자 화면 판에 올라갔어요 — <b>${h(sent.n)}</b>`
+        : failed ? `⚠ 진행자 화면이 아직 못 받았어요 — <b>그 기기 화면이 켜져 있는지</b> 확인하고 다시 던져주세요`
+        : `<span class="sp"></span> 진행자 화면으로 보내는 중… <b>${h(sent.n)}</b>`}
     </div>`;
 
   /* 진행자 기기가 끊겨 있으면 아무리 던져도 판이 안 움직인다 — 먼저 알려준다 */
@@ -5899,7 +5903,7 @@ function vYutPhone(){
 
   return `
     ${hostDown ? `<div class="banner warn">📵 진행자 기기가 끊겨 있어요 —
-      던져도 판에 안 올라갑니다. 태블릿 화면을 깨워주세요.</div>` : ''}
+      던져도 판에 안 올라갑니다. 그 기기 화면을 깨워주세요.</div>` : ''}
     <div class="gh" style="${gcVars('#8878AE')};padding:18px">
       <div class="gh-em">🎲</div>
       <div class="gh-n" style="font-size:19px;padding-right:0">훈민정음 윷놀이</div>
@@ -5912,10 +5916,10 @@ function vYutPhone(){
     ${ended ? `<div class="pickres"><div class="pickres-l">결과</div>
         <div class="pickres-v">${h(teamName(m.winner))} 승리!</div></div>`
     : m.halt ? `<div class="haltbig"><div class="t">✋ 잠시!</div>
-        <div class="s">지금 다 같이 판단 중이에요 — 태블릿을 보세요.</div></div>`
+        <div class="s">지금 다 같이 판단 중이에요 — 진행자 화면을 보세요.</div></div>`
     : m.pick ? `<div class="haltbig"><div class="t">✋ ${h(teamName(m.pick.team))} 벌칙</div>
         <div class="s">${myTeam() === m.pick.team
-          ? '<b>우리 팀이 되돌릴 말을 고를 차례예요</b> — 태블릿에서 고르세요.'
+          ? '<b>우리 팀이 되돌릴 말을 고를 차례예요</b> — 진행자 화면에서 고르세요.'
           : `${h(teamName(m.pick.team))}이 되돌릴 말을 고르는 중입니다.`}</div></div>`
     : `
       ${m.last ? `<div class="sticks">
@@ -5923,11 +5927,11 @@ function vYutPhone(){
           <div class="sname">${h(m.last.n)}</div>
         </div>` : ''}
       ${(m.pending || []).length ? `<p class="note" style="text-align:center;margin:0 0 12px">
-          모아둔 결과 <b>${m.pending.map(x => h(x.n)).join(' · ')}</b> — 태블릿에서 말을 옮기세요</p>` : ''}
+          모아둔 결과 <b>${m.pending.map(x => h(x.n)).join(' · ')}</b> — 진행자 화면에서 말을 옮기세요</p>` : ''}
 
       <button class="bigthrow" data-act="yut-throw" ${canThrow ? '' : 'disabled'}>
         ${!mine ? `${h(teamName(m.turn))} 차례예요`
-          : m.canThrow ? '🎲 윷 던지기' : '태블릿에서 말을 옮기세요'}
+          : m.canThrow ? '🎲 윷 던지기' : '진행자 화면에서 말을 옮기세요'}
       </button>
       ${deliv}
       <p class="note" style="text-align:center;margin:10px 0 16px">
@@ -5967,7 +5971,7 @@ function vSong(){
 
     <div class="mcbox need">
       <span class="i">📵</span>
-      <span><b>이 게임만은 태블릿을 가운데 두지 마세요</b>
+      <span><b>이 게임만은 진행자 기기를 가운데 두지 마세요</b>
         <span class="s">정답이 이 화면에 있습니다. 노래를 트는 사람은 답을 다 보게 되니
           <b>겨루지 않는 사회자</b>가 자기 폰으로 진행하세요.</span></span>
     </div>
@@ -7334,7 +7338,7 @@ async function act(a, d){
     const m = YT();
     if (!m || m.phase !== 'play') return;
     if (myTeam() !== m.turn) return toast('우리 팀 차례가 아니에요');
-    if (!m.canThrow) return toast('먼저 태블릿에서 말을 옮기세요');
+    if (!m.canThrow) return toast('먼저 진행자 화면에서 말을 옮기세요');
     const r = throwYut();
     if (S.isHost){                                   // 태블릿을 직접 쥔 사람이 던진 경우
       yutThrowAnim(r, `${pname(S.pid)} 던지기`).then(() => yutApplyThrow(r, S.pid));
@@ -7377,7 +7381,7 @@ async function act(a, d){
     const payload = { by:S.pid, team:t, at:now() };
     if (S.isHost){ m.halt = payload; pushYut({ halt:payload }); }
     else set(ref(db, `${ROOT}/rooms/${S.code}/yut/halt`), payload).catch(()=>{});
-    SFX.end(); vib([30,50,30]); toast('✋ 잠시! — 태블릿에서 판단합니다'); break;
+    SFX.end(); vib([30,50,30]); toast('✋ 잠시! — 진행자 화면에서 판단합니다'); break;
   }
   /* 🔄 재시작 — 말을 전부 집으로, 기록·벌점까지 처음부터. 팀과 말 모양은 그대로 둔다. */
   case 'yut-restart': {

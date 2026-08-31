@@ -1201,7 +1201,7 @@ if (new URLSearchParams(location.search).has('demo')){
       S.pid = keepPid; S.isHost = false; S.room.host = 'h1';
       S.room.players[keepPid].spec = false;
       act('host-take', { spec:'1' }); act('ask-yes', {});
-      ck('★★★「이 태블릿으로 진행하기」는 진행자와 사회자(화면)를 한 번에 켠다',
+      ck('★★★「이 기기를 진행자 화면으로」는 진행자와 사회자(화면)를 한 번에 켠다',
         S.isHost === true && isSpec(S.room.players[keepPid]) === true);
       ck('  사회자가 됐으니 팀에서도 빠진다', S.room.teams.assign[keepPid] == null);
 

@@ -232,7 +232,7 @@ if (new URLSearchParams(location.search).has('demo')){
       for (; tries < 80 && !m().last; tries++) await (yutConsume() || sleep(60));
       ck('  연출 중이면 미뤘다가 다음 기회에 반영한다 (되풀이 호출이 먹힌다)', tries < 80);
       const M2 = m();
-      ck('★★★태블릿이 받아서 판에 올린다',
+      ck('★★★진행자 기기가 받아서 판에 올린다',
         (M2.pending || []).length === 1 && M2.pending[0].n === payload.n);
       ck('★★받은 뒤 throw 를 지운다 (같은 던지기가 되풀이되지 않게)', !M2.throw);
       ck('  기록에도 「누가 무엇을」이 남는다', (M2.log || []).some(x => x.includes(payload.n)));
@@ -242,13 +242,13 @@ if (new URLSearchParams(location.search).has('demo')){
         !!M2.last && M2.last.at === payload.at);
       S.pid = me; S.isHost = false;
       const ph = view('yut');
-      ck('★★★폰에 「태블릿 판에 올라갔어요」가 뜬다',
+      ck('★★★폰에 「진행자 화면 판에 올라갔어요」가 뜬다',
         ph.includes('deliv ok') && ph.includes('판에 올라갔'));
 
       /* 못 받은 경우 — 조용히 넘어가면 안 된다(그게 「연동되는지 모르겠다」의 정체였다) */
       S.yutSent = { at: payload.at - 999999, n:'윷', ok:null };
       const ph2 = view('yut');
-      ck('★★★안 올라가면 「태블릿이 못 받았어요」로 바뀐다',
+      ck('★★★안 올라가면 「진행자 화면이 못 받았어요」로 바뀐다',
         ph2.includes('deliv bad') && ph2.includes('못 받았'));
       S.yutSent = { at: now(), n:'윷', ok:false };
       ck('  올리기 자체가 실패하면 곧바로 알려준다', view('yut').includes('deliv bad'));
