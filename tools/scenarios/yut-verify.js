@@ -191,6 +191,57 @@ if (new URLSearchParams(location.search).has('demo')){
         && m().pieces[0].filter(x => x === 4).length === 1);
     }
 
+    /* ★★ 집(아직 안 낸 말) — 버튼이 아니라 **실제 말을 눌러서** 내보낸다 */
+    {
+      act('yut-start', {});
+      const M = m(); M.turn = 0;
+      S.view = 'play'; render(true);
+      const V = () => document.getElementById('view');
+      const homePcs = ti => V().querySelectorAll(`.hteam:nth-child(${ti + 1}) .hpc`).length;
+      const goPcs   = ti => V().querySelectorAll(`.hteam:nth-child(${ti + 1}) .hpc.go`).length;
+
+      /* ★★ 「누구 차례인가」는 **공용 화면**에 있어야 한다 — 각자 폰에만 있으면 본인만 안다 */
+      {
+        const tb = V().querySelector('.hteam.on');
+        ck('★★공용 화면에 지금 차례가 크게 뜬다',
+          !!tb && tb.textContent.includes(teamName(0)) && tb.textContent.includes('차례'));
+        ck('  그 팀 색을 쓴다 (멀리서 색으로도 구분)',
+          !!tb && tb.getAttribute('style').includes(TEAM_COLORS[0]));
+        M.turn = 1; render(true);
+        const tb2 = V().querySelector('.hteam.on');
+        ck('★★차례가 넘어가면 표시도 따라간다',
+          !!tb2 && tb2.textContent.includes(teamName(1)) && !tb2.textContent.includes(teamName(0)));
+        M.turn = 0; render(true);
+      }
+
+      ck('★★집에 안 낸 말이 개수만큼 실제로 놓인다', homePcs(0) === 4 && homePcs(1) === 4);
+      ck('  던지기 전에는 아직 못 누른다', goPcs(0) === 0);
+
+      yutApplyThrow({ n:'윷', v:4, again:true, sticks:[1,1,1,1] }, 'h1');
+      render(true);
+      ck('★★던질 게 남았으면 집 말도 못 누른다 (던지기가 먼저다)', goPcs(0) === 0);
+
+      yutApplyThrow({ n:'개', v:2, again:false, sticks:[1,1,0,0] }, 'h1');
+      render(true);
+      ck('★★다 던지면 그때 집 말이 눌린다', goPcs(0) === 4);
+      ck('★★차례가 아닌 팀의 집 말은 못 누른다', homePcs(1) === 4 && goPcs(1) === 0);
+
+      /* 화면에 있는 그 말을 실제로 눌러본다 — 핸들러까지 이어지는지 */
+      V().querySelector('.hpc.go').click();
+      render(true);
+      ck('★★집 말을 누르면 판으로 나간다', m().pieces[0].filter(x => x >= 0).length === 1);
+      ck('  집에 남은 말이 하나 줄어 보인다', homePcs(0) === 3);
+
+      /* ⚠️ 같은 일을 두 군데서 하면 다시 헷갈린다 — 옛 버튼이 되살아나지 않았는지 본다 */
+      ck('★★「새 말 내보내기」 버튼은 없다 (집 트레이 하나로 통일)',
+        !V().innerHTML.includes('새 말 내보내기'));
+
+      /* 다 내보내면 트레이가 「다 나왔어요」로 바뀐다 */
+      const M2 = m(); M2.pieces[0] = [1, 2, 3, 4]; render(true);
+      ck('  집이 비면 그렇게 알려준다',
+        homePcs(0) === 0 && V().innerHTML.includes('다 나왔어요'));
+    }
+
     /* 잡으면 한 번 더 던진다 — 랜덤 대국에 묻히지 않게 못을 박는다 */
     {
       act('yut-start', {});
@@ -348,7 +399,8 @@ if (new URLSearchParams(location.search).has('demo')){
           + ` · 새말 ${b1 ? Math.round(b1.bottom) : '없음'}`
           + ` · 대신던지기 ${b2 ? Math.round(b2.bottom) : '없음'}`);
         ck('★★말판이 스크롤 없이 다 보인다', fits(b) && fits(bThrow));
-        ck('★★「새 말 내보내기」가 화면 안에 있다 (던지기 끝난 상태)', fits(b1));
+        ck('★★지금 차례 표시가 화면 안에 있다', fits(box('.hteam.on')));
+        ck('★★집에 있는 말(눌러서 내보내기)이 화면 안에 있다', fits(b1));
         ck('★★「여기서 대신 던지기」가 화면 안에 있다 (던질 게 남은 상태)', fits(b2));
         /* ✋ 지적·🔄 재시작도 눌러야 하는 버튼이다 — 화면 밖으로 밀리면 못 쓴다 */
         ck('★★팀별 「잠시!」 버튼이 화면 안에 있다',
@@ -446,7 +498,12 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('★판 위 말에 모양 클래스가 붙는다', bd.includes('pc sk-neon'));
       ck('  팀마다 다른 모양이 실제로 그려진다',
         new Set((bd.match(/pc sk-[a-z]+/g) || [])).size >= 2);
-      ck('  팀 박스에도 그 팀 말이 보인다', bd.includes('minipc sk-'));
+      /* ⚠️ `bd.includes(...)` 로 문자열만 보면 판 위의 말에 걸려서도 통과한다 —
+         **팀 카드 안에** 있는지를 DOM 으로 본다. */
+      S.view = 'play'; render(true);
+      const cards = [...document.querySelectorAll('.hteam')];
+      ck('  팀 카드에도 그 팀 말이 보인다',
+        cards.length >= 2 && cards.every(c => /(^|\s)sk-[a-z]+/.test(c.querySelector('.pcw>i')?.className || '')));
       /* ⚠️ 인라인 background 를 주면 모양의 그라데이션이 통째로 지워진다(색만 남는다).
          실제로 그렇게 만들었다가 고친 적이 있어서 못을 박는다. */
       ck('★★말에 인라인 background 를 주지 않는다',
