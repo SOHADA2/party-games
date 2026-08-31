@@ -361,6 +361,53 @@ if (new URLSearchParams(location.search).has('demo')){
     S.room.used = {};
     }
 
+    /* ── 5.44) 🧭 앱 셸 — 하단 탭 · 뒤로가기 · 대기실 체크리스트 (v0.36.0) ──
+       ⚠️ 「길을 잃지 않게」가 이 개편의 목적이다. 탭이 안 뜨거나 활성 표시가 틀리면
+          그 목적이 무너지는데 화면은 멀쩡해 보인다 → 검사로 못 박는다. */
+    {
+    const navOn = () => [...document.querySelectorAll('#nav .nav-b')]
+      .filter(b => b.classList.contains('on')).map(b => b.dataset.nav);
+    const navShown = () => document.getElementById('nav').style.display !== 'none';
+    const backShown = () => document.getElementById('hd-back').style.display !== 'none';
+
+    S.view = 'lobby'; render(true);
+    ck('★대기실에서 하단 탭이 보인다', navShown() && navOn().join() === 'lobby');
+    ck('  탭 루트에서는 뒤로가기를 안 띄운다', !backShown());
+    S.view = 'games'; render(true);
+    ck('★게임 탭 활성', navOn().join() === 'games');
+    S.gameId = 'chosung'; S.view = 'game'; render(true);
+    ck('★게임 상세는 「게임」 탭을 켜둔다(하위 화면)', navOn().join() === 'games');
+    ck('  하위 화면에서는 뒤로가기가 뜬다', backShown());
+    ck('  시작 버튼이 하단 고정 액션바에 있다',
+      /<div class="actbar">[\s\S]*?data-act="tool-start"/.test(document.getElementById('view').innerHTML));
+    S.view = 'board'; render(true);
+    ck('★순위 탭 활성', navOn().join() === 'board');
+    S.view = 'settings'; render(true);
+    ck('★설정 탭 활성', navOn().join() === 'settings');
+
+    /* 진행 화면에서는 탭을 숨긴다 — 도구가 화면을 다 써야 한다 */
+    S.play = { gameId:'chosung', kind:'cho', phase:'setup', cats:['movie'], n:10, deck:[], di:0, log:[] };
+    S.view = 'play'; render(true);
+    ck('★★진행 화면에서는 하단 탭을 숨긴다', !navShown());
+    S.play = null; S.view = 'lobby'; render(true);
+
+    /* 대기실 체크리스트 */
+    const lv = document.getElementById('view').innerHTML;
+    ck('★대기실에 시작 순서가 있다', lv.includes('이렇게 시작해요'));
+    ck('  3단계가 다 있다',
+      lv.includes('친구 초대') && lv.includes('팀 나누기') && lv.includes('게임 고르기'));
+    ck('  「이 기기」 선수/사회자 토글이 있다', lv.includes('사회자(화면)'));
+    ck('★칩이 블록으로 퍼지지 않는다(자손 선택자 사고 재발 방지)',
+      !/\.tdi \.tx span\{display:block/.test(document.documentElement.innerHTML));
+
+    /* 게임 목록 — 한 줄 요약과 인원·시간 */
+    S.view = 'games'; render(true);
+    const gv3 = document.getElementById('view').innerHTML;
+    ck('★목록에 한 줄 요약이 나온다', GAMES.every(g => gv3.includes(g.line)));
+    ck('  인원 메타가 나온다', gv3.includes('명+'));
+    S.view = 'lobby'; render(true);
+    }
+
     /* ── 5.45) 🎲 훈민정음 윷놀이 ──
        ⚠️ 각자 폰이 방 노드에 쓰는 유일한 게임 + 규칙이 제일 복잡하다.
           「대각선 통과 vs 방에 멈춤」과 「던진 값을 모아 배분」이 윷놀이의 핵심이다. */

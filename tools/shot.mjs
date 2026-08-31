@@ -70,38 +70,56 @@ async function edge(url, extra){
   } finally { await rm(ud, { recursive:true, force:true }).catch(()=>{}); }
 }
 
-/* ── DOM 떠오기 (E2E 결과를 <title> 로 받는 용도) ── */
+/* ── E2E 결과 읽기 (--dom) ──────────────────────────────────
+   ⚠️ 예전엔 `--dump-dom` 으로 <title> 을 읽었는데, 어느 날 **아무 페이지나 0바이트**를
+      뱉기 시작했다(프로세스도 없고 stderr 도 비어 있는데). 스크린샷은 멀쩡했다.
+      그래서 원격 디버깅 포트를 열고 **CDP 로 document.title 을 직접 묻는다.**
+      가상시간 예산에도 기대지 않는다 — 시나리오가 합격/실패 표시를 찍을 때까지 실제로 기다린다.
+   판정은 시나리오가 찍는 표시로만: `✅`(합격) · `‼`/`✕FAIL`(실패) · 맨 앞 `ERR `(예외). */
 if (has('--dom')){
+  const { spawn } = await import('node:child_process');
   const path = args[args.indexOf('--dom') + 1];
-  const out = join(TMP, 'pg-dom.html');
-  // --dump-dom 은 stdout 으로 나오므로 edge() 헬퍼(스크린샷용) 대신 직접 돌린다
-  const ud = join(TMP, 'pg-edge-dom');
+  const port = 9333 + ((Math.random() * 400) | 0);
+  const ud = join(TMP, 'pg-edge-cdp-' + port);
   await rm(ud, { recursive:true, force:true }).catch(()=>{});
-  /* ⚠️ 창 크기는 **-w/-h 를 명시했을 때만** 준다.
-     안 그러면 기존 E2E 의 렌더 환경이 통째로 바뀐다(큰 화면 미디어쿼리가 켜질 수 있다).
-     명시하면 화면 밖으로 밀린 버튼 같은 **레이아웃**을 시나리오에서 잴 수 있다 —
-     예전엔 --dom 이 크기를 안 받아서 재는 족족 780x493 값이 나왔다(측정이 무의미했다). */
-  const sized = args.includes('-w') || args.includes('-h');
-  const { stdout } = await run(EDGE, [
+  const child = spawn(EDGE, [
     '--headless=new', '--disable-gpu', '--no-sandbox', `--user-data-dir=${ud}`,
-    ...(sized ? [`--window-size=${W},${H}`] : []),
-    // ⚠️ 시나리오에 연출(윷 던지기 등)이 있으면 9초로는 모자라 중간에 잘린다
-    '--virtual-time-budget=20000', '--dump-dom', `http://localhost:${PORT}${path}`,
-  ], { maxBuffer: 64 * 1024 * 1024, timeout: 120000 });
-  await writeFile(out, stdout, 'utf8');
-  await rm(ud, { recursive:true, force:true }).catch(()=>{});
-  const t = stdout.match(/<title>([\s\S]*?)<\/title>/);
-  console.log(t ? t[1].split(' ## ').join('\n') : '(title 없음) → ' + out);
-  /* ⚠️ 판정에 「문제」 같은 **평범한 낱말**을 넣지 말 것.
-     예전엔 /문제|ERR |‼/ 였는데, 초성 퀴즈처럼 라벨에 "문제"가 들어가는 시나리오가
-     들어오자 **전부 통과인데도 exit 1** 이 됐다. 시나리오 쪽은 v0.12.0에 같은 이유로
-     이미 고쳤는데 여기가 남아 있었다. 판정은 시나리오가 찍는 표시로만 한다:
-     `‼`(실패 건수 요약) · `✕FAIL`(항목 실패) · 맨 앞의 `ERR `(예외). */
-  /* ⚠️ 「아무 표시도 없음」을 통과로 보면 안 된다.
-     사본이 깨져 시나리오가 통째로 안 돌면 <title> 이 앱 기본값 그대로인데,
-     예전엔 그걸 exit 0 으로 넘겼다 — 제일 나쁜 실패다(다 통과한 줄 안다).
-     시나리오는 끝에 반드시 ✅ 또는 ‼ 를 찍는다. 둘 다 없으면 안 돈 것이다. */
-  const title = t?.[1] || '';
+    `--remote-debugging-port=${port}`, '--remote-allow-origins=*',
+    '--window-size=420,900', `http://localhost:${PORT}${path}`,
+  ], { stdio:'ignore' });
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const kill = async () => { try{ child.kill('SIGKILL'); }catch{} await sleep(300); await rm(ud, { recursive:true, force:true }).catch(()=>{}); };
+
+  // 디버깅 포트가 열릴 때까지, 그리고 우리 페이지 탭이 잡힐 때까지
+  let target = null;
+  for (let t = 0; t < 60 && !target; t++){
+    await sleep(250);
+    try{
+      const list = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
+      target = list.find(x => x.type === 'page' && x.url.includes(path.split('?')[0]));
+    }catch{}
+  }
+  if (!target){ await kill(); console.error('✕ 브라우저 디버깅 포트에 연결하지 못했습니다'); process.exit(1); }
+
+  const ws = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+  let seq = 0; const pending = new Map();
+  ws.onmessage = ev => { const m = JSON.parse(ev.data); if (m.id && pending.has(m.id)){ pending.get(m.id)(m); pending.delete(m.id); } };
+  const evalJs = expr => new Promise(res => { const id = ++seq; pending.set(id, res);
+    ws.send(JSON.stringify({ id, method:'Runtime.evaluate', params:{ expression:expr, returnByValue:true } })); });
+
+  // 시나리오는 끝에 반드시 ✅ 또는 ‼ 를 찍는다(예외면 ERR). 그때까지 기다린다(최대 90초).
+  let title = '';
+  for (let t = 0; t < 360; t++){
+    const r = await evalJs('document.title');
+    title = r?.result?.result?.value || '';
+    if (/✅|‼|^ERR /.test(title)) break;
+    await sleep(250);
+  }
+  ws.close(); await kill();
+
+  console.log(title ? title.split(' ## ').join('\n') : '(title 없음)');
   if (/^ERR |‼|✕FAIL/.test(title)) process.exit(1);
   if (!title.includes('✅')){
     console.error('✕ 시나리오가 실행되지 않았습니다(합격 표시 없음).');
