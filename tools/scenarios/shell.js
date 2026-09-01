@@ -10,6 +10,9 @@ if (new URLSearchParams(location.search).has('demo')){
     S.room.scores.s1={gameId:'noise',mode:'solo',order:players().map(([p])=>p),weight:1,assign:{},at:1};
     S.room.scores.s2={gameId:'chosung',mode:'solo',order:players().map(([p])=>p).reverse(),weight:1,assign:{},at:2};
     S.gameId=q.get('g')||'chosung';
+    /* &rule=1 → 게임마다 배점 + 경품·벌칙이 적힌 상태(설정·순위 화면 확인용) */
+    if(q.get('rule')) S.room.rule={ wmode:'game', weights:{ cup:0 },
+      prize:'다음 날 아침 안 차려도 됨', penalty:'설거지 담당' };
     if(v==='score'){ act('score-start',{}); }
     else S.view=v;
   }

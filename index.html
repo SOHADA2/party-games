@@ -995,6 +995,32 @@ details.more .in{padding:0 15px 15px}
 }
 .instbn:active{transform:scale(.985)}
 /* 이 기기의 역할 — 「진행자」 줄 */
+/* 게임마다 배점 고르기 — 방장만 본다 */
+.wlist{display:flex;flex-direction:column;gap:6px}
+/* ⚠️ 좁은 폰에서는 칩 5개가 이름을 밀어낸다 — 넘치면 칩 줄이 아래로 접히게 둔다 */
+.wrow{display:flex;align-items:center;gap:8px 8px;flex-wrap:wrap;padding:7px 9px;
+  border-radius:11px;background:var(--well);border:1px solid var(--line)}
+.wrow .e{font-size:15px;flex:none}
+.wrow .n{flex:1 1 110px;min-width:0;font-size:12.5px;font-weight:800;letter-spacing:-.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wrow .ws{display:flex;gap:4px;flex:0 0 auto;margin-left:auto}
+.wchip{padding:5px 8px;border-radius:9px;font-size:11.5px;font-weight:800;
+  background:var(--surf);border:1px solid var(--line2);color:var(--dim2)}
+.wchip.on{background:rgba(160,114,31,.16);border-color:rgba(160,114,31,.5);color:var(--amber)}
+.wchip:active{transform:scale(.92)}
+
+/* 무엇을 걸었나 — 순위 탭 맨 위 */
+.stake{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.st-r{display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:var(--r-m);
+  background:linear-gradient(120deg,rgba(160,114,31,.14),var(--surf));
+  border:1px solid rgba(160,114,31,.36);box-shadow:var(--sh1)}
+.st-r.lose{background:linear-gradient(120deg,rgba(172,79,98,.12),var(--surf));
+  border-color:rgba(172,79,98,.34)}
+.st-r .e{font-size:22px;flex:none;line-height:1}
+.st-r b{display:block;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:var(--dim2)}
+.st-r span{display:block;font-size:16px;font-weight:800;letter-spacing:-.02em;
+  margin-top:2px;word-break:keep-all;line-height:1.35}
+
 .hostrow{display:flex;align-items:center;gap:10px;margin-top:10px;padding:11px 13px;
   border-radius:var(--r-m);background:var(--surf);border:1px solid var(--line2)}
 .hostrow.on{border-color:rgba(160,114,31,.42);background:rgba(160,114,31,.09)}
@@ -1208,6 +1234,9 @@ details.more .in{padding:0 15px 15px}
   .bigbtn{font-size:26px;padding:32px 12px;border-radius:26px}
 
   /* 결과 · 점수판 · 순위 */
+  .st-r span{font-size:21px}
+  .st-r .e{font-size:28px}
+  .st-r b{font-size:13px}
   .pickres-v{font-size:56px}
   .pickres-l{font-size:14px}
   .tscore{padding:20px}
@@ -1404,7 +1433,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.39.1';
+const APP_VERSION = 'v0.40.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -4124,7 +4153,24 @@ const S = {
 const $ = s => document.querySelector(s);
 const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const now = () => Date.now();
-const emptyRoom = () => ({ createdAt:now(), host:'', status:'lobby', players:{}, teams:{count:0,assign:{}}, scores:{}, rotation:{}, used:{}, yut:null });
+const emptyRoom = () => ({ createdAt:now(), host:'', status:'lobby', players:{}, teams:{count:0,assign:{}},
+  scores:{}, rotation:{}, used:{}, yut:null, rule:null });
+
+/* ── 방 규칙 — 배점·경품·벌칙은 **방장이 정한다** ────────────────────────
+   ⚠️ 게임마다 배점을 코드에 박아두던 것을 기본값으로만 남겼다(사장님 지적:
+      "각 게임별 배점을 잡지 말고 방을 만들었다면 세부 설정할 수 있게").
+      기본은 **모든 게임 똑같이 ×1** 이다 — 점수를 빡빡하게 굴리는 게 이 앱의 목적이 아니다.
+   ⚠️ 배점은 순위를 저장할 때 그 판 기록에 **박제된다**(`scores.*.weight`).
+      나중에 배점을 바꿔도 **지난 판 점수는 안 흔들린다** — 그게 맞다. */
+const RULE = () => S.room?.rule || {};
+const gameWeight = gid => {
+  const r = RULE();
+  if (r.wmode !== 'game') return 1;
+  const v = r.weights?.[gid];
+  return typeof v === 'number' ? v : (G(gid)?.weight ?? 1);
+};
+const WEIGHT_OPTS = [0, 0.5, 1, 1.5, 2];
+const weightLabel = w => w === 0 ? '제외' : '×' + w;
 
 function toast(msg, ms=2400){
   const t = $('#toast'); t.textContent = msg; t.classList.add('on');
@@ -4318,7 +4364,7 @@ function pushHostState(){
   update(roomRef(S.code), {
     status:r.status||'lobby', host:r.host||S.pid,
     teams:r.teams||{count:0,assign:{}}, scores:r.scores||{}, rotation:r.rotation||{},
-    used:r.used||{},
+    used:r.used||{}, rule:r.rule||null,
     // ⚠️ yut 은 여기서 쓰지 않는다 — 참가자가 throw/halt 를 직접 쓰기 때문에
     //    통째로 덮으면 던진 결과와 「잠시!」가 날아간다. pushYut()으로 하위 경로만 갱신할 것.
     touchedAt:now(),
@@ -4374,6 +4420,7 @@ function applySnapshot(v){
       createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
       players:v.players||{}, teams:v.teams||{count:0,assign:{}},
       scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{}, yut:v.yut||null,
+      rule:v.rule||null,
     };
   }
   yutConsume();
@@ -4928,7 +4975,7 @@ function toScore(order, mode){
   const p = S.play;
   const teams = S.room.teams || {count:0,assign:{}};
   S.draft = { gameId:p.gameId, mode, order,
-    weight:G(p.gameId)?.weight ?? 1, assign:JSON.parse(JSON.stringify(teams.assign || {})) };
+    weight:gameWeight(p.gameId), assign:JSON.parse(JSON.stringify(teams.assign || {})) };
   stopPlayTimer(); S.play = null;
   go('score');
 }
@@ -5019,7 +5066,7 @@ function renderSig(){
   return JSON.stringify([
     S.view, S.gameId, S.online, S.isHost, S.code,
     r ? Object.entries(r.players).map(([k,p]) => [k, p.name, isOn(p)?1:0, (p.host||k===r.host)?1:0]) : 0,
-    r?.teams || 0, r?.scores || 0, r?.rotation || 0, r?.used || 0,
+    r?.teams || 0, r?.scores || 0, r?.rotation || 0, r?.used || 0, r?.rule || 0,
     // ⚠️ yut 을 빼면 각자 폰이 말판 변화에 갱신되지 않는다(참가자 화면이 멈춘다)
     r?.yut || 0,
     S.draft?.order || 0, S._lastPick || 0,
@@ -5489,7 +5536,7 @@ function vGame(){
       <div class="gh-n">${h(g.name)}</div>
       <div class="gh-m">
         <span class="chip ${g.mode==='team'?'mint':''}">${g.mode==='team'?'팀전':'개인전'}</span>
-        <span class="chip amb">배점 ×${g.weight}</span>
+        ${RULE().wmode === 'game' ? `<span class="chip amb">배점 ${weightLabel(gameWeight(g.id))}</span>` : ''}
         ${g.role ? `<span class="chip">${h(g.role)} 필요</span>` : ''}
         ${g.mc==='need' ? '<span class="chip sky">📺 사회자 전담</span>' : ''}
       </div>
@@ -6935,6 +6982,7 @@ function vBoard(){
   return `
     <div class="two"><div>
     ${offBanner()}
+    ${stakeBox()}
     ${podium}
     ${rows.length ? `<div class="lb">${rows.slice(listFrom).map((r,i) => `
       <div class="lb-r ${r.pid===S.pid?'me':''}" style="animation-delay:${i*35}ms">
@@ -6971,11 +7019,25 @@ function vBoard(){
     <div class="card">
       <div class="sec" style="margin:0 0 9px">점수 방식</div>
       <p class="note">1등 <b style="color:var(--amber)">10점</b> · 2등 7점 · 3등 5점 · 4등 3점 · 5등 2점 · 이하 1점<br>
-      여기에 게임별 배점(×0.5 ~ ×1.5)을 곱합니다.</p>
+      ${RULE().wmode === 'game'
+        ? '여기에 <b>게임마다 정한 배점</b>을 곱합니다 — 진행자가 설정에서 바꿀 수 있어요.'
+        : '<b>모든 게임이 똑같은 무게</b>예요 — 진행자가 설정에서 게임마다 다르게 줄 수 있어요.'}</p>
       <p class="note" style="margin-top:8px"><b style="color:var(--mint)">팀전도 개인 점수로 쌓입니다</b> —
       팀 순위 점수를 팀원 전원이 <b>똑같이</b> 받아요. 그래서 팀을 새로 짜도 순위는 안 깨집니다.</p>
     </div>
     </div></div>`;
+}
+
+/* 무엇을 걸었나 — 적혀 있을 때만 뜬다. 앱은 **적어두기만** 하고 집행하지 않는다. */
+function stakeBox(){
+  const r = RULE();
+  if (!r.prize && !r.penalty) return '';
+  return `<div class="stake">
+    ${r.prize ? `<div class="st-r"><span class="e">🏆</span>
+      <div><b>우승 경품</b><span>${h(r.prize)}</span></div></div>` : ''}
+    ${r.penalty ? `<div class="st-r lose"><span class="e">😅</span>
+      <div><b>꼴찌 벌칙</b><span>${h(r.penalty)}</span></div></div>` : ''}
+  </div>`;
 }
 
 /* ── 설정 ── */
@@ -6989,6 +7051,41 @@ function vSettings(){
       <button class="btn sm" data-act="rename" style="width:100%">이름 바꾸기</button>
     </div>
     ${S.isHost ? `
+    <div class="card">
+      <div class="sec" style="margin:0 0 11px">점수 · 경품</div>
+      <p class="note" style="margin-bottom:10px">1등 <b style="color:var(--amber)">10점</b> ·
+        2등 7점 · 3등 5점 · 4등 3점 · 5등 2점 · 이하 1점.
+        <b>게임마다 무게를 다르게</b> 줄 수도 있어요.</p>
+      <div class="seg2" style="margin-bottom:8px">
+        <button class="${RULE().wmode === 'game' ? '' : 'on'}"
+          ${RULE().wmode === 'game' ? 'data-act="rule-wmode" data-v="even"' : ''}>모든 게임 똑같이</button>
+        <button class="${RULE().wmode === 'game' ? 'on' : ''}"
+          ${RULE().wmode === 'game' ? '' : 'data-act="rule-wmode" data-v="game"'}>게임마다 다르게</button>
+      </div>
+      ${RULE().wmode === 'game' ? `
+        <p class="note" style="margin:0 0 9px">오래 걸리는 게임에 무게를 더 주면 됩니다.
+          <b>제외</b>로 두면 그 게임은 점수에 안 들어가요(그냥 재미로).</p>
+        <div class="wlist">${GAMES.map(g => `
+          <div class="wrow">
+            <span class="e">${g.emoji}</span>
+            <span class="n">${h(g.name)}</span>
+            <span class="ws">${WEIGHT_OPTS.map(w => `
+              <button class="wchip ${gameWeight(g.id) === w ? 'on' : ''}"
+                data-act="rule-weight" data-id="${g.id}" data-v="${w}">${weightLabel(w)}</button>`).join('')}</span>
+          </div>`).join('')}</div>
+        <div style="height:10px"></div>` : ''}
+
+      <!-- ⚠️ 이 앱이 벌칙을 **집행하지는 않는다**(확정 기획). 여기서 하는 일은
+           「무엇을 걸었는지 다 같이 보이게 적어두는 것」뿐이다. -->
+      <div class="sec" style="margin:4px 0 8px">🏆 우승 경품</div>
+      <input class="inp" id="in-prize" maxlength="40" placeholder="예: 다음 날 아침 안 차려도 됨"
+        value="${h(RULE().prize || '')}">
+      <div class="sec" style="margin:12px 0 8px">😅 꼴찌 벌칙</div>
+      <input class="inp" id="in-penalty" maxlength="40" placeholder="예: 설거지 담당"
+        value="${h(RULE().penalty || '')}">
+      <div style="height:10px"></div>
+      <button class="btn sm" data-act="rule-stake" style="width:100%">경품·벌칙 저장</button>
+    </div>
     <div class="card">
       <div class="sec" style="margin:0 0 11px">진행자 도구</div>
       <div class="stack">
@@ -7673,7 +7770,7 @@ async function act(a, d){
     const teams = S.room.teams || {count:0};
     if (g.mode === 'team' && teams.count < 2) return toast('팀전이에요 — 대기실에서 팀을 먼저 나눠주세요');
     S.draft = { gameId:g.id, mode:(g.mode==='team' && teams.count>1) ? 'team' : 'solo',
-      order:[], weight:g.weight, assign:JSON.parse(JSON.stringify(teams.assign || {})) };
+      order:[], weight:gameWeight(g.id), assign:JSON.parse(JSON.stringify(teams.assign || {})) };
     go('score'); break;
   }
   case 'pickrank': {
@@ -7684,6 +7781,10 @@ async function act(a, d){
   case 'score-cancel': S.draft = null; go('game'); break;
   case 'score-save': {
     const dr = S.draft;
+    /* ⚠️ 버튼은 2명 미만이면 눌리지 않지만 **핸들러도 막아야 한다.**
+       검증 중에 순위를 하나도 안 고른 채 저장돼 **빈 판이 기록에 남는 것**을 봤다
+       (순위 0명 = 아무도 점수를 못 받는데 「진행한 게임」에는 한 판이 늘어난다). */
+    if (!dr || (dr.order || []).length < 2) return toast('2명(팀) 이상 정해주세요');
     const sid = 's' + now().toString(36) + Math.random().toString(36).slice(2,6);
     if (!S.room.scores) S.room.scores = {};
     S.room.scores[sid] = { gameId:dr.gameId, mode:dr.mode, order:dr.order,
@@ -7741,6 +7842,29 @@ async function act(a, d){
     S._takeSpec = false;
     vib(18); confetti(30); render(true);
     toast('🎛 이제 이 기기가 진행자예요');
+    break;
+  }
+  /* 🏆 방 규칙 — 배점·경품·벌칙은 방장이 정한다 */
+  case 'rule-wmode': {
+    if (!S.isHost) return toast('진행자 기기에서 바꿀 수 있어요');
+    S.room.rule = { ...RULE(), wmode:d.v };
+    pushHostState(); vib(12); render(true);
+    toast(d.v === 'game' ? '게임마다 배점을 정할 수 있어요' : '모든 게임을 똑같이 칩니다');
+    break;
+  }
+  case 'rule-weight': {
+    if (!S.isHost) return;
+    const r = RULE();
+    S.room.rule = { ...r, wmode:'game', weights:{ ...(r.weights || {}), [d.id]:Number(d.v) } };
+    pushHostState(); vib(10); render(true); break;
+  }
+  case 'rule-stake': {
+    if (!S.isHost) return toast('진행자 기기에서 적을 수 있어요');
+    const prize = ($('#in-prize')?.value || '').trim().slice(0, 40);
+    const pen   = ($('#in-penalty')?.value || '').trim().slice(0, 40);
+    S.room.rule = { ...RULE(), prize:prize || null, penalty:pen || null };
+    pushHostState(); vib(16); render(true);
+    toast(prize || pen ? '적어뒀어요 — 🏆 순위 탭 맨 위에 보입니다' : '경품·벌칙을 지웠어요');
     break;
   }
   case 'spec-toggle': {

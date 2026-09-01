@@ -1211,6 +1211,122 @@ if (new URLSearchParams(location.search).has('demo')){
       S.room.players.h1.host = true;
     }
 
+    /* ★★★ 배점은 **방장이 정한다** · 경품·벌칙은 **적어만 둔다**
+       ⚠️ 게임마다 배점을 코드에 박아두던 것을 기본값으로만 남겼다(사장님 지적).
+          기본은 **모든 게임 똑같이 ×1** — 점수를 빡빡하게 굴리는 게 목적이 아니다. */
+    {
+      S.pid = 'h1'; S.isHost = true; S.room.host = 'h1'; S.play = null; S.draft = null;
+      S.room.scores = {}; S.room.rule = null;
+      const P2 = playing().map(([pid]) => pid);
+
+      ck('★★기본은 모든 게임 똑같이 (배점 ×1)',
+        gameWeight('yut') === 1 && gameWeight('cup') === 1 && gameWeight('chosung') === 1);
+      ck('  게임 상세에 배점 칩을 안 띄운다 (기본일 땐 볼 것도 없다)',
+        !(S.gameId = 'yut', view('game')).includes('배점'));
+
+      /* 「게임마다 다르게」로 바꾸면 게임에 박힌 값이 **출발점**이 된다 */
+      globalThis.__W = [];
+      act('rule-wmode', { v:'game' });
+      ck('★★게임마다 다르게로 바꿀 수 있다', RULE().wmode === 'game');
+      ck('  바꾸면 원래 값이 출발점이 된다 (윷놀이 ×2 · 컵 ×0.5)',
+        gameWeight('yut') === 2 && gameWeight('cup') === 0.5);
+      ck('★서버에도 규칙이 나간다',
+        (globalThis.__W || []).some(x => x[2] && x[2].rule && x[2].rule.wmode === 'game'));
+      ck('  이때만 게임 상세에 배점이 보인다', (S.gameId = 'yut', view('game')).includes('배점'));
+
+      /* ⚠️ 배점 칩 5개 + 게임 이름이라 **좁은 폰에서 가로로 넘칠 수 있다.**
+         넘치면 칩 줄이 아래로 접혀야 한다 — 눈으로는 스크린샷 우측 잘림과 구분이 안 돼서 잰다. */
+      S.view = 'settings'; render(true);
+      {
+        /* ⚠️ 헤드리스 창은 **492px 아래로 안 좁아진다** — window 폭으로는 진짜 폰을 못 잰다.
+           그래서 #app 을 360px 로 묶어놓고 **줄 자체가 넘치는지**를 본다. */
+        const app = document.getElementById('app'), keep = app.style.maxWidth;
+        app.style.maxWidth = '360px';
+        const rows = [...document.querySelectorAll('.wrow')];
+        const over = rows.filter(r => r.scrollWidth > r.clientWidth + 1);
+        /* ⚠️ 「안 넘친다」만 보면 헛통과한다 — 이름이 `…`로 잘려도 줄은 안 넘치기 때문이다.
+              칩 줄이 아래로 접혀서 **게임 이름이 온전히 보이는지**까지 봐야 한다. */
+        const cut = rows.map(r => r.querySelector('.n'))
+          .filter(el => el && el.scrollWidth > el.clientWidth + 1);
+        ck('★배점 줄이 좁은 폰(360px)에서도 안 넘친다 (' + rows.length + '줄)',
+          rows.length >= 10 && !over.length);
+        ck('  게임 이름이 잘리지 않는다 (칩 줄이 아래로 접힌다)', !cut.length);
+        app.style.maxWidth = keep;
+      }
+
+      /* 방장이 직접 바꾼다 */
+      act('rule-weight', { id:'cup', v:'2' });
+      ck('★★★방장이 게임별 배점을 바꾼다', gameWeight('cup') === 2);
+      ck('  건드린 게임만 바뀐다', gameWeight('yut') === 2 && gameWeight('chosung') === 1);
+
+      /* 바꾼 배점이 **그 뒤 저장하는 판**에 실린다 */
+      S.gameId = 'cup'; act('tool-start', {}); act('score-start', {});
+      ck('  순위 화면이 그 배점을 쓴다', S.draft && S.draft.weight === 2);
+      P2.slice(0, 2).forEach(id => act('pickrank', { id }));
+      ck('  순위를 두 명 골랐다', S.draft.order.length === 2);
+      act('score-save', {});
+      const rec = Object.values(S.room.scores)[0];
+      ck('★★★저장한 판에 그때의 배점이 박제된다', rec && rec.weight === 2);
+      const ptBefore = calcPoints()[rec.order[0]];
+      ck('  1등이 10점 × 2 = 20점', ptBefore === 20);
+
+      /* 나중에 배점을 바꿔도 **지난 판은 안 흔들린다** */
+      act('rule-weight', { id:'cup', v:'0.5' });
+      ck('★★★배점을 바꿔도 지난 판 점수는 그대로다', calcPoints()[rec.order[0]] === ptBefore);
+
+      /* 제외(×0) — 그냥 재미로 하는 판 */
+      act('rule-weight', { id:'chosung', v:'0' });
+      ck('★「제외」로 두면 점수에 안 들어간다', gameWeight('chosung') === 0);
+      S.play = null; S.draft = null;
+      S.gameId = 'chosung'; act('tool-start', {}); act('score-start', {});
+      P2.slice(0, 2).forEach(id => act('pickrank', { id }));
+      act('score-save', {});
+      ck('  제외한 판을 해도 점수가 안 오른다', calcPoints()[rec.order[0]] === ptBefore);
+      ck('  그래도 진행한 게임 기록에는 남는다', Object.keys(S.room.scores).length === 2);
+
+      /* ⚠️ 순위를 안 고르고 저장하면 **빈 판**이 기록에 남았다(검증 중에 실제로 봤다) */
+      S.play = null; S.draft = null;
+      S.gameId = 'act'; act('tool-start', {}); act('score-start', {});
+      const before = Object.keys(S.room.scores).length;
+      act('score-save', {});
+      ck('★순위를 안 고르면 저장되지 않는다 (빈 판이 기록에 남지 않게)',
+        Object.keys(S.room.scores).length === before);
+      act('score-cancel', {}); S.play = null; S.draft = null;
+
+      /* 🏆 경품 · 😅 벌칙 — 앱은 **적어두기만** 한다(집행하지 않는다) */
+      S.view = 'settings'; render(true);
+      document.getElementById('in-prize').value = '아침 안 차리기';
+      document.getElementById('in-penalty').value = '설거지 담당';
+      act('rule-stake', {});
+      ck('★★★적어둔 경품·벌칙이 방에 저장된다',
+        RULE().prize === '아침 안 차리기' && RULE().penalty === '설거지 담당');
+      const bd = view('board');
+      ck('★★★순위 탭 맨 위에 걸린 것이 보인다',
+        bd.includes('우승 경품') && bd.includes('아침 안 차리기')
+        && bd.includes('꼴찌 벌칙') && bd.includes('설거지 담당'));
+      ck('★★참가자 기기에도 똑같이 보인다 (다 같이 아는 약속이다)', (() => {
+        const k = S.pid, kh = S.isHost; S.pid = P2[1]; S.isHost = false;
+        const v = view('board'); S.pid = k; S.isHost = kh;
+        return v.includes('아침 안 차리기');
+      })());
+      ck('★참가자는 규칙을 못 바꾼다', (() => {
+        const k = S.pid, kh = S.isHost; S.pid = P2[1]; S.isHost = false;
+        act('rule-weight', { id:'yut', v:'0' });
+        const ok = gameWeight('yut') === 2;
+        S.pid = k; S.isHost = kh; return ok;
+      })());
+
+      /* 비우면 사라진다 */
+      S.view = 'settings'; render(true);
+      document.getElementById('in-prize').value = '';
+      document.getElementById('in-penalty').value = '';
+      act('rule-stake', {});
+      ck('  비우면 순위 탭에서도 사라진다',
+        !RULE().prize && !view('board').includes('우승 경품'));
+
+      S.room.rule = null; S.room.scores = {}; S.play = null; S.draft = null; S.view = 'lobby';
+    }
+
     /* ── 9) 정리 ── */
     ck('타이머 정리', S.play === null || !S.play._t);
     ck('봇 정리', (clearBots() > 0) && players().length === 1);
