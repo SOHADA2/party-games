@@ -1164,11 +1164,21 @@ if (new URLSearchParams(location.search).has('demo')){
         lb.includes('🎛 진행자') && lb.includes(pname('h1')));
       ck('★★거기서 바로 넘겨받을 수 있다', lb.includes('data-act="host-take"'));
 
-      /* 진행 중인 도구가 있으면 못 넘긴다 — 그 판이 통째로 사라지기 때문 */
-      S.play = { kind:'deck', gameId:'body', phase:'run' };
-      act('host-take', {});
-      ck('★★진행 중인 게임이 있으면 안 넘어간다', !S.ask && S.isHost === false);
+      /* 진행 중인 도구가 있으면 못 넘긴다 — 그 판이 통째로 사라지기 때문
+         ⚠️ 예전 검사는 **넘겨받는 기기**에 S.play 를 넣어놓고 통과했다. 진행자가 아닌 기기는
+            S.play 가 늘 비어 있으니 가드가 무의미했는데 검사도 같이 헛통과했다(v0.40.1 점검).
+            진행 중인지는 **진행자 기기가 서버에 실은 busy** 로만 알 수 있다. */
       S.play = null;
+      S.room.busy = 'body'; S.room.players.h1.seen = Date.now();
+      act('host-take', {});
+      ck('★★★진행자 기기에서 게임 중이면 안 넘어간다', !S.ask && S.isHost === false);
+      /* 진행자 기기가 **끊겨 있으면** 막을 수 없다(영영 못 넘긴다) — 잃는 것을 알리고 허용 */
+      S.room.players.h1.seen = 1;
+      act('host-take', {});
+      ck('★★진행자 기기가 끊겨 있으면 넘길 수 있다', !!S.ask && S.ask.go === 'host-take-go');
+      ck('  대신 진행 중이던 판이 사라진다고 알린다',
+        (S.ask.lose || []).join(' ').includes('사라져요') && (S.ask.lose || []).join(' ').includes('끊겨'));
+      S.ask = null; S.room.busy = null; S.room.players.h1.seen = Date.now();
 
       /* 경고창 → 확인 */
       act('host-take', {});
@@ -1325,6 +1335,171 @@ if (new URLSearchParams(location.search).has('demo')){
         !RULE().prize && !view('board').includes('우승 경품'));
 
       S.room.rule = null; S.room.scores = {}; S.play = null; S.draft = null; S.view = 'lobby';
+    }
+
+    /* ════ v0.40.1 전체 점검에서 나온 것들 ════ */
+    {
+      S.pid = 'h1'; S.isHost = true; S.room.host = 'h1'; S.play = null; S.draft = null;
+      S.room.scores = {}; S.room.rule = null; S.room.busy = null;
+      const P3 = playing().map(([pid]) => pid);
+
+      /* ── 새로고침해도 방 규칙이 안 사라진다 ──
+         ⚠️ 방을 서버에서 다시 만들 때 필드를 빠뜨리면 그 필드는 **다음 저장에서 서버에서도 지워진다.**
+            그래서 「진행자가 서버로 보내는 필드」를 전부 **다시 읽어오는지** 기계적으로 대조한다. */
+      globalThis.__W = [];
+      S.room.rule = { wmode:'game', prize:'경품' };
+      pushHostState();
+      const pushed = (globalThis.__W || []).filter(x => x[0] === 'update' && x[2] && 'scores' in x[2]).pop();
+      const keys = pushed ? Object.keys(pushed[2]).filter(k => k !== 'touchedAt') : [];
+      const back = roomFrom({ ...pushed[2], players:{ h1:{ name:'나' } } });
+      ck('★★★진행자가 보내는 방 필드를 다시 읽어올 때 하나도 안 빠뜨린다 (' + keys.length + '개)',
+        keys.length >= 7 && keys.every(k => k in back));
+      ck('  배점·경품이 되살아난다', back.rule && back.rule.prize === '경품');
+      ck('★★진행자는 host 를 쓰지 않는다 (끊겼던 옛 진행자가 되돌려놓지 않게)', !('host' in pushed[2]));
+      S.room.rule = null;
+
+      /* ── 내보낸 사람이 유령으로 안 살아난다 ── */
+      const ghost = P3[P3.length - 1];
+      const keepGhost = S.room.players[ghost];
+      S.room.players[ghost] = { seen: Date.now() };             // 하트비트가 되살린 모양
+      ck('★★★이름 없는 유령 노드는 선수 명단에 안 들어간다', !playing().some(([pid]) => pid === ghost));
+      let boardOk = true;
+      try{ view('board'); }catch(e){ boardOk = false; }
+      ck('★★순위 탭이 유령 때문에 멈추지 않는다', boardOk && document.getElementById('view').innerHTML.length > 100);
+      globalThis.__W = [];
+      applySnapshot({ host:'h1', players:{ ...S.room.players, [ghost]:{ seen:Date.now() } },
+        teams:S.room.teams, scores:{}, rotation:{}, used:{} });
+      ck('★★진행자가 서버의 유령 노드를 치운다',
+        (globalThis.__W || []).some(x => x[0] === 'remove' && String(x[1]).endsWith('/players/' + ghost)));
+      S.room.players[ghost] = keepGhost;
+
+      /* 내보내진 기기는 스스로 나간다 */
+      { const keep = { pid:S.pid, host:S.isHost, code:S.code, room:S.room };
+        S.pid = ghost; S.isHost = false;
+        const others = { ...S.room.players }; delete others[ghost];
+        applySnapshot({ host:'h1', players:others, teams:S.room.teams, scores:{}, rotation:{}, used:{} });
+        ck('★★★내보내진 기기는 스스로 방을 나온다 (하트비트로 유령을 되살리지 않게)', S.code === null);
+        Object.assign(S, { pid:keep.pid, isHost:keep.host, code:keep.code, room:keep.room }); }
+
+      /* ── 진행 중 표시(busy)는 진행자 기기가 서버에 싣는다 ── */
+      globalThis.__W = [];
+      S.gameId = 'act'; act('tool-start', {});
+      ck('★★도구를 켜면 서버에 「진행 중」이 실린다',
+        S.room.busy === 'act' && (globalThis.__W || []).some(x => x[2] && x[2].busy === 'act'));
+      act('pl-quit', {}); S.play = null; render(true);
+      ck('  끄면 풀린다', !S.room.busy);
+
+      /* ── 진행자에서 내려올 때: 타이머·작성 중 순위를 치운다 ── */
+      S.gameId = 'chosung'; act('tool-start', {}); act('score-start', {});
+      const zombie = setInterval(() => {}, 100000); S.play = { gameId:'x', kind:'deck', _t:zombie };
+      S.draft = S.draft || { order:[], tie:[] }; S.view = 'score';
+      applySnapshot({ host:P3[1], players:S.room.players, teams:S.room.teams, scores:{}, rotation:{}, used:{} });
+      ck('★★★내려오면 작성 중이던 순위를 버린다 (저장해도 사라질 판을 만들지 않게)',
+        S.isHost === false && !S.draft && S.view !== 'score');
+      ck('★★내려오면 진행 도구 타이머도 멈춘다 (좀비 타이머 방지)', !S.play);
+      clearInterval(zombie);
+      /* 그래도 순위 화면에 남아 저장을 누르면 막는다 */
+      S.draft = { gameId:'act', mode:'solo', order:[P3[0], P3[1]], tie:[0,0], weight:1, assign:{} };
+      const nScore = Object.keys(S.room.scores).length;
+      act('score-save', {});
+      ck('★★진행자가 아닌 기기는 순위를 저장하지 못한다', Object.keys(S.room.scores).length === nScore);
+      S.pid = 'h1'; S.isHost = true; S.room.host = 'h1'; S.draft = null; S.play = null; S.view = 'lobby';
+
+      /* ── 옛 진행자의 밀린 쓰기가 덮으면 진행자가 되세운다 ── */
+      S.room.scores = { a:{ gameId:'act', mode:'solo', order:[P3[0], P3[1]], weight:1, assign:{}, at:1 } };
+      pushHostState();
+      /* RTDB 흉내: 빈 객체는 사라지고 키 순서가 바뀐다 — 이걸 「다르다」고 보면 무한히 밀어댄다 */
+      const rtdb = x => {
+        if (Array.isArray(x)) return x.map(rtdb);
+        if (x && typeof x === 'object'){
+          const o = {}; for (const k of Object.keys(x).reverse()){
+            const v = rtdb(x[k]);
+            if (v === null || v === undefined) continue;
+            if (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length) continue;
+            o[k] = v; }
+          return o; }
+        return x;
+      };
+      const snap = () => rtdb({ host:'h1', players:S.room.players, teams:S.room.teams, scores:S.room.scores,
+        rotation:S.room.rotation, used:S.room.used, rule:S.room.rule, busy:S.room.busy });
+      _hostReassertAt = 0; globalThis.__W = [];
+      applySnapshot(snap());
+      ck('★★★같은 내용이면 다시 밀지 않는다 (RTDB 가 모양을 바꿔도 — 무한 반복 방지)',
+        !(globalThis.__W || []).some(x => x[0] === 'update'));
+      const stale = snap(); stale.scores = {};                       // 옛 진행자가 덮어버림
+      _hostReassertAt = 0; globalThis.__W = [];
+      applySnapshot(stale);
+      ck('★★★서버가 옛 값으로 덮이면 진행자가 자기 값을 되세운다',
+        (globalThis.__W || []).some(x => x[0] === 'update' && x[2].scores && x[2].scores.a));
+      globalThis.__W = [];
+      applySnapshot(stale);
+      ck('  되세우기는 5초에 한 번까지 (혹시 모를 반복 방지)', !(globalThis.__W || []).some(x => x[0] === 'update'));
+      S.room.scores = {};
+
+      /* ── 동점 ── */
+      S.gameId = 'act'; act('tool-start', {}); act('score-start', {});
+      [P3[0], P3[1], P3[2]].forEach(id => act('pickrank', { id }));
+      act('tie', { i:'1' });
+      const sv = view('score');
+      ck('★★순위 화면에서 공동 순위를 고를 수 있다', sv.includes('data-act="tie"') && sv.includes('공동 ✓'));
+      act('score-save', {});
+      const trec = Object.values(S.room.scores).pop();
+      const tp = calcPoints();
+      ck('★★★공동 1등은 둘 다 10점, 다음은 3등 점수(1·1·3 방식)',
+        tp[P3[0]] === 10 && tp[P3[1]] === 10 && tp[P3[2]] === 5);
+      ck('  기록에 공동 순위가 남는다', Array.isArray(trec.tie) && trec.tie[1] === 1);
+      S.room.scores = {};
+      /* 도구 결과는 같은 점수를 **알아서** 공동으로 넘긴다 */
+      S.gameId = 'quiz'; act('tool-start', {});
+      S.play.log = [];                                         // 아무도 못 맞힘 = 전원 0개
+      act('quiz-save', {});
+      ck('★★★퀴즈에서 전원 0개면 전원 공동 1등으로 넘어간다 (입장 순서로 점수가 갈리지 않게)',
+        S.draft && S.draft.tie.slice(1).every(x => x === 1));
+      S.draft = null; S.play = null;
+
+      /* ── 기록형: 나간 사람 · 실패끼리 ── */
+      S.gameId = 'cup'; act('tool-start', {});
+      const cp = S.play; const [r1, r2, r3] = cp.order;
+      cp.rec = { [r1]:5.1, [r2]:null, [r3]:null };
+      const keepR1 = S.room.players[r1]; delete S.room.players[r1];     // 1위가 나갔다
+      act('race-save', {});
+      ck('★★★나간 사람은 순위에서 빠진다 (1위 자리를 없는 사람이 차지하지 않게)',
+        S.draft && !S.draft.order.includes(r1));
+      ck('  실패한 사람끼리는 공동 순위다',
+        S.draft.tie[S.draft.order.indexOf(r3)] === 1 || S.draft.tie[S.draft.order.indexOf(r2)] === 1);
+      S.room.players[r1] = keepR1; S.draft = null; S.play = null;
+
+      /* ── 연기 대결: 다음 사람 연타 ── */
+      S.gameId = 'act'; act('tool-start', {});
+      act('ac-next', { turn:'0' }); act('ac-next', { turn:'0' });
+      ck('★★「다음 사람」을 두 번 눌러도 한 명만 넘어간다', S.play.turn === 1);
+      S.play = null;
+
+      /* ── 스마일: 이름 이스케이프 ── */
+      S.gameId = 'smile'; act('tool-start', {});
+      const evil = P3[1], keepName = S.room.players[evil].name;
+      S.room.players[evil].name = '<img src=x onerror=1>';
+      Object.assign(S.play, { phase:'judge', sul:P3[0], pool:[evil], sel:[evil] });
+      const smv = view('play');
+      ck('★★★참가자 이름이 HTML 로 실행되지 않는다 (스마일 판정 버튼)',
+        !smv.includes('<img src=x') && smv.includes('&lt;img'));
+      S.room.players[evil].name = keepName; S.play = null;
+
+      /* ── 한 판 안에서 제시어 반복 ── */
+      S.play = { gameId:'body', kind:'deck', drawn:new Set(['사자', '호랑이']) };
+      const pk = freshPick('body', [{ w:'사자' }, { w:'호랑이' }, { w:'기린' }], 1);
+      ck('★★이번 판에 이미 나온 제시어는 덱을 다시 만들어도 안 나온다',
+        pk.list.length === 1 && pk.list[0].w === '기린');
+      S.play = null;
+
+      /* ── 윷판이 펴진 채로 팀 다시 짜기 ── */
+      S.room.yut = { phase:'play', pieces:[[-1],[-1]] };
+      const keepTeams = JSON.stringify(S.room.teams);
+      act('teams', { n:'3' });
+      ck('★★윷판이 진행 중이면 팀을 다시 나누지 못한다', JSON.stringify(S.room.teams) === keepTeams);
+      S.room.yut = null;
+
+      S.gameId = null; S.view = 'lobby'; S.room.scores = {};
     }
 
     /* ── 9) 정리 ── */

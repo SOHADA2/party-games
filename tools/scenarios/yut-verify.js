@@ -262,6 +262,73 @@ if (new URLSearchParams(location.search).has('demo')){
       S.pid = keepPid; S.isHost = keepHost;
     }
 
+    /* ★★★ 던지는 연출 몇 초 사이에 벌어지는 일 (v0.40.1 점검) */
+    {
+      const settle = async () => {
+        for (let i = 0; i < 80 && (_yutAnim || m().throw); i++) await (yutConsume() || sleep(60));
+        while (_yutAnim) await sleep(60);
+      };
+      const teamPid = t => Object.entries(S.room.teams.assign).find(([, x]) => Number(x) === t)[0];
+      S.pid = 'h1'; S.isHost = true;
+
+      /* ① 연출 도중 「잠시!」가 들어와도 **이미 본 결과는 판에 남는다** */
+      act('yut-start', {});
+      m().turn = 0;
+      m().throw = { n:'걸', v:3, again:false, sticks:[1,1,1,0], by:teamPid(0), at:now() };
+      const run1 = yutConsume();                         // 연출 시작
+      m().halt = { by:teamPid(1), team:0, at:now() };    // 그 사이 지적
+      await run1; await settle();
+      ck('★★★연출 중에 「잠시!」가 와도 던진 결과가 판에 남는다',
+        (m().pending || []).some(x => x.n === '걸'));
+      ck('★★★그래서 결과를 보고 다시 던질 수 없다', m().canThrow === false);
+      m().halt = null;
+
+      /* ② 윷(한 번 더) 연출 중에 들어온 **다음 던지기**가 지워지지 않는다 */
+      act('yut-start', {});
+      m().turn = 0;
+      const at1 = now();
+      m().throw = { n:'윷', v:4, again:true, sticks:[1,1,1,1], by:teamPid(0), at:at1 };
+      globalThis.__W = [];
+      const run2 = yutConsume();
+      m().throw = { n:'도', v:1, again:false, sticks:[1,0,0,0], by:teamPid(0), at:at1 + 1 };  // 연출 중 연타
+      await run2; await settle();
+      ck('★★★연출 중에 들어온 다음 던지기도 판에 올라간다 (지워지지 않는다)',
+        (m().pending || []).map(x => x.n).join(',') === '윷,도');
+      /* ⚠️ 위 검사만으로는 옛 버그를 못 잡는다 — 지우는 건 **서버 쓰기**였고 검증 사본에서는
+            서버가 안 돌아와 로컬이 그대로다. 그래서 결과를 싣는 쓰기에 throw 가 섞였는지 본다. */
+      ck('★★★결과를 싣는 쓰기가 throw 를 건드리지 않는다 (연출 중 들어온 던지기를 서버에서 지우지 않게)',
+        !(globalThis.__W || []).some(x => x[2] && 'pending' in x[2] && 'throw' in x[2]));
+
+      /* ③ 폰: 보낸 게 아직 안 올라왔으면 또 못 던진다 */
+      act('yut-start', {});
+      m().turn = 0;
+      const me = teamPid(0);
+      S.pid = me; S.isHost = false; S.view = 'yut';
+      S.yutSent = { at:now(), n:'개', ok:true };
+      const ph = view('yut');
+      ck('★★폰은 보낸 게 올라오기 전에는 던지기 버튼을 잠근다 (연타로 두 번 던지지 않게)',
+        /data-act="yut-throw"[^>]*disabled/.test(ph) && ph.includes('보내는 중'));
+      globalThis.__W = [];
+      act('yut-throw', {});
+      ck('  눌러도 서버에 또 보내지 않는다',
+        !(globalThis.__W || []).some(x => x[0] === 'set' && /yut\/throw$/.test(x[1] || '')));
+      S.yutSent = null; S.pid = 'h1'; S.isHost = true;
+      while (_yutAnim) await sleep(60);
+
+      /* ④ 끝난 판을 순위에 두 번 넣지 못한다 */
+      act('yut-start', {});
+      m().pieces[0] = [YUT_HOME, YUT_HOME, YUT_HOME, YUT_HOME];
+      m().phase = 'ended'; m().winner = 0;
+      S.room.scores = {};
+      const keepPlay = S.play;
+      act('yut-score', {});
+      act('score-save', {});
+      ck('★★★윷 순위를 올리면 끝난 판을 치운다 (같은 판이 두 번 기록되지 않게)',
+        Object.keys(S.room.scores).length === 1 && !S.room.yut);
+      S.room.scores = {}; S.play = keepPlay; S.view = 'play';
+      act('yut-start', {});
+    }
+
     /* ★★ 집(아직 안 낸 말) — 버튼이 아니라 **실제 말을 눌러서** 내보낸다 */
     {
       act('yut-start', {});

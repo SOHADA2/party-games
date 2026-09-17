@@ -544,6 +544,11 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
   transition:transform .14s var(--spring),border-color .18s;
 }
 .pick:active{transform:scale(.98);border-color:var(--hot)}
+/* 공동 순위 토글 — 바로 앞 자리와 같은 등수로 묶는다 */
+.tiebtn{flex:none;padding:6px 9px;border-radius:9px;font-size:11.5px;font-weight:800;
+  background:var(--surf);border:1px solid var(--line2);color:var(--dim2)}
+.tiebtn.on{background:rgba(160,114,31,.16);border-color:rgba(160,114,31,.5);color:var(--amber)}
+.tiebtn:active{transform:scale(.92)}
 
 /* ══════════════════════════════════════════════════════════
    리더보드 — 시상대
@@ -1433,7 +1438,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.40.0';
+const APP_VERSION = 'v0.40.1';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1451,6 +1456,11 @@ const db  = getDatabase(app);
 /* 순위 → 포인트 (마리오카트식). 6등 이하는 1점 */
 const RANK_POINTS = [10, 7, 5, 3, 2];
 const rankPt = i => RANK_POINTS[i] ?? 1;
+/* 동점 — `tie[i]=1` 이면 **바로 앞 자리와 같은 등수**다(1·2·2·4 방식: 같이 2등, 다음은 4등).
+   ⚠️ 예전엔 동점을 적을 방법이 없어서, 퀴즈에서 셋 다 0개면 **입장 순서대로 5·3·2점**이
+      갈렸다. 화면에는 「동점이면 다음 화면에서 조정」이라고 적혀 있었는데 그런 수단이 없었다. */
+const rankIdx = (tie, i) => { let k = i; while (k > 0 && tie?.[k]) k--; return k; };
+const tiesBy = (order, val) => order.map((x, i) => (i > 0 && val(x) === val(order[i - 1])) ? 1 : 0);
 
 const TEAM_COLORS = ['#C1573A','#5C5A93','#3F7F62','#B08432','#3A6E8F','#AC4F62'];
 /* ⚠️ 아바타 글자는 흰색이다(.av) — 그래서 여기 색은 **흰 글씨가 읽히는 진하기**여야 한다.
@@ -3511,14 +3521,22 @@ const yutLog = (m, msg) => { m.log = [msg, ...(m.log || [])].slice(0, 8); };
 
 /* 던진 결과를 쌓는다. 윷·모면 계속 던질 수 있다. */
 function yutApplyThrow(r, byPid){
-  const m = YT(); if (!m || m.phase !== 'play' || m.pick || m.halt) return;
+  /* ⚠️ 「잠시!」 판정(halt/pick) 중이어도 **버리지 않는다.** 이 함수에 오는 결과는 이미
+        들어올 때 차례·판정을 통과했고, 모두가 연출로 **결과를 이미 봤다.** 연출 도중
+        「잠시!」가 들어왔다고 버렸더니 canThrow 가 그대로라 **본 결과를 버리고 다시 던질 수
+        있었다**(v0.40.1 점검). 판정은 말을 되돌리는 것이지 던진 값을 지우는 게 아니다.
+        새 던지기를 막는 가드는 들어오는 곳(yutConsume · yut-throw · yut-throw-here)에 있다. */
+  const m = YT(); if (!m || m.phase !== 'play') return;
   m.pending = [...(m.pending || []), { n:r.n, v:r.v }];
   /* ⚠️ at 을 반드시 실어 보낸다 — 던진 폰이 「내 던지기가 판에 올라갔다」를
         이걸로 확인한다(vYutPhone 의 전달 표시). 지우면 폰이 영원히 「보내는 중」이 된다. */
   m.last = { ...r, by:byPid, at: r.at || now() };
   m.canThrow = !!r.again;
   yutLog(m, `${pname(byPid)} — ${r.n}${r.again ? ' (한 번 더!)' : ''}`);
-  pushYut({ pending:m.pending, last:m.last, canThrow:m.canThrow, log:m.log, throw:null });
+  /* ⚠️ 여기서 `throw:null` 을 쓰지 않는다. 연출 몇 초 동안 **다음 던지기가 이미 들어와
+        있을 수 있다**(윷·모로 한 번 더) — 지우면 그 던지기가 사라지고 폰에는 「못 받았어요」가
+        떴다. 받은 던지기는 yutConsume 이 연출 **전에** 이미 지운다. */
+  pushYut({ pending:m.pending, last:m.last, canThrow:m.canThrow, log:m.log });
   SFX.go(); vib(18); render(true);
 }
 
@@ -3654,10 +3672,14 @@ function resetUsed(gid){
 /* 이미 나온 것을 뺀 나머지. 모자라면 기록을 비우고 전체를 돌려준다. */
 function freshPick(gid, pool, need){
   const used = usedWords(gid);
-  const fresh = pool.filter(x => !used.has(x.w));
+  /* ⚠️ 「이번 판에 이미 나온 것」도 뺀다. 지난 판 기록(room.used)은 **판이 끝날 때만**
+        채워져서, 판 도중 덱이 바닥나 다시 만들면 **3팀이 1팀이 맞힌 단어를 또 받았다.** */
+  const drawn = S.play?.drawn || new Set();
+  const fresh = pool.filter(x => !used.has(x.w) && !drawn.has(x.w));
   if (fresh.length >= Math.max(need, 1)) return { list:fresh, wrapped:false };
   resetUsed(gid);
-  return { list:pool, wrapped:true };
+  const notDrawn = pool.filter(x => !drawn.has(x.w));
+  return { list:notDrawn.length ? notDrawn : pool, wrapped:true };
 }
 /* 게임별로 쓸 수 있는 카테고리만 — `use` 가 없으면 옛 데이터로 보고 둘 다 허용한다 */
 const deckKeys = tool => DECK_KEYS.filter(k => !WORD_DECKS[k].use || WORD_DECKS[k].use.includes(tool));
@@ -4154,7 +4176,22 @@ const $ = s => document.querySelector(s);
 const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const now = () => Date.now();
 const emptyRoom = () => ({ createdAt:now(), host:'', status:'lobby', players:{}, teams:{count:0,assign:{}},
-  scores:{}, rotation:{}, used:{}, yut:null, rule:null });
+  scores:{}, rotation:{}, used:{}, yut:null, rule:null, busy:null });
+
+/* 이름이 없는 참가자 노드는 **유령**이다 — 내보내진 기기의 하트비트(update seen)가
+   지워진 자리를 `{seen}` 만으로 되살린 것이다. 목록·점수·정렬 어디에도 들이지 않는다.
+   ⚠️ 정렬에서 `name.localeCompare` 가 터져 순위 탭이 멈춘 적이 있다(v0.40.1 점검). */
+const cleanPlayers = ps => Object.fromEntries(Object.entries(ps || {}).filter(([, p]) => p && p.name));
+
+/* 서버 스냅샷 → 이 기기의 방 상태. ⚠️ **방 필드를 새로 만들면 반드시 여기에도 넣는다.**
+   참여·재접속·스냅샷 세 군데에 따로 적어뒀다가 `rule` 하나를 두 군데서 빠뜨려,
+   **진행자가 새로고침하면 배점·경품·벌칙이 사라지는** 회귀를 냈다(v0.40.0). */
+const roomFrom = v => ({
+  createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
+  players:cleanPlayers(v.players), teams:v.teams||{count:0,assign:{}},
+  scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{}, yut:v.yut||null,
+  rule:v.rule||null, busy:v.busy||null,
+});
 
 /* ── 방 규칙 — 배점·경품·벌칙은 **방장이 정한다** ────────────────────────
    ⚠️ 게임마다 배점을 코드에 박아두던 것을 기본값으로만 남겼다(사장님 지적:
@@ -4361,14 +4398,48 @@ function watchConnection(){
 function pushHostState(){
   if (!S.isHost || !S.code || !S.room) return;
   const r = S.room;
+  /* ⚠️ `host` 는 **여기서 쓰지 않는다.** 끊겨 있던 옛 진행자의 밀린 쓰기가 다시 붙으면
+        이 값이 서버의 진행자를 **옛 기기로 되돌려** 넘겨받은 기기가 강등당했다(v0.40.1 점검).
+        진행자는 방을 만들 때(createRoom)와 넘겨받을 때(host-take-go)만 쓴다. */
+  _hostSig = hostStateSig(r);
   update(roomRef(S.code), {
-    status:r.status||'lobby', host:r.host||S.pid,
+    status:r.status||'lobby',
     teams:r.teams||{count:0,assign:{}}, scores:r.scores||{}, rotation:r.rotation||{},
-    used:r.used||{}, rule:r.rule||null,
+    used:r.used||{}, rule:r.rule||null, busy:r.busy||null,
     // ⚠️ yut 은 여기서 쓰지 않는다 — 참가자가 throw/halt 를 직접 쓰기 때문에
     //    통째로 덮으면 던진 결과와 「잠시!」가 날아간다. pushYut()으로 하위 경로만 갱신할 것.
     touchedAt:now(),
   }).catch(()=>{});
+}
+
+/* ── 진행자 재확인 ─────────────────────────────────────────────
+   끊겨 있던 옛 진행자의 밀린 쓰기가 서버의 점수·팀·규칙을 덮을 수 있다. 진행자는 스냅샷이
+   **자기가 마지막으로 보낸 것과 다르면** 한 번 더 밀어 자기 값을 되세운다.
+   ⚠️ 비교는 **정규화해서** 한다. RTDB 는 빈 객체·배열·null 을 지우고 키 순서도 바꾼다 —
+      그냥 JSON 을 비교하면 매번 달라 보여 **밀기 → 스냅샷 → 또 밀기 무한 반복**이 된다.
+   ⚠️ 그래도 혹시 모를 반복을 막으려고 5초에 한 번까지만 민다. */
+let _hostSig = '', _hostReassertAt = 0;
+function stableNorm(x){
+  if (x === null || x === undefined) return undefined;
+  if (Array.isArray(x)){
+    const a = x.map(stableNorm);
+    return a.every(e => e === undefined) ? undefined : a.map(e => e === undefined ? null : e);
+  }
+  if (typeof x === 'object'){
+    const o = {};
+    for (const k of Object.keys(x).sort()){ const v = stableNorm(x[k]); if (v !== undefined) o[k] = v; }
+    return Object.keys(o).length ? o : undefined;
+  }
+  return x;
+}
+const hostStateSig = r => JSON.stringify(stableNorm({ teams:r.teams, scores:r.scores,
+  rotation:r.rotation, used:r.used, rule:r.rule, busy:r.busy }) || {});
+function hostReassert(v){
+  if (!S.isHost || v.host !== S.pid || !_hostSig) return;
+  if (hostStateSig(v) === _hostSig) return;
+  if (now() - _hostReassertAt < 5000) return;
+  _hostReassertAt = now();
+  pushHostState();
 }
 
 /* 참가자가 던진 결과를 호스트가 받아 판에 반영한다.
@@ -4385,7 +4456,9 @@ function yutConsume(){
   // 태블릿에서도 던지는 걸 보여준 **뒤에** 판에 반영한다(먼저 반영하면 결과가 미리 보인다)
   pushYut({ throw:null });
   // ⚠️ 프로미스를 돌려준다 — 연출이 끝나야 판에 반영되므로 검사에서 기다릴 수 있어야 한다
-  return yutThrowAnim(th, `${pname(th.by)} 던지기`).then(() => yutApplyThrow(th, th.by));
+  // 반영한 뒤 곧바로 한 번 더 본다 — 연출 중에 들어와 미뤄둔 다음 던지기가 있을 수 있다
+  return yutThrowAnim(th, `${pname(th.by)} 던지기`)
+    .then(() => { yutApplyThrow(th, th.by); return yutConsume(); });
 }
 
 function subscribe(code){
@@ -4402,26 +4475,37 @@ function applySnapshot(v){
         안 내려오면 두 기기가 서로 진실원이라 믿고 번갈아 덮어써서 판이 요동친다. */
   if (S.isHost && v.host && v.host !== S.pid){
     S.isHost = false; saveSession();
+    /* ⚠️ 타이머를 먼저 멈춘다 — 안 멈추면 좀비 인터벌이 남아, 나중에 이 기기가 다시
+          진행자가 됐을 때 **새 판의 턴을 시작하자마자 끝내버린다**(v0.40.1 점검). */
+    stopPlayTimer();
     S.play = null;            // 진행 도구 상태는 이 기기에만 있었다 — 새 진행자에겐 없다
-    if (S.view === 'play') S.view = 'lobby';
+    /* ⚠️ 작성 중이던 순위도 버린다. 남겨두면 저장을 눌렀을 때 「반영됐어요」가 뜨고
+          **다음 스냅샷에 조용히 덮여 사라진다.** */
+    S.draft = null;
+    if (S.view === 'play' || S.view === 'score') S.view = 'lobby';
     toast(`진행자가 ${(v.players?.[v.host]?.name) || '다른 기기'}님 기기로 넘어갔어요`);
+  }
+  /* 내가 방 명단에서 사라졌다 = 진행자가 내보냈다. 조용히 남아 있으면 하트비트가
+     **이름 없는 유령 선수**를 되살린다 → 스스로 나간다. (진행자는 스스로를 못 내보낸다) */
+  if (!S.isHost && !v.players?.[S.pid]?.name){
+    toast('방에서 나왔어요 — 진행자가 내보냈을 수 있어요');
+    leaveRoom(); return;
   }
   if (S.isHost){
     // ⚠️ 윷놀이는 v0.13.0 이후 처음으로 **참가자가 방 노드에 쓰는** 게임이다.
     //    호스트가 진실원이지만, 참가자가 쓰는 두 경로만은 서버에서 되받아야 한다.
     //    (v0.8.0 마피아 때와 같은 배선 — 통째로 덮으면 던진 결과가 사라진다.)
-    S.room.players = v.players || S.room.players || {};   // 다른 사람 입장만 병합해 받는다
+    S.room.players = cleanPlayers(v.players || S.room.players);   // 다른 사람 입장만 병합해 받는다
+    // 서버에 남은 유령 노드는 진행자가 치운다(내보내진 기기가 잠깐 되살린 것)
+    for (const [pid, pl] of Object.entries(v.players || {}))
+      if (!pl || !pl.name) remove(ref(db, `${ROOT}/rooms/${S.code}/players/${pid}`)).catch(()=>{});
+    hostReassert(v);
     if (S.room.yut && v.yut){
       S.room.yut.throw = v.yut.throw || null;
       S.room.yut.halt  = v.yut.halt  || null;
     }
   }else{
-    S.room = {
-      createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
-      players:v.players||{}, teams:v.teams||{count:0,assign:{}},
-      scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{}, yut:v.yut||null,
-      rule:v.rule||null,
-    };
+    S.room = roomFrom(v);
   }
   yutConsume();
   render();
@@ -4471,8 +4555,7 @@ async function joinRoom(code, name){
   catch{ toast('연결 실패 — 인터넷을 확인해 주세요'); return false; }
   if (!v){ toast('그런 방이 없어요'); return false; }
   S.pid = uid(); S.isHost = false; S.code = code;
-  S.room = { createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
-    players:v.players||{}, teams:v.teams||{count:0,assign:{}}, scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{}, yut:v.yut||null };
+  S.room = roomFrom(v);
   try{ await set(ref(db, `${ROOT}/rooms/${code}/players/${S.pid}`), { name, joinedAt:now(), seen:now() }); }catch{}
   saveSession(); subscribe(code); startHeartbeat(); keepAwake();
   go('lobby'); return true;
@@ -4481,10 +4564,13 @@ async function joinRoom(code, name){
 async function rejoin(sess){
   let v = null;
   try{ v = (await get(roomRef(sess.code))).val(); }catch{}
-  if (!v || !v.players || !v.players[sess.pid]) return false;
-  S.pid = sess.pid; S.code = sess.code; S.isHost = !!sess.isHost;
-  S.room = { createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
-    players:v.players||{}, teams:v.teams||{count:0,assign:{}}, scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{}, yut:v.yut||null };
+  // ⚠️ 이름이 없으면 유령 노드다(내보내진 뒤 하트비트가 되살린 것) — 복구하지 않는다
+  if (!v || !v.players || !v.players[sess.pid]?.name) return false;
+  /* ⚠️ 진행자 여부를 **기기에 저장된 값으로 믿지 않는다.** 꺼져 있는 동안 다른 기기가
+        넘겨받았을 수 있다 — 옛 값을 믿고 복구하면 옛 진행자가 서버를 덮어쓴다. */
+  S.pid = sess.pid; S.code = sess.code; S.isHost = v.host === sess.pid;
+  if (S.isHost !== !!sess.isHost) saveSession();
+  S.room = roomFrom(v);
   subscribe(sess.code); startHeartbeat(); keepAwake();
   go('lobby'); return true;
 }
@@ -4500,7 +4586,8 @@ function leaveRoom(){
 /* ══════════════════════════════════════════════
    계산
 ══════════════════════════════════════════════ */
-const players = () => Object.entries(S.room?.players || {}).sort((a,b) => (a[1].joinedAt||0) - (b[1].joinedAt||0));
+const players = () => Object.entries(S.room?.players || {}).filter(([, p]) => p && p.name)
+  .sort((a,b) => (a[1].joinedAt||0) - (b[1].joinedAt||0));
 const pname = pid => S.room?.players?.[pid]?.name || '?';
 /* ★ 관전(사회자) 기기는 「선수」가 아니다 — 태블릿을 공용 화면으로 세워둘 때 쓴다.
    players() = 방에 있는 전부(대기실 목록·하트비트용)
@@ -4566,7 +4653,7 @@ function scorePt(sc, pid){
   const w = sc.weight ?? (G(sc.gameId)?.weight ?? 1);
   let got = 0;
   (sc.order || []).forEach((entry, i) => {
-    const base = rankPt(i) * w;
+    const base = rankPt(rankIdx(sc.tie, i)) * w;
     if (sc.mode === 'team'){
       if (Number(sc.assign?.[pid]) === Number(entry)) got += base;
     }else if (entry === pid) got += base;
@@ -4580,7 +4667,7 @@ function calcPoints(){
   for (const sc of Object.values(S.room?.scores || {})){
     const w = sc.weight ?? (G(sc.gameId)?.weight ?? 1);
     (sc.order || []).forEach((entry, i) => {
-      const base = rankPt(i) * w;
+      const base = rankPt(rankIdx(sc.tie, i)) * w;
       if (sc.mode === 'team'){
         Object.entries(sc.assign || {}).forEach(([pid, t]) => {
           if (Number(t) === Number(entry) && pts[pid] != null) pts[pid] += base;
@@ -4712,6 +4799,7 @@ function songNextCard(){
   const p = S.play;
   if (p.di >= p.deck.length) songBuildDeck();
   p.cur = p.deck[p.di++] || null;
+  if (p.cur) (p.drawn ||= new Set()).add(p.cur.w);
 }
 function songNext(){
   const p = S.play;
@@ -4779,6 +4867,7 @@ function quizNextCard(){
   const p = S.play;
   if (p.di >= p.deck.length) quizBuildDeck();
   p.cur = p.deck[p.di++] || null;
+  if (p.cur) (p.drawn ||= new Set()).add(p.cur.w);
 }
 function quizNext(){
   const p = S.play;
@@ -4895,6 +4984,7 @@ function nextWord(){
   //    두 글자 단어가 슬그머니 섞여 들어와 답이 여러 개인 문제가 되살아난다)
   if (p.di >= p.deck.length){ p.kind === 'cho' ? choBuildDeck() : buildDeck(); }
   p.cur = p.deck[p.di++] || { w:'—', c:null };
+  if (p.cur.w !== '—') (p.drawn ||= new Set()).add(p.cur.w);
 }
 
 function stopPlayTimer(){ if (S.play?._t){ clearInterval(S.play._t); S.play._t = null; } }
@@ -4921,9 +5011,13 @@ function startCountdown(onEnd){
   stopPlayTimer();
   if (!p || !p.sec) return;              // 「끄기」면 타이머 없이 진행자가 직접 공개한다
   p.left = p.sec;
+  /* ⚠️ `p.left -= 0.2` 로 세면 폰이 절전·백그라운드로 인터벌을 늦출 때 **시간이 늘어난다.**
+        끝나는 시각을 정해두고 매번 남은 시간을 다시 잰다. */
+  const endAt = Date.now() + p.sec * 1000;
   let lastTick = Math.ceil(p.left);
   p._t = setInterval(() => {
-    p.left -= 0.2;
+    if (S.play !== p){ clearInterval(p._t); return; }   // 도구가 바뀌었다 — 좀비 타이머 방지
+    p.left = Math.max(0, (endAt - Date.now()) / 1000);
     const t = Math.ceil(p.left);
     if (t !== lastTick){ lastTick = t; if (t > 0 && t <= 5) SFX.tick(); }
     if (p.left <= 0){ stopPlayTimer(); onEnd(); return; }
@@ -4941,9 +5035,11 @@ function beginTurn(){
   SFX.go(); vib(20);
   render();
   stopPlayTimer();
+  const endAt = Date.now() + p.sec * 1000;          // 틱 횟수가 아니라 실제 시각으로 잰다
   let lastTick = Math.ceil(p.left);
   p._t = setInterval(() => {
-    p.left -= 0.2;
+    if (S.play !== p){ clearInterval(p._t); return; }   // 도구가 바뀌었다 — 좀비 타이머 방지
+    p.left = Math.max(0, (endAt - Date.now()) / 1000);
     const s = Math.ceil(p.left);
     if (s !== lastTick){ lastTick = s; if (s > 0 && s <= 5) SFX.tick(); }
     if (p.left <= 0){ endTurn(); return; }
@@ -4971,10 +5067,10 @@ function markWord(ok){
 }
 
 /* 공통: 도구 결과 → 기존 순위 입력 화면으로 넘긴다(동점·이견은 거기서 손으로 조정) */
-function toScore(order, mode){
+function toScore(order, mode, tie){
   const p = S.play;
   const teams = S.room.teams || {count:0,assign:{}};
-  S.draft = { gameId:p.gameId, mode, order,
+  S.draft = { gameId:p.gameId, mode, order, tie:tie || order.map(() => 0),
     weight:gameWeight(p.gameId), assign:JSON.parse(JSON.stringify(teams.assign || {})) };
   stopPlayTimer(); S.play = null;
   go('score');
@@ -4983,7 +5079,8 @@ function toScore(order, mode){
 function deckToScore(){
   const p = S.play;
   const cnt = t => (p.results[t] || []).filter(x => x.ok).length;
-  toScore([...p.order].sort((a,b) => cnt(b) - cnt(a)), 'team');
+  const ord = [...p.order].sort((a,b) => cnt(b) - cnt(a));
+  toScore(ord, 'team', tiesBy(ord, cnt));
 }
 
 /* ── 공통 시간 표시/스톱워치 ── */
@@ -5137,6 +5234,13 @@ function askLeave(){
 }
 
 function render(force){
+  /* 진행자 기기에서 도구를 켰거나 순위를 쓰는 중이면 서버에 「진행 중」을 싣는다.
+     ⚠️ 넘겨받기의 「진행 중이면 막기」는 **넘겨받는 기기**가 판단해야 하는데, 도구 상태는
+        진행자 메모리에만 있어서 그 기기는 알 길이 없었다(늘 통과했다 — v0.40.1 점검). */
+  if (S.isHost && S.room){
+    const b = S.play ? (S.play.gameId || 'play') : (S.draft ? 'score' : null);
+    if ((S.room.busy || null) !== b){ S.room.busy = b; pushHostState(); }
+  }
   const sig = renderSig();
   if (!force && sig === _lastSig) return;     // 바뀐 게 없으면 손대지 않는다
   const viewChanged = S.view !== _lastView;
@@ -5935,6 +6039,9 @@ function vYutPhone(){
   const delivered = !!sent && m.last?.at === sent.at;
   const failed = !!sent && !delivered
     && (sent.ok === false || now() - sent.at > YUT_DELIVER_MS);
+  /* 보낸 게 아직 판에 안 올라왔으면 버튼을 잠근다 — 조급하게 연타하면 두 번째가 연출에
+     묶여 사라졌다. 못 받은 것으로 판정되면(6초) 다시 누를 수 있다. */
+  const inFlight = !!sent && !delivered && !failed;
   /* ⚠️ 우리 차례가 지나가면 지난 던지기의 「✓ 올라갔어요」는 치운다 — 남겨두면
         다음 차례에 그게 이번 것인 줄 안다. 다만 **못 받은 것은 계속 보여준다**(다시 던져야 하니까). */
   const deliv = !sent || ended || (!mine && !failed) ? '' : `
@@ -5976,8 +6083,9 @@ function vYutPhone(){
       ${(m.pending || []).length ? `<p class="note" style="text-align:center;margin:0 0 12px">
           모아둔 결과 <b>${m.pending.map(x => h(x.n)).join(' · ')}</b> — 진행자 화면에서 말을 옮기세요</p>` : ''}
 
-      <button class="bigthrow" data-act="yut-throw" ${canThrow ? '' : 'disabled'}>
-        ${!mine ? `${h(teamName(m.turn))} 차례예요`
+      <button class="bigthrow" data-act="yut-throw" ${canThrow && !inFlight ? '' : 'disabled'}>
+        ${inFlight && mine ? '보내는 중…'
+          : !mine ? `${h(teamName(m.turn))} 차례예요`
           : m.canThrow ? '🎲 윷 던지기' : '진행자 화면에서 말을 옮기세요'}
       </button>
       ${deliv}
@@ -6075,7 +6183,7 @@ function vSong(){
       ${(() => { const v = board.map(([pid]) => sc[pid]);
         return v.length !== new Set(v).size
           ? `<p class="note" style="margin:9px 4px 0">동점이 있어요 —
-             다음 화면에서 <b>순서를 끌어 바꿀 수 있습니다.</b></p>` : ''; })()}
+             같은 점수는 <b>공동 순위</b>로 넘어가요. 다음 화면에서 바꿀 수 있습니다.</p>` : ''; })()}
       <div class="sec">나온 곡</div>
       ${p.log.map(x => `<div class="sumrow ${x.by?'':'no'}">
           <span class="m">${x.by ? '✅' : '⛔'}</span>
@@ -6222,7 +6330,7 @@ function vCho(){
         const v = board.map(([pid]) => sc[pid]);
         return v.length !== new Set(v).size
           ? `<p class="note" style="margin:9px 4px 0">동점이 있어요 —
-             다음 화면에서 <b>순서를 끌어 바꿀 수 있습니다.</b></p>` : '';
+             같은 점수는 <b>공동 순위</b>로 넘어가요. 다음 화면에서 바꿀 수 있습니다.</p>` : '';
       })()}
       <div class="sec">나온 문제</div>
       ${p.log.map(x => `<div class="sumrow ${x.by?'':'no'}">
@@ -6400,7 +6508,7 @@ function vQuiz(){
         const v = board.map(([pid]) => sc[pid]);
         return v.length !== new Set(v).size
           ? `<p class="note" style="margin:9px 4px 0">동점이 있어요 —
-             다음 화면에서 <b>순서를 끌어 바꿀 수 있습니다.</b></p>` : '';
+             같은 점수는 <b>공동 순위</b>로 넘어가요. 다음 화면에서 바꿀 수 있습니다.</p>` : '';
       })()}
       <div class="sec">나온 문제</div>
       ${p.log.map(x => `<div class="sumrow ${x.by?'':'no'}" style="align-items:flex-start">
@@ -6816,7 +6924,7 @@ function vAct(){
     </div></div>
     <p class="note" style="text-align:center;margin:0 0 14px">이 대사를 저 감정으로 연기하세요</p>
     <div class="stack">
-      <button class="btn pri" data-act="ac-next">${p.turn>=p.order.length-1?'연기 끝 — 심사하러 →':'다음 사람 →'}</button>
+      <button class="btn pri" data-act="ac-next" data-turn="${p.turn}">${p.turn>=p.order.length-1?'연기 끝 — 심사하러 →':'다음 사람 →'}</button>
       <button class="btn" data-act="ac-reroll">🔄 다른 대사 뽑기</button>
       <button class="btn gh" data-act="pl-quit">그만두기</button>
     </div>`;
@@ -6858,7 +6966,7 @@ function vSmile(){
   if (p.phase === 'judge'){
     const n = p.sel.length;
     const label = n === 0 ? '아무도 안 걸림 — 같은 술래 다시'
-      : n === 1 ? `${jo(pname(p.sel[0]),'이','가')} 다음 술래!`
+      : n === 1 ? `${h(jo(pname(p.sel[0]),'이','가'))} 다음 술래!`
       : `걸린 ${n}명끼리 재진행`;
     return `
       <div class="sec">사진에 걸린 사람은?</div>
@@ -6915,13 +7023,16 @@ function vScore(){
 
   const chosen = d.order.map((oid,i) => {
     const e = entries.find(x => String(x.id) === String(oid));
+    const rk = rankIdx(d.tie, i);
     return `<div class="rslot">
-        <div class="rno ${i<3?'m'+(i+1):''}">${i+1}</div>
+        <div class="rno ${rk<3?'m'+(rk+1):''}">${rk+1}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:800;font-size:15px">${h(e?.label || '?')}</div>
           ${e?.sub ? `<div class="note" style="font-size:11.5px">${h(e.sub)}</div>` : ''}
         </div>
-        <div class="rpt">+${fmtPt(rankPt(i)*d.weight)}</div>
+        ${i > 0 ? `<button class="tiebtn ${d.tie?.[i] ? 'on' : ''}" data-act="tie" data-i="${i}"
+          aria-label="앞 사람과 공동 순위">${d.tie?.[i] ? '공동 ✓' : '= 공동'}</button>` : ''}
+        <div class="rpt">+${fmtPt(rankPt(rk)*d.weight)}</div>
       </div>`;
   }).join('');
 
@@ -6962,7 +7073,7 @@ function vScore(){
 function vBoard(){
   const pts = calcPoints();
   const rows = playing().map(([pid,p]) => ({ pid, name:p.name, pt:pts[pid]||0 }))
-    .sort((a,b) => b.pt - a.pt || a.name.localeCompare(b.name));
+    .sort((a,b) => b.pt - a.pt || String(a.name || '').localeCompare(String(b.name || '')));
   const scores = Object.entries(S.room.scores || {}).sort((a,b) => (b[1].at||0) - (a[1].at||0));
   const hasScore = rows.some(r => r.pt > 0);
 
@@ -6997,7 +7108,7 @@ function vBoard(){
     ${scores.length ? scores.map(([sid,sc]) => {
       const g = G(sc.gameId);
       const names = (sc.order||[]).slice(0,3).map((o,i) =>
-        `${MEDAL[i]} ${sc.mode==='team' ? `${Number(o)+1}팀` : h(pname(o))}`).join('  ');
+        `${MEDAL[rankIdx(sc.tie, i)]} ${sc.mode==='team' ? `${Number(o)+1}팀` : h(pname(o))}`).join('  ');
       const mine = scorePt(sc, S.pid);
       return `<div class="hist" style="${gcVars(g?.color)}">
         <div class="hist-ic">${g?.emoji||'🎲'}</div>
@@ -7289,6 +7400,10 @@ async function act(a, d){
   }
   case 'teams': {
     const n = Number(d.n);
+    /* ⚠️ 말판은 시작할 때의 팀 수로 만들어진다 — 판을 편 채로 팀을 다시 짜면 새로 생긴 팀은
+          차례가 영영 안 오고, 순위를 올릴 때 옛 말 기록에 새 팀원이 붙는다. */
+    if (S.room.yut?.phase === 'play')
+      return toast('윷판이 진행 중이에요 — 윷판을 끝내거나 정리한 뒤 팀을 다시 나눠주세요');
     if (n < 2){ S.room.teams = {count:0,assign:{}}; pushHostState(); }
     else if (playing().length < n) return toast(`${n}팀을 나누려면 선수가 ${n}명 이상 필요해요`);
     else { makeTeams(n); confetti(45); }
@@ -7403,7 +7518,7 @@ async function act(a, d){
   case 'yut-halt-ok': yutHaltResolve(true);  break;
   case 'yut-halt-no': yutHaltResolve(false); break;
   case 'yut-throw-here': {           // 폰이 안 되는 사람 대신 태블릿에서 던져준다
-    const m = YT(); if (!m || m.phase !== 'play' || !m.canThrow) return;
+    const m = YT(); if (!m || m.phase !== 'play' || !m.canThrow || m.halt || m.pick) return;
     const r = throwYut();
     yutThrowAnim(r, `${h(teamName(m.turn))} 던지기`).then(() => yutApplyThrow(r, S.pid));
     break;
@@ -7411,10 +7526,9 @@ async function act(a, d){
   case 'yut-score': {
     const m = YT(); if (!m) return;
     // 완주한 말이 많은 팀 순
-    const order = m.pieces.map((arr, ti) => ti)
-      .sort((a, b) => m.pieces[b].filter(x => x === YUT_HOME).length
-                    - m.pieces[a].filter(x => x === YUT_HOME).length);
-    toScore(order, 'team'); break;
+    const home = ti => m.pieces[ti].filter(x => x === YUT_HOME).length;
+    const order = m.pieces.map((arr, ti) => ti).sort((a, b) => home(b) - home(a));
+    toScore(order, 'team', tiesBy(order, home)); break;
   }
   case 'yut-clear': {
     S.ask = { emoji:'🎲', title:'윷판을 정리하고 끝낼까요?',
@@ -7436,6 +7550,9 @@ async function act(a, d){
     if (!m || m.phase !== 'play') return;
     if (myTeam() !== m.turn) return toast('우리 팀 차례가 아니에요');
     if (!m.canThrow) return toast('먼저 진행자 화면에서 말을 옮기세요');
+    if (m.halt || m.pick) return toast('✋ 잠시! 판정이 먼저예요');
+    if (!S.isHost && S.yutSent && S.yutSent.ok !== false && m.last?.at !== S.yutSent.at
+        && now() - S.yutSent.at <= YUT_DELIVER_MS) return toast('방금 던진 게 아직 가는 중이에요');
     const r = throwYut();
     if (S.isHost){                                   // 태블릿을 직접 쥔 사람이 던진 경우
       yutThrowAnim(r, `${pname(S.pid)} 던지기`).then(() => yutApplyThrow(r, S.pid));
@@ -7537,7 +7654,8 @@ async function act(a, d){
   }
   case 'song-save': {
     const sc = songScores();
-    toScore(playing().map(([pid]) => pid).sort((a,b) => sc[b] - sc[a]), 'solo');
+    const ord = playing().map(([pid]) => pid).sort((a,b) => sc[b] - sc[a]);
+    toScore(ord, 'solo', tiesBy(ord, x => sc[x]));
     break;
   }
 
@@ -7583,7 +7701,8 @@ async function act(a, d){
   }
   case 'cho-save': {
     const sc = choScores();
-    toScore(playing().map(([pid]) => pid).sort((a,b) => sc[b] - sc[a]), 'solo');
+    const ord = playing().map(([pid]) => pid).sort((a,b) => sc[b] - sc[a]);
+    toScore(ord, 'solo', tiesBy(ord, x => sc[x]));
     break;
   }
 
@@ -7642,7 +7761,8 @@ async function act(a, d){
   }
   case 'quiz-save': {
     const sc = quizScores();
-    toScore(playing().map(([pid]) => pid).sort((a,b) => sc[b] - sc[a]), 'solo');
+    const ord = playing().map(([pid]) => pid).sort((a,b) => sc[b] - sc[a]);
+    toScore(ord, 'solo', tiesBy(ord, x => sc[x]));
     break;
   }
 
@@ -7680,13 +7800,22 @@ async function act(a, d){
   }
   case 'race-next': {
     const p = S.play;
-    if (p.turn >= p.order.length - 1){ p.phase = 'done'; confetti(70); }
-    else { p.turn++; p.phase = 'ready'; }
+    if (p.phase !== 'turnEnd') break;          // 연타로 한 명을 건너뛰지 않게
+    /* ⚠️ 순서는 시작할 때 명단으로 정해진다 — 그 사이 나간 사람 차례는 건너뛴다 */
+    let t = p.turn + 1;
+    while (t < p.order.length && !S.room.players[p.order[t]]) t++;
+    if (t >= p.order.length){ p.phase = 'done'; confetti(70); }
+    else { p.turn = t; p.phase = 'ready'; }
     render(true); break;
   }
   case 'race-save': {
     const p = S.play;
-    toScore([...p.order].sort((a,b) => (p.rec[a] ?? 1e9) - (p.rec[b] ?? 1e9)), 'solo');
+    /* ⚠️ 나간 사람은 뺀다. 안 빼면 1위 자리를 없는 사람이 차지해 **아무도 10점을 못 받는다.**
+       실패(기록 없음)끼리는 공동 순위다. */
+    const val = x => p.rec[x] ?? null;
+    const ord = p.order.filter(pid => S.room.players[pid] && !isSpec(S.room.players[pid]))
+      .sort((a,b) => (p.rec[a] ?? 1e9) - (p.rec[b] ?? 1e9));
+    toScore(ord, 'solo', tiesBy(ord, val));
     break;
   }
 
@@ -7694,6 +7823,9 @@ async function act(a, d){
   case 'ac-reroll': actDraw(); vib(8); render(true); break;
   case 'ac-next': {
     const p = S.play;
+    /* ⚠️ 누른 뒤에도 같은 자리에 같은 버튼이 다시 그려진다 — 빠르게 두 번 누르면 한 명이
+          건너뛰어졌다. 버튼에 **누를 당시의 차례**를 실어 다르면 무시한다. */
+    if (d.turn != null && Number(d.turn) !== p.turn) break;
     if (p.turn >= p.order.length - 1) p.phase = 'done';
     else { p.turn++; actDraw(); }
     render(true); break;
@@ -7770,14 +7902,23 @@ async function act(a, d){
     const teams = S.room.teams || {count:0};
     if (g.mode === 'team' && teams.count < 2) return toast('팀전이에요 — 대기실에서 팀을 먼저 나눠주세요');
     S.draft = { gameId:g.id, mode:(g.mode==='team' && teams.count>1) ? 'team' : 'solo',
-      order:[], weight:gameWeight(g.id), assign:JSON.parse(JSON.stringify(teams.assign || {})) };
+      order:[], tie:[], weight:gameWeight(g.id), assign:JSON.parse(JSON.stringify(teams.assign || {})) };
     go('score'); break;
   }
   case 'pickrank': {
     S.draft.order.push(S.draft.mode === 'team' ? Number(d.id) : d.id);
-    render(); break;
+    (S.draft.tie ||= []).push(0);
+    render(true); break;
   }
-  case 'undo': S.draft.order.pop(); render(); break;
+  case 'undo': S.draft.order.pop(); S.draft.tie?.pop(); render(true); break;
+  /* 바로 앞 자리와 공동 순위로 묶기/풀기 */
+  case 'tie': {
+    const dr = S.draft, i = Number(d.i);
+    if (!dr || i < 1 || i >= dr.order.length) break;
+    dr.tie ||= dr.order.map(() => 0);
+    dr.tie[i] = dr.tie[i] ? 0 : 1;
+    vib(10); render(true); break;
+  }
   case 'score-cancel': S.draft = null; go('game'); break;
   case 'score-save': {
     const dr = S.draft;
@@ -7785,10 +7926,21 @@ async function act(a, d){
        검증 중에 순위를 하나도 안 고른 채 저장돼 **빈 판이 기록에 남는 것**을 봤다
        (순위 0명 = 아무도 점수를 못 받는데 「진행한 게임」에는 한 판이 늘어난다). */
     if (!dr || (dr.order || []).length < 2) return toast('2명(팀) 이상 정해주세요');
+    // ⚠️ 진행자에서 내려온 기기가 저장하면 「반영됐어요」가 뜨고 다음 스냅샷에 사라진다
+    if (!S.isHost){ S.draft = null; go('lobby'); return toast('진행자가 바뀌어서 저장하지 못했어요'); }
     const sid = 's' + now().toString(36) + Math.random().toString(36).slice(2,6);
     if (!S.room.scores) S.room.scores = {};
     S.room.scores[sid] = { gameId:dr.gameId, mode:dr.mode, order:dr.order,
       weight:dr.weight, assign:dr.assign, at:now() };
+    /* ⚠️ 윷놀이 끝난 판은 순위로 올리면 **판을 치운다.** 안 치우면 도구를 다시 열었을 때
+          끝난 판에 「순위 입력하기」가 또 떠서 **같은 판이 두 번 기록됐다**(v0.40.1 점검). */
+    if (dr.gameId === 'yut' && S.room.yut?.phase === 'ended'){
+      S.room.yut = null;
+      remove(ref(db, `${ROOT}/rooms/${S.code}/yut`)).catch(()=>{});
+    }
+    // 공동 순위가 하나라도 있을 때만 싣는다(옛 기록과 모양이 같게)
+    const tie = (dr.tie || []).slice(0, dr.order.length);
+    if (tie.some(Boolean)) S.room.scores[sid].tie = tie.map(x => x ? 1 : 0);
     pushHostState(); S.draft = null;
     go('board'); confetti(110); vib([20,40,20]);
     toast('순위가 반영됐어요');
@@ -7811,11 +7963,18 @@ async function act(a, d){
   case 'host-take': {
     if (S.isHost) return toast('이미 이 기기가 진행자예요');
     if (!S.room?.players?.[S.pid]) return;
-    if (S.play) return toast('진행 중인 게임을 먼저 끝내고 넘겨주세요');
+    /* ⚠️ 진행 중 여부는 **진행자 기기가 서버에 실어둔 것(busy)** 으로 본다. 예전엔 넘겨받는
+          기기 자신의 S.play 를 봤는데, 진행자가 아닌 기기는 그게 늘 비어 있어 가드가 무의미했다.
+          단 진행자 기기가 **끊겨 있으면** 막을 수가 없다(영영 못 넘긴다) → 잃는 것을 알리고 허용. */
+    const busy = S.room.busy, hostOn = isOn(S.room.players?.[S.room.host]);
+    const busyName = busy === 'score' ? '순위 입력' : (G(busy)?.name || '게임');
+    if (busy && hostOn)
+      return toast(`진행자 기기에서 ${busyName} 중이에요 — 끝난 뒤에 넘겨받을 수 있어요`);
     S._takeSpec = d.spec === '1';
     S.ask = { emoji:'🎛', title:'이 기기를 진행자로 바꿀까요?',
       lose:[`지금 진행자인 <b>${h(pname(S.room.host) || '다른 기기')}</b>님 기기는 <b>일반 참가자가 돼요</b>`,
-            '그 기기에서 <b>게임 도구를 켜 둔 게 있으면 사라져요</b>'],
+            busy ? `그 기기가 끊겨 있어서 <b>진행 중이던 ${h(busyName)}은 사라져요</b>`
+                 : '그 기기에서 <b>게임 도구를 켜 둔 게 있으면 사라져요</b>'],
       safe:'순위·팀·나온 제시어는 <b>서버에 있어서 그대로 넘어와요</b>. 언제든 다시 넘길 수 있어요.',
       ok:'이 기기로 진행하기', go:'host-take-go' };
     render(true); break;
