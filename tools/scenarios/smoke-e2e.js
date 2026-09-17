@@ -373,13 +373,17 @@ if (new URLSearchParams(location.search).has('demo')){
     S.view = 'lobby'; render(true);
     ck('★대기실에서 하단 탭이 보인다', navShown() && navOn().join() === 'lobby');
     ck('  탭 루트에서는 뒤로가기를 안 띄운다', !backShown());
+    /* ⚠️ v0.41.0 — 「게임」 탭을 없앴다. 게임은 대기실에서 고르고, 목록·상세는 대기실의 하위 화면이다 */
+    ck('★★하단 탭은 대기실·순위·설정 셋이다 (게임 탭 없음)',
+      [...document.querySelectorAll('#nav .nav-b')].map(b => b.dataset.nav).join() === 'lobby,board,settings');
     S.view = 'games'; render(true);
-    ck('★게임 탭 활성', navOn().join() === 'games');
+    ck('★게임 목록은 「대기실」 탭을 켜둔다(하위 화면)', navOn().join() === 'lobby');
+    ck('  목록에서는 뒤로가기가 뜬다', backShown());
     S.gameId = 'chosung'; S.view = 'game'; render(true);
-    ck('★게임 상세는 「게임」 탭을 켜둔다(하위 화면)', navOn().join() === 'games');
+    ck('★게임 상세도 「대기실」 탭을 켜둔다', navOn().join() === 'lobby');
     ck('  하위 화면에서는 뒤로가기가 뜬다', backShown());
-    ck('  시작 버튼이 하단 고정 액션바에 있다',
-      /<div class="actbar">[\s\S]*?data-act="tool-start"/.test(document.getElementById('view').innerHTML));
+    ck('  「이 게임으로 하기」가 하단 고정 액션바에 있다',
+      /<div class="actbar">[\s\S]*?data-act="next-set"/.test(document.getElementById('view').innerHTML));
     S.view = 'board'; render(true);
     ck('★순위 탭 활성', navOn().join() === 'board');
     S.view = 'settings'; render(true);
@@ -393,8 +397,8 @@ if (new URLSearchParams(location.search).has('demo')){
 
     /* 대기실 체크리스트 */
     const lv = document.getElementById('view').innerHTML;
-    ck('★대기실에 시작 순서가 있다', lv.includes('이렇게 시작해요'));
-    ck('  3단계가 다 있다',
+    ck('★대기실에 방 준비와 「다음 게임」이 있다', lv.includes('방 준비') && lv.includes('다음 게임'));
+    ck('  초대·팀 나누기·게임 고르기가 다 있다',
       lv.includes('친구 초대') && lv.includes('팀 나누기') && lv.includes('게임 고르기'));
     ck('  「이 기기」 선수/사회자 토글이 있다', lv.includes('사회자(화면)'));
     ck('★칩이 블록으로 퍼지지 않는다(자손 선택자 사고 재발 방지)',
@@ -1500,6 +1504,126 @@ if (new URLSearchParams(location.search).has('demo')){
       S.room.yut = null;
 
       S.gameId = null; S.view = 'lobby'; S.room.scores = {};
+    }
+
+    /* ════ 🎮 게임 로비 — 고르기 → 준비 → 시작 (v0.41.0) ════
+       사장님: "실제 게임 느낌처럼 방에서 게임을 선택하고 다들 레디하고 게임 시작" */
+    {
+      S.pid = 'h1'; S.isHost = true; S.room.host = 'h1'; S.play = null; S.draft = null;
+      S.room.next = null; S.room.busy = null; S.room.scores = {};
+      S.room.teams = { count:0, assign:{} };
+      Object.values(S.room.players).forEach(p => { delete p.ready; });
+      const PL = playing().map(([pid]) => pid);
+      const human = PL.find(pid => pid !== 'h1' && !isBot(pid));
+      const as = (pid, fn) => { const k = [S.pid, S.isHost]; S.pid = pid; S.isHost = pid === S.room.host;
+        try{ return fn(); } finally { [S.pid, S.isHost] = k; } };
+
+      /* 사람 참가자 하나를 만든다(봇은 알아서 준비라 검사에 못 쓴다) */
+      const guest = human || 'g_guest';
+      if (!human) S.room.players[guest] = { name:'손님', joinedAt:9e12, seen:Date.now() };
+
+      /* ① 아직 안 골랐다 */
+      ck('★★진행자 대기실에 「게임 고르기」가 있다', view('lobby').includes('data-act="go-games"'));
+      ck('  참가자는 「고르는 중」을 본다', as(guest, () => view('lobby')).includes('진행자가 고르는 중'));
+      ck('  참가자에게는 「게임 고르기」 버튼이 없다', !as(guest, () => view('lobby')).includes('data-act="go-games"'));
+
+      /* ② 진행자가 고른다 */
+      globalThis.__W = [];
+      act('next-set', { id:'chosung' });
+      ck('★★★진행자가 고르면 다음 게임이 정해진다', NEXT() && NEXT().g === 'chosung' && S.view === 'lobby');
+      ck('★★서버에도 다음 게임이 나간다',
+        (globalThis.__W || []).some(x => x[2] && x[2].next && x[2].next.g === 'chosung'));
+      ck('  참가자는 고를 수 없다', as(guest, () => { act('next-set', { id:'quiz' }); return NEXT().g === 'chosung'; }));
+
+      /* ③ 참가자 화면: 게임 카드 + 준비 */
+      const gv = as(guest, () => view('lobby'));
+      ck('★★★참가자 대기실에 다음 게임과 ✋ 준비가 뜬다',
+        gv.includes('초성 퀴즈') && gv.includes('data-act="ready"') && gv.includes('✋ 준비'));
+      ck('  규칙을 바로 볼 수 있다', gv.includes('data-act="game" data-id="chosung"'));
+      const hv = view('lobby');
+      ck('★★진행자 대기실에는 🎮 게임 시작 버튼이 있다', hv.includes('data-act="game-start"'));
+      ck('  진행자와 봇은 알아서 준비된다', readyOf('h1', S.room.players.h1)
+        && PL.filter(isBot).every(pid => readyOf(pid, S.room.players[pid])));
+      ck('  사람 참가자는 아직 준비 전이다', !readyOf(guest, S.room.players[guest]));
+
+      /* ④ 준비 — 자기 칸에만 쓴다 */
+      globalThis.__W = [];
+      as(guest, () => act('ready', {}));
+      ck('★★★✋ 준비를 누르면 준비된다', readyOf(guest, S.room.players[guest]));
+      const w = (globalThis.__W || []).filter(x => x[0] === 'update' || x[0] === 'set');
+      ck('★★준비는 **자기 칸에만** 쓴다 (새 쓰기 예외를 만들지 않는다)',
+        w.length === 1 && String(w[0][1]).endsWith('/players/' + guest) && w[0][2].ready === NEXT().at);
+      ck('  카드에 준비 수가 오른다', (() => { const [a, b] = readyCount(); return a === b; })());
+      as(guest, () => act('ready', {}));
+      ck('  한 번 더 누르면 준비가 풀린다', !readyOf(guest, S.room.players[guest]));
+
+      /* ⑤ 게임을 바꾸면 준비가 저절로 풀린다(남의 칸을 안 건드리고) */
+      as(guest, () => act('ready', {}));
+      const oldAt = NEXT().at;
+      S.room.next.at = oldAt - 1000;                 // 「조금 전에 고른 것」으로 만들어두고
+      S.room.players[guest].ready = S.room.next.at;
+      globalThis.__W = [];
+      act('next-set', { id:'quiz' });
+      ck('★★★게임을 바꾸면 전원의 준비가 풀린다', !readyOf(guest, S.room.players[guest]));
+      ck('  그러려고 남의 칸에 쓰지 않는다',
+        !(globalThis.__W || []).some(x => String(x[1]).includes('/players/' + guest)));
+
+      /* ⑥ 준비 안 한 사람이 있으면 확인하고 시작 */
+      act('game-start', {});
+      ck('★★★준비 안 한 사람이 있으면 경고창으로 확인한다',
+        !!S.ask && S.ask.go === 'game-start-go' && (S.ask.lose || []).join('').includes(pname(guest)));
+      ck('  아직 시작하지 않는다', !S.play);
+      act('ask-yes', {});
+      ck('★★★「그래도 시작」이면 그 게임 도구가 열린다', S.play && S.play.gameId === 'quiz' && S.view === 'play');
+      render(true);
+      ck('★★시작하면 서버에 「진행 중」이 실린다', S.room.busy === 'quiz');
+      act('pl-quit', {}); if (S.ask) act('ask-yes', {});
+      ck('  도구를 그냥 나가면 대기실로 (게임 탭이 없다)', S.view === 'lobby' && !S.play);
+      ck('  나가도 다음 게임은 그대로 — 바로 다시 시작할 수 있다', NEXT() && NEXT().g === 'quiz');
+
+      /* ⑦ 전원 준비면 바로 시작 */
+      S.room.players[guest].ready = NEXT().at;
+      act('game-start', {});
+      ck('★★★전원 준비면 확인 없이 바로 시작한다', !S.ask && S.play && S.play.gameId === 'quiz');
+      render(true);
+
+      /* ⑧ 참가자는 시작을 따라간다 */
+      const snapOf = extra => ({ host:'h1', players:S.room.players, teams:S.room.teams, scores:S.room.scores,
+        rotation:{}, used:{}, next:S.room.next, ...extra });
+      { const keep = { room:S.room, view:S.view, play:S.play };
+        S.pid = guest; S.isHost = false;
+        S.room = { ...keep.room, busy:null }; S.view = 'board';
+        applySnapshot(snapOf({ busy:'quiz' }));
+        ck('★★★진행자가 시작하면 참가자 화면이 대기실로 넘어와 「진행 중」을 본다',
+          S.view === 'lobby' && document.getElementById('view').innerHTML.includes('진행 중'));
+        S.room = { ...S.room, busy:null }; S.view = 'settings';
+        applySnapshot(snapOf({ busy:'yut' }));
+        ck('★★윷놀이는 곧장 「윷 던지기」 화면으로 데려간다', S.view === 'yut');
+        S.room = { ...S.room, busy:'quiz' }; S.view = 'board';
+        applySnapshot(snapOf({ busy:'quiz' }));
+        ck('  이미 진행 중이던 스냅샷에는 끌고 가지 않는다(보던 화면 유지)', S.view === 'board');
+        S.room = { ...S.room, busy:null }; S.view = 'board';
+        applySnapshot(snapOf({ busy:'score' }));
+        ck('  「순위만 직접 입력」은 시작이 아니다', S.view === 'board');
+        S.pid = 'h1'; S.isHost = true; S.room = keep.room; S.view = keep.view; S.play = keep.play; }
+
+      /* ⑨ 팀전인데 팀이 없으면 시작 못 한다 */
+      act('pl-quit', {}); if (S.ask) act('ask-yes', {});
+      act('next-set', { id:'body' });
+      const tv = view('lobby');
+      ck('★★팀전인데 팀을 안 나눴으면 시작 버튼이 잠기고 이유가 뜬다',
+        /data-act="game-start"[^>]*disabled/.test(tv) && tv.includes('팀을 먼저 나눠주세요'));
+
+      /* ⑩ 한 판 끝(순위 저장)이면 다음 게임을 비운다 */
+      act('next-set', { id:'act' });
+      act('game-start-go', {});
+      act('score-start', {});
+      act('pickrank', { id:PL[0] }); act('pickrank', { id:PL[1] });
+      act('score-save', {});
+      ck('★★★순위를 올리면 대기실은 다시 「게임 고르기」로 돌아간다', !NEXT());
+
+      if (!human) delete S.room.players[guest];
+      S.room.scores = {}; S.play = null; S.draft = null; S.room.busy = null; S.view = 'lobby';
     }
 
     /* ── 9) 정리 ── */

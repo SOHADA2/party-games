@@ -41,6 +41,14 @@ if (new URLSearchParams(location.search).has('demo')){
       { const keep = S.isHost; S.isHost = false; S.room.host = players()[1][0];
         show('lobby'); fits('★★넘겨받기 카드가 떠도 대기실이 한 화면에 들어간다');
         S.isHost = keep; S.room.host = 'h1'; }
+      /* 🎮 게임을 고른 대기실 — 「다음 게임」 카드가 제일 커지는 상태 */
+      S.room.next = { g:'yut', at:Date.now() };
+      show('lobby'); fits('★★게임을 고른 진행자 대기실이 한 화면에 들어간다');
+      { const keep = S.isHost; S.isHost = false; S.room.host = players()[1][0];
+        S.pid = players()[2][0];
+        show('lobby'); fits('★★게임을 고른 참가자 대기실이 한 화면에 들어간다');
+        S.isHost = keep; S.room.host = 'h1'; S.pid = 'h1'; }
+      S.room.next = null;
 
       /* 진행 도구 — 「다 같이 보는」 화면이다. 여기가 넘치면 게임이 안 굴러간다. */
       for (const g of GAMES){
