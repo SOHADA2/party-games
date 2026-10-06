@@ -11,6 +11,7 @@ if (new URLSearchParams(location.search).has('demo')){
     S.room.scores.s2={gameId:'chosung',mode:'solo',order:players().map(([p])=>p).reverse(),weight:1,assign:{},at:2};
     S.gameId=q.get('g')||'chosung';
     /* &next=게임id → 그 게임을 고른 대기실 · &guest=1 과 같이 쓰면 참가자 화면 · &ready=1 → 내가 준비한 상태 */
+    if(q.get('gname')) S.room.title=q.get('gname');
     if(q.get('next')) S.room.next={ g:q.get('next'), at:Date.now() };
     if(q.get('guest')){ S.room.players.g1={name:'손님',joinedAt:2,seen:Date.now()}; S.room.host='h1'; S.pid='g1';
       if(q.get('ready') && S.room.next) S.room.players.g1.ready=S.room.next.at; }

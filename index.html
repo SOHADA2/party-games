@@ -1000,6 +1000,17 @@ details.more .in{padding:0 15px 15px}
 }
 .instbn:active{transform:scale(.985)}
 /* 이 기기의 역할 — 「진행자」 줄 */
+/* ✦ 모임 이름 — 이번 모임을 부르는 말. 다 같이 보는 자리에 같은 모양으로 띄운다 */
+.gname{display:flex;align-items:center;justify-content:center;gap:9px;
+  font-size:19px;font-weight:900;letter-spacing:-.02em;line-height:1.25;
+  word-break:keep-all;text-align:center;margin-bottom:10px;position:relative;
+  background:var(--hero);-webkit-background-clip:text;background-clip:text;color:transparent}
+.gname .gn-w{flex:none;font-size:12px;opacity:.55;
+  -webkit-text-fill-color:var(--amber);color:var(--amber)}
+/* ⚠️ 두 번째 클래스 이름을 `board` 로 두지 말 것 — 윷놀이 말판 `.board`(aspect-ratio:1/1)에
+   걸려서 **정사각형 445px 빈 상자**가 됐다(실측). 공용 이름은 짧을수록 부딪친다. */
+.gname.gtop{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+
 /* 🎮 다음 게임 카드 — 대기실의 중심 */
 .nextp{position:relative;padding:15px;border-radius:var(--r-l);margin-bottom:6px;
   background:linear-gradient(145deg,var(--gcSoft),var(--surf) 70%);
@@ -1188,6 +1199,7 @@ details.more .in{padding:0 15px 15px}
   .nav-b{font-size:13px;padding:9px 4px}
   .nav-b .ic{font-size:22px}
   .pchip{font-size:16px}
+  .gname{font-size:26px}
   .np-b b{font-size:24px}
   .np-ic{width:52px;height:52px;font-size:28px}
   .np-l{font-size:15px}
@@ -1507,7 +1519,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.41.0';
+const APP_VERSION = 'v0.42.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -3915,7 +3927,7 @@ const GAMES = [
     how:[
       '화면을 가운데 두고 다 같이 본다',
       '아는 사람이 소리쳐서 답한다 — 손 들 필요 없다',
-      '진행자가 맞힌 사람을 탭하면 바로 다음 문제',
+      '메인 화면에서 맞힌 사람을 탭하면 바로 다음 문제',
       '아무도 모르면 「아무도 못 맞힘」으로 정답을 보고 넘어간다',
     ],
     win:'정한 문제 수를 다 풀면 많이 맞힌 순서대로',
@@ -3923,9 +3935,9 @@ const GAMES = [
 `화면에 <b>초성만</b> 뜬다. 먼저 맞히는 사람이 1점.
 
 <b>진행</b>
-· <b>진행자 기기</b>(폰·태블릿·노트북 아무거나)를 가운데 두고 다 같이 화면을 봅니다.
+· <b>메인 화면</b>(폰·태블릿·노트북 아무거나)을 가운데 두고 다 같이 봅니다.
 · 초성을 보고 아는 사람이 <b>소리쳐서</b> 답합니다. 손 들 필요도 없어요.
-· 진행자가 맞힌 사람을 탭하면 1점이 오르고 <b>바로 다음 문제</b>로 넘어갑니다.
+· 메인 화면에서 맞힌 사람을 탭하면 1점이 오르고 <b>바로 다음 문제</b>로 넘어갑니다.
 · 아무도 못 맞히겠으면 <b>「아무도 못 맞힘」</b> — 정답을 보여주고 넘어갑니다.
 · 잘못 눌렀으면 <b>「방금 취소」</b> 로 그 문제부터 다시 합니다.
 
@@ -3950,7 +3962,7 @@ const GAMES = [
     how:[
       '화면을 가운데 두고 다 같이 문제를 본다',
       '아는 사람이 소리쳐서 답한다 — 손 들 필요 없다',
-      '진행자가 「정답 공개」를 누르면 다 같이 보고 판정한다',
+      '메인 화면에서 「정답 공개」를 누르면 다 같이 보고 판정한다',
       '맞힌 사람을 탭하면 1점 · 아무도 못 맞혔으면 그대로 넘어간다',
     ],
     win:'정한 문제 수를 다 풀면 많이 맞힌 순서대로',
@@ -3958,9 +3970,9 @@ const GAMES = [
 `화면에 <b>상식 문제</b>가 뜬다. 먼저 맞히는 사람이 1점.
 
 <b>진행</b>
-· <b>진행자 기기</b>(폰·태블릿·노트북 아무거나)를 가운데 두고 다 같이 화면을 봅니다.
+· <b>메인 화면</b>(폰·태블릿·노트북 아무거나)을 가운데 두고 다 같이 봅니다.
 · 문제를 보고 아는 사람이 <b>소리쳐서</b> 답합니다. 손 들 필요도 없어요.
-· 진행자가 <b>「정답 공개」</b>를 누르면 정답이 뜹니다.
+· 메인 화면에서 <b>「정답 공개」</b>를 누르면 정답이 뜹니다.
 · 정답을 다 같이 보고 <b>맞힌 사람을 탭</b>하면 1점, 바로 다음 문제로 넘어갑니다.
 · 아무도 못 맞혔으면 <b>「아무도 못 맞힘」</b> 으로 그냥 넘어갑니다.
 · 잘못 눌렀으면 <b>「방금 취소」</b> 로 그 문제부터 다시 합니다.
@@ -3970,9 +3982,9 @@ const GAMES = [
 
 <b>왜 정답을 먼저 공개하나</b>
 · 상식 퀴즈는 답을 말로 하는 거라 <b>누군가는 정답을 알아야 판정</b>이 됩니다.
-· 그렇다고 진행자만 정답을 보면 <b>진행자가 게임에서 빠집니다.</b>
+· 그렇다고 한 사람만 정답을 보면 <b>그 사람이 게임에서 빠집니다.</b>
 · 그래서 <b>답이 나온 뒤에 정답을 열고 다 같이 판정</b>합니다 —
-  옥신각신할 일이 없고 진행자도 같이 맞힐 수 있어요.
+  옥신각신할 일이 없고 화면을 든 사람도 같이 맞힐 수 있어요.
 
 <b>범위가 곧 난이도입니다</b>
 · 한국 상식 · 세계지리 · 과학 · 음식생활 · 대중문화 · 잡학 · 세계사 ·
@@ -3983,33 +3995,33 @@ const GAMES = [
   },
   {
     id:'song', name:'노래 맞히기', emoji:'🎵', color:'#AC4F62', mode:'solo', weight:1,
-    role:null, mc:'need', mcWhy:'노래를 틀려면 곡 제목을 볼 수밖에 없다 — 트는 사람은 답을 다 알게 되므로 겨루지 않는 사회자가 맡아야 한다',
-    tag:'개인전 · 사회자 전담 · 연도별', tool:'song', toolLabel:'▶ 노래 틀고 시작',
+    role:null, mc:'need', mcWhy:'노래를 틀려면 곡 제목을 볼 수밖에 없다 — 트는 사람은 답을 다 알게 되므로 구경 모드인 사람이 맡아야 한다',
+    tag:'개인전 · 구경 모드 1명 · 연도별', tool:'song', toolLabel:'▶ 노래 틀고 시작',
     privScreen:true,          // 사회자 화면에 정답이 있다 → 가운데 두면 안 된다
     line:'노래를 듣고 제목을 먼저 맞히는 사람이 1점.',
-    prep:'인터넷 · 유튜브 뮤직 · 겨루지 않는 사회자 1명', minP:3, mins:'10~15분',
+    prep:'인터넷 · 유튜브 뮤직 · 구경 모드 1명', minP:3, mins:'10~15분',
     how:[
-      '겨루지 않는 사회자를 정한다 — 노래를 트는 사람은 답을 다 보게 된다',
-      '사회자가 범위를 고른다 — 80년대부터 2020년대까지 연도별로 나뉜다',
-      '앱이 곡을 정해 사회자에게만 보여주고, 사회자가 유튜브 뮤직으로 튼다',
-      '아는 사람이 소리쳐서 답하면 사회자가 그 사람을 탭한다',
+      '구경 모드 한 명을 정한다 — 노래를 트는 사람은 답을 다 보게 된다',
+      '그 사람이 범위를 고른다 — 80년대부터 2020년대까지 연도별로 나뉜다',
+      '앱이 곡을 그 사람에게만 보여주고, 그 사람이 유튜브 뮤직으로 튼다',
+      '아는 사람이 소리쳐서 답하면 맞힌 사람을 탭한다',
     ],
     win:'정한 곡 수를 다 들으면 많이 맞힌 순서대로',
     rules:
 `노래를 듣고 <b>제목</b>을 먼저 맞히는 사람이 1점.
 
-<b>★ 사회자가 꼭 필요합니다</b>
+<b>★ 구경 모드 한 명이 꼭 필요합니다</b>
 · 노래를 틀려면 <b>곡 제목을 볼 수밖에 없습니다.</b> 트는 사람은 답을 다 알게 돼요.
 · 그래서 <b>겨루지 않는 사람 한 명</b>이 폰을 맡아야 합니다.
-· ⚠️ <b>이 게임만은 진행자 기기를 가운데 두지 마세요.</b> 정답이 화면에 있습니다 —
-  사회자가 자기 폰으로 진행하세요.
+· ⚠️ <b>이 게임만은 화면을 가운데 두지 마세요.</b> 정답이 화면에 있습니다 —
+  구경 모드인 사람이 자기 폰으로 진행하세요.
 
 <b>진행</b>
-· 사회자가 <b>범위</b>를 고릅니다 — 1990년대 · 2000년대 · 2010년대 · 2020년대 ·
+· 그 사람이 <b>범위</b>를 고릅니다 — 1990년대 · 2000년대 · 2010년대 · 2020년대 ·
   팝송 · 트로트 · 만화·동요.
-· 앱이 곡을 하나 정해 <b>사회자 화면에만</b> 보여줍니다.
-· 사회자가 <b>「유튜브 뮤직에서 열기」</b>를 누르면 그 곡 검색 화면이 열립니다. 재생하세요.
-· 아는 사람이 소리쳐서 답하고, 사회자가 맞힌 사람을 탭하면 다음 곡으로 넘어갑니다.
+· 앱이 곡을 하나 정해 <b>그 폰에만</b> 보여줍니다.
+· <b>「유튜브 뮤직에서 열기」</b>를 누르면 그 곡 검색 화면이 열립니다. 재생하세요.
+· 아는 사람이 소리쳐서 답하고, 맞힌 사람을 탭하면 다음 곡으로 넘어갑니다.
 · 아무도 못 맞히면 <b>「아무도 못 맞힘」</b> — 정답을 공개하고 넘어갑니다.
 
 <b>범위가 곧 난이도입니다</b>
@@ -4032,14 +4044,14 @@ const GAMES = [
   },
   {
     id:'yut', name:'훈민정음 윷놀이', emoji:'🎲', color:'#8878AE', mode:'team', weight:2,
-    role:null, mc:'help', mcWhy:'말판은 다 같이 보는 화면이라 아무나 조작해도 된다 — 진행자 기기를 가운데 두세요',
-    tag:'팀전 · 진행자 화면 말판 + 각자 폰', tool:'yut', toolLabel:'▶ 판 깔고 시작',
+    role:null, mc:'help', mcWhy:'말판은 다 같이 보는 화면이라 아무나 조작해도 된다 — 메인 화면을 가운데 두세요',
+    tag:'팀전 · 메인 화면 말판 + 각자 폰', tool:'yut', toolLabel:'▶ 판 깔고 시작',
     line:'윷을 던져 말을 옮기는데, 영어를 쓰면 말이 처음으로 돌아간다.',
-    prep:'진행자 기기(말판) · 각자 폰', minP:4, mins:'20~30분',
+    prep:'메인 화면(말판) · 각자 폰', minP:4, mins:'20~30분',
     how:[
-      '진행자 기기를 가운데 두고 말판을 띄운다 — 각자 폰으로 접속',
+      '메인 화면을 가운데 두고 말판을 띄운다 — 각자 폰으로 접속',
       '자기 팀 차례가 되면 폰에서 윷을 던진다',
-      '진행자 화면에서 움직일 말을 골라 옮긴다 (같은 칸 말은 업고 간다)',
+      '메인 화면에서 움직일 말을 골라 옮긴다 (같은 칸 말은 업고 간다)',
       '영어를 쓴 사람이 있으면 상대팀이 폰에서 「✋ 잠시!」를 누른다',
     ],
     win:'말 4개를 먼저 다 완주시킨 팀이 이긴다',
@@ -4050,10 +4062,10 @@ const GAMES = [
 · 게임하는 동안 <b>영어를 한 마디도 쓰면 안 됩니다.</b> "고!", "찬스", "오케이" 전부 영어예요.
 · 누가 영어를 쓰면 <b>상대팀이 폰에서 「✋ 잠시!」</b>를 누릅니다.
 · 인정되면 그 팀의 <b>가장 앞선 말 1개가 처음으로 돌아갑니다.</b>
-· 영어였는지 아닌지는 <b>다 같이 판단</b>하고, 진행자가 인정/취소를 누릅니다.
+· 영어였는지 아닌지는 <b>다 같이 판단</b>하고, 메인 화면에서 인정/취소를 누릅니다.
 
 <b>기기</b>
-· <b>진행자 기기</b>(태블릿·노트북·남는 폰 아무거나)를 가운데 두고 말판을 띄웁니다.
+· <b>메인 화면</b>(태블릿·노트북·남는 폰 아무거나)을 가운데 두고 말판을 띄웁니다.
   말은 여기서 옮겨요.
 · <b>각자 폰</b>으로 같은 방에 들어와 자기 차례에 윷을 던집니다.
 · 폰에는 「✋ 잠시!」 버튼이 늘 떠 있습니다.
@@ -4107,11 +4119,11 @@ const GAMES = [
   },
   {
     id:'body', name:'몸으로 말해요 / 한글자로 말해요', emoji:'🕺', color:'#3F7F62', mode:'team', weight:1.5,
-    role:'사회자', mc:'need', mcWhy:'설명자는 두 손으로 몸짓을 해야 하고, 맞히는 팀은 화면을 보면 안 된다 — 제3자가 화면을 들고 설명자에게만 보여줘야 한다',
-    tag:'팀전 · 사회자 전담', tool:'deck',
+    role:'화면 담당', mc:'need', mcWhy:'설명자는 두 손으로 몸짓을 해야 하고, 맞히는 팀은 화면을 보면 안 된다 — 제3자가 화면을 들고 설명자에게만 보여줘야 한다',
+    tag:'팀전 · 화면 담당 1명', tool:'deck',
     privScreen:true,          // 사회자 화면에 제시어가 있다 → 설명자에게만 보여준다
     line:'한 사람이 제시어를 설명하고 팀원이 맞힌다.',
-    prep:'없음 (화면을 들어줄 사회자 1명)', minP:4, mins:'15~25분',
+    prep:'없음 (화면을 들어줄 사람 1명)', minP:4, mins:'15~25분',
     how:[
       '팀을 나누고, 겨루지 않는 사람이 화면을 든다',
       '설명자만 제시어를 본다 — 맞히는 팀은 보면 안 된다',
@@ -4121,7 +4133,7 @@ const GAMES = [
     win:'제한 시간 안에 맞춘 개수가 많은 팀 순',
     rules:
 `<b>① 몸으로 말해요</b>
-· 사회자가 제시어를 낸다 (노래 제목, 영화 제목 등).
+· 화면 담당이 제시어를 낸다 (노래 제목, 영화 제목 등).
 · 설명자는 말 없이 몸동작만으로 설명하고 팀원이 맞춘다.
 
 <b>② 한글자로 말해요</b>
@@ -4135,7 +4147,7 @@ const GAMES = [
   },
   {
     id:'act', name:'연기 대결', emoji:'🎤', color:'#3A6E8F', mode:'solo', weight:1,
-    role:null, mc:'help', mcWhy:'순위가 심사라 진행자가 카드를 넘기고 결과를 입력한다',
+    role:null, mc:'help', mcWhy:'순위가 심사라 메인 화면에서 카드를 넘기고 결과를 입력한다',
     tag:'개인전 · 탈락식 · 심사', tool:'act', toolLabel:'▶ 대사 뽑고 시작',
     line:'같은 대사를 서로 다른 감정으로 연기한다.',
     prep:'없음', minP:2, mins:'10~15분',
@@ -4221,6 +4233,7 @@ function snapRoom(){
   _histSig = sig;
   const rec = {
     code: S.code,
+    t: ROOM_TITLE() || null,          // 모임 이름 — 방이 사라져도 「그때 그 모임」으로 남는다
     at: S.room.createdAt || now(),
     last: now(),
     rows: playing().map(([pid,p]) => ({ n:p.name, p:Math.round((pts[pid]||0)*10)/10 }))
@@ -4245,7 +4258,7 @@ const $ = s => document.querySelector(s);
 const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const now = () => Date.now();
 const emptyRoom = () => ({ createdAt:now(), host:'', status:'lobby', players:{}, teams:{count:0,assign:{}},
-  scores:{}, rotation:{}, used:{}, yut:null, rule:null, busy:null, next:null });
+  scores:{}, rotation:{}, used:{}, yut:null, rule:null, busy:null, next:null, title:null });
 
 /* 이름이 없는 참가자 노드는 **유령**이다 — 내보내진 기기의 하트비트(update seen)가
    지워진 자리를 `{seen}` 만으로 되살린 것이다. 목록·점수·정렬 어디에도 들이지 않는다.
@@ -4259,8 +4272,13 @@ const roomFrom = v => ({
   createdAt:v.createdAt||now(), host:v.host||'', status:v.status||'lobby',
   players:cleanPlayers(v.players), teams:v.teams||{count:0,assign:{}},
   scores:v.scores||{}, rotation:v.rotation||{}, used:v.used||{}, yut:v.yut||null,
-  rule:v.rule||null, busy:v.busy||null, next:v.next||null,
+  rule:v.rule||null, busy:v.busy||null, next:v.next||null, title:v.title||null,
 });
+
+/* 모임 이름 — 「양양 2박 3일」처럼 이번 모임을 부르는 말. 없으면 방 코드가 대신한다.
+   ⚠️ 겉치레가 아니라 **소속감**이 목적이다(사장님). 그래서 방 코드 카드·순위·지난 기록처럼
+      다 같이 보는 자리에 같은 모양으로 띄운다. */
+const ROOM_TITLE = () => (S.room?.title || '').trim();
 
 /* ── 🎮 게임 로비 — 고르기 → 준비 → 시작 ─────────────────────────────
    사장님: "실제 게임 느낌처럼 방에서 게임을 선택하고 다들 레디하고 게임 시작 버튼 눌러서".
@@ -4490,7 +4508,7 @@ function pushHostState(){
   update(roomRef(S.code), {
     status:r.status||'lobby',
     teams:r.teams||{count:0,assign:{}}, scores:r.scores||{}, rotation:r.rotation||{},
-    used:r.used||{}, rule:r.rule||null, busy:r.busy||null, next:r.next||null,
+    used:r.used||{}, rule:r.rule||null, busy:r.busy||null, next:r.next||null, title:r.title||null,
     // ⚠️ yut 은 여기서 쓰지 않는다 — 참가자가 throw/halt 를 직접 쓰기 때문에
     //    통째로 덮으면 던진 결과와 「잠시!」가 날아간다. pushYut()으로 하위 경로만 갱신할 것.
     touchedAt:now(),
@@ -4518,7 +4536,7 @@ function stableNorm(x){
   return x;
 }
 const hostStateSig = r => JSON.stringify(stableNorm({ teams:r.teams, scores:r.scores,
-  rotation:r.rotation, used:r.used, rule:r.rule, busy:r.busy, next:r.next }) || {});
+  rotation:r.rotation, used:r.used, rule:r.rule, busy:r.busy, next:r.next, title:r.title }) || {});
 function hostReassert(v){
   if (!S.isHost || v.host !== S.pid || !_hostSig) return;
   if (hostStateSig(v) === _hostSig) return;
@@ -4568,12 +4586,12 @@ function applySnapshot(v){
           **다음 스냅샷에 조용히 덮여 사라진다.** */
     S.draft = null;
     if (S.view === 'play' || S.view === 'score') S.view = 'lobby';
-    toast(`진행자가 ${(v.players?.[v.host]?.name) || '다른 기기'}님 기기로 넘어갔어요`);
+    toast(`메인 화면이 ${(v.players?.[v.host]?.name) || '다른 기기'}님 기기로 넘어갔어요`);
   }
   /* 내가 방 명단에서 사라졌다 = 진행자가 내보냈다. 조용히 남아 있으면 하트비트가
      **이름 없는 유령 선수**를 되살린다 → 스스로 나간다. (진행자는 스스로를 못 내보낸다) */
   if (!S.isHost && !v.players?.[S.pid]?.name){
-    toast('방에서 나왔어요 — 진행자가 내보냈을 수 있어요');
+    toast('방에서 나왔어요 — 메인 화면에서 내보냈을 수 있어요');
     leaveRoom(); return;
   }
   if (S.isHost){
@@ -4634,10 +4652,11 @@ async function newCode(){
   return String(Math.floor(1000 + Math.random()*9000));
 }
 
-async function createRoom(name){
+async function createRoom(name, title){
   const code = await newCode();
   S.pid = uid(); S.isHost = true; S.code = code;
   S.room = emptyRoom(); S.room.host = S.pid;
+  S.room.title = (title || '').trim().slice(0, 14) || null;
   S.room.players[S.pid] = { name, joinedAt:now(), seen:now(), host:true };
   try{ await set(roomRef(code), { ...S.room, touchedAt:now() }); }
   catch{ toast('오프라인 상태 — 이 기기에서만 진행돼요'); }
@@ -5260,7 +5279,7 @@ function renderSig(){
     S.view, S.gameId, S.online, S.isHost, S.code,
     r ? Object.entries(r.players).map(([k,p]) => [k, p.name, isOn(p)?1:0, (p.host||k===r.host)?1:0, p.ready||0]) : 0,
     // ⚠️ 다음 게임·진행 중이 빠지면 참가자 대기실이 「게임 시작」을 못 따라간다
-    r?.next || 0, r?.busy || 0,
+    r?.next || 0, r?.busy || 0, r?.title || 0,
     r?.teams || 0, r?.scores || 0, r?.rotation || 0, r?.used || 0, r?.rule || 0,
     // ⚠️ yut 을 빼면 각자 폰이 말판 변화에 갱신되지 않는다(참가자 화면이 멈춘다)
     r?.yut || 0,
@@ -5321,7 +5340,7 @@ function vAsk(){
 function askLeave(){
   const pts = calcPoints()[S.pid];
   const mine = S.isHost
-    ? ['진행자 기기가 사라져서 <b>아무도 순위를 저장할 수 없어요</b>',
+    ? ['메인 화면이 사라져서 <b>아무도 순위를 저장할 수 없어요</b>',
        '방 코드를 잊으면 <b>지금까지의 점수로 못 돌아와요</b>']
     : ['다시 들어오면 <b>새 사람으로 취급돼요</b>',
        `지금까지 쌓은 <b>내 점수${pts ? ` ${fmtPt(pts)}점` : ''}이 사라져요</b>`];
@@ -5362,7 +5381,9 @@ function render(force){
   const tabOf = { lobby:'lobby', yut:'lobby', games:'lobby', game:'lobby', score:'lobby',
                   board:'board', hist:'board', settings:'settings' }[S.view];
   nav.querySelectorAll('.nav-b').forEach(b => b.classList.toggle('on', b.dataset.nav === tabOf));
-  title.textContent = ({ home:'숙소 게임', lobby:'대기실', games:'게임 고르기',
+  /* 방 안에서는 머리글도 모임 이름으로 — 어느 화면에 있든 「우리 모임」이 보인다 */
+  const gt = ROOM_TITLE();
+  title.textContent = ({ home:'숙소 게임', lobby:(gt || '대기실'), games:'게임 고르기',
     game:G(S.gameId)?.name || '게임', play:G(S.gameId)?.name || '진행 중',
     score:'순위 입력', board:'종합 순위', settings:'설정', yut:'윷 던지기',
     hist:'지난 기록' })[S.view] || '숙소 게임';
@@ -5418,7 +5439,7 @@ async function shareRoom(){
 }
 
 const offBanner = () => S.online ? '' :
-  `<div class="banner warn"><span>⚠️</span><span>인터넷 끊김 — ${S.isHost ? '이 기기에서 계속 진행하고, 연결되면 자동으로 맞춰져요' : '호스트 화면을 봐주세요'}</span></div>`;
+  `<div class="banner warn"><span>⚠️</span><span>인터넷 끊김 — ${S.isHost ? '이 기기에서 계속 진행하고, 연결되면 자동으로 맞춰져요' : '메인 화면을 봐주세요'}</span></div>`;
 
 /* ── 홈 ── */
 /* 윷놀이 진행 중 배너 — 각자 폰에서 「윷 던지기 / ✋ 잠시!」로 들어가는 **유일한 입구**다.
@@ -5450,7 +5471,7 @@ function histHtml(){
       <button class="rec" data-act="hist-open" data-i="${i}">
         <div class="rec-d"><b>${new Date(r.last).getDate()}</b><span>${fmtDay(r.last).split(' ')[0]}</span></div>
         <div class="rec-b">
-          <div class="rec-t">${r.rows?.[0] ? `🥇 ${h(r.rows[0].n)} ${fmtPt(r.rows[0].p)}점` : '기록'}
+          <div class="rec-t">${r.t ? `${h(r.t)} · ` : ''}${r.rows?.[0] ? `🥇 ${h(r.rows[0].n)} ${fmtPt(r.rows[0].p)}점` : '기록'}
             ${r.code === S.code ? '<span class="chip hot">지금 방</span>' : ''}</div>
           <div class="rec-s">${fmtTime(r.last)} · ${r.rows?.length || 0}명 · ${r.games?.length || 0}판 · ${h(r.code)}번 방</div>
         </div>
@@ -5525,6 +5546,9 @@ function vHome(){
     <div class="sec">시작하기</div>
     <div class="card">
       <input class="inp" id="in-name" maxlength="8" placeholder="닉네임 (최대 8자)" value="${h(last?.name || '')}">
+      <div style="height:8px"></div>
+      <!-- 모임 이름은 **선택**이다 — 비워도 방이 만들어진다(코드가 이름을 대신한다) -->
+      <input class="inp" id="in-title" maxlength="14" placeholder="모임 이름 (선택) · 예: 양양 2박 3일">
       <div style="height:10px"></div>
       <button class="btn pri" data-act="create">🎉 방 만들기</button>
       <div class="divider">또는 코드로 참여</div>
@@ -5560,8 +5584,8 @@ function vLobby(){
       ${nx && !isSpec(p) && !S.room.busy ? (readyOf(pid, p)
         ? '<span class="chip mint rdy">✓<span class="t"> 준비</span></span>'
         : '<span class="chip rdw">…<span class="t"> 대기</span></span>') : ''}
-      ${isSpec(p) ? '<span class="chip sky">📺 사회자</span>'
-        : ((p.host || pid===S.room.host) ? '<span class="chip">진행자</span>' : '')}
+      ${isSpec(p) ? '<span class="chip sky">📺 구경</span>'
+        : ((p.host || pid===S.room.host) ? '<span class="chip">메인 화면</span>' : '')}
       ${p.bot ? '<span class="chip elec">🧪</span>' : ''}
       ${isOn(p) ? '' : '<span class="chip">끊김</span>'}
       ${S.isHost && pid!==S.pid ? `<button class="x" data-act="kick" data-pid="${pid}" aria-label="내보내기">✕</button>` : ''}
@@ -5584,6 +5608,7 @@ function vLobby(){
     ${offBanner()}
     <div class="two"><div>
     <div class="rc">
+      ${ROOM_TITLE() ? `<div class="gname"><span class="gn-w">✦</span>${h(ROOM_TITLE())}<span class="gn-w">✦</span></div>` : ''}
       <div class="rc-row">
         <div style="flex:1;min-width:0">
           <div class="rc-lbl">Room Code</div>
@@ -5623,32 +5648,34 @@ function vLobby(){
       </div>
     </div>` : ''}
 
-    <!-- ⚠️ 「진행자」와 「사회자(화면)」는 **다른 것**이라 헷갈렸다(사장님 지적).
-         · 진행자 = 점수·순서·게임 도구가 **돌아가는 기기**(방을 만든 기기가 기본)
-         · 사회자(화면) = 겨루지 않고 **화면만 보여주는 기기**
+    <!-- ⚠️ 부르는 이름은 **둘뿐이다**(v0.42.0, 사장님 지적: "방장·태블릿·사회자 용어가 산재해 직관적이지 않다").
+         · **메인 화면** = 점수·순서·게임 도구가 **돌아가는 기기**(방을 만든 기기가 기본)
+         · **구경 모드** = 겨루지 않는 기기/사람(점수·팀·뽑기에서 빠진다)
+         ⚠️ 「진행자·사회자·호스트·방장·선수」는 **화면 글에 쓰지 말 것** — 네 단어가 섞여 헷갈렸다.
+            사람을 가리켜야 하면 역할 이름 대신 「메인 화면을 든 사람」처럼 적는다.
          가운데 둘 기기로 쓰려면 **둘 다** 그 기기여야 하는데 방을 폰으로 만들면
          가운데 둔 기기는 화면만 되고 도구는 폰에 남았다. 그래서 **넘길 수 있게** 했다.
          ⚠️ 화면 글에 「태블릿」이라고 쓰지 말 것 — **노트북·남는 폰도 똑같이 쓴다**(사장님 지적).
-            부르는 이름은 **진행자 기기 / 진행자 화면**으로 통일한다.
+            부르는 이름은 **메인 화면**으로 통일한다.
          ⚠️ 넘겨받는 길은 **하나만** 둔다. 카드와 큰 버튼을 같이 띄웠더니 같은 일을 하는
             것이 둘이 되어 가로 태블릿에서 대기실이 150px 넘쳤다(실측). -->
     ${S.isHost
-      ? `<p class="note lobby-aux" style="margin:10px 4px 0">🎛 <b>진행자 — 이 기기</b>
+      ? `<p class="note lobby-aux" style="margin:10px 4px 0">🎛 <b>메인 화면 — 이 기기</b>
            · 점수·순서·게임 도구가 여기서 돌아갑니다</p>`
       : bigScreen()
       ? `<button class="instbn" style="margin-top:12px" data-act="host-take" data-spec="1">
           <div class="instbn-ic">📺</div>
           <div style="flex:1;min-width:0">
-            <div class="instbn-t">이 기기를 진행자 화면으로</div>
+            <div class="instbn-t">이 기기를 메인 화면으로</div>
             <div class="instbn-s">가운데 두고 다 같이 보는 기기(태블릿·노트북·남는 폰)라면 이걸로 —
-              지금은 ${h(pname(S.room.host) || '다른 기기')}님 기기가 진행자예요.
-              진행자 + 사회자(화면)를 한 번에 넘겨받습니다</div>
+              지금은 ${h(pname(S.room.host) || '다른 기기')}님 기기가 메인 화면이에요.
+              메인 화면 + 구경 모드를 한 번에 넘겨받습니다</div>
           </div>
           <div class="g-ar">›</div>
         </button>`
       : `<div class="hostrow">
           <div class="b">
-            <b>🎛 진행자 — ${h(pname(S.room.host) || '다른 기기')}님 기기</b>
+            <b>🎛 메인 화면 — ${h(pname(S.room.host) || '다른 기기')}님 기기</b>
             <span>점수·순서·게임 도구가 그 기기에서 돌아갑니다 — 가운데 둘 기기로 옮기려면 넘겨받으세요</span>
           </div>
           <button class="btn sm" data-act="host-take">넘겨받기</button>
@@ -5656,7 +5683,7 @@ function vLobby(){
 
     </div><div>
 
-    <div class="sec">참가자 <span class="n">${nPlay}명</span>${nSpec ? ` <span class="n" style="color:var(--sky)">+ 사회자 ${nSpec}</span>` : ''}</div>
+    <div class="sec">참가자 <span class="n">${nPlay}명</span>${nSpec ? ` <span class="n" style="color:var(--sky)">+ 구경 ${nSpec}</span>` : ''}</div>
     <div class="pchips">${chips}</div>
 
     <!-- ⚠️ 팀 박스는 **오른쪽 칸**이다. 왼쪽(방 코드+체크리스트)에 두면 가로 태블릿에서
@@ -5666,12 +5693,12 @@ function vLobby(){
 
     <div class="sec">이 기기</div>
     <div class="seg2">
-      <button class="${meSpec ? '' : 'on'}" ${meSpec ? 'data-act="spec-toggle"' : ''}>🙋 선수로 참여</button>
-      <button class="${meSpec ? 'on sky' : ''}" ${meSpec ? '' : 'data-act="spec-toggle"'}>📺 사회자(화면)</button>
+      <button class="${meSpec ? '' : 'on'}" ${meSpec ? 'data-act="spec-toggle"' : ''}>🙋 같이 겨루기</button>
+      <button class="${meSpec ? 'on sky' : ''}" ${meSpec ? '' : 'data-act="spec-toggle"'}>📺 구경 모드</button>
     </div>
     <p class="note lobby-aux" style="margin:8px 4px 0">${meSpec
       ? '겨루지 않아요 — 팀·술래 뽑기·순위에서 빠집니다'
-      : '이 기기를 상 위에 두고 다 같이 볼 때는 「사회자(화면)」로 바꾸세요'}</p>
+      : '이 기기를 상 위에 두고 다 같이 볼 때는 「구경 모드」로 바꾸세요'}</p>
 
 
     ${S.isHost && ps.length < 3 ? `
@@ -5704,7 +5731,7 @@ function nextPanel(){
       ${g.id === 'yut' && !S.isHost
         ? `<button class="btn pri" data-act="go-yut">🎲 윷 던지러 가기</button>`
         : `<p class="note" style="margin:0">${S.isHost ? '진행 화면에서 게임을 이어가세요'
-            : '<b>진행자 화면</b>을 보세요 — 끝나면 순위가 자동으로 올라와요'}</p>`}
+            : '<b>메인 화면</b>을 보세요 — 끝나면 순위가 자동으로 올라와요'}</p>`}
     </div>`;
 
   /* ② 아직 안 골랐다 */
@@ -5712,7 +5739,7 @@ function nextPanel(){
     <div class="nextp empty">
       <div class="np-h"><span class="np-ic">🎮</span>
         <div class="np-b"><span class="np-k">다음 게임</span>
-          <b>${S.isHost ? '어떤 게임을 할까요?' : '진행자가 고르는 중이에요'}</b></div></div>
+          <b>${S.isHost ? '어떤 게임을 할까요?' : '메인 화면에서 고르는 중이에요'}</b></div></div>
       ${S.isHost
         ? `<button class="btn pri" data-act="go-games">🎮 게임 고르기</button>`
         : `<p class="note" style="margin:0">고르면 여기에 뜨고, <b>✋ 준비</b>를 누르면 돼요</p>`}
@@ -5754,7 +5781,7 @@ function nextPanel(){
           ${meReady ? '✓ 준비 완료 — 누르면 취소' : '✋ 준비'}</button>
         ${waiting.length ? `<p class="note" style="text-align:center;margin:0">
           아직: ${waiting.slice(0, 4).map(([,p]) => h(p.name)).join(', ')}${waiting.length > 4 ? ` 외 ${waiting.length - 4}명` : ''}</p>` : ''}`
-      : `<p class="note" style="text-align:center;margin:0">📺 사회자(화면) 기기는 준비 없이 함께 봐요</p>`}
+      : `<p class="note" style="text-align:center;margin:0">📺 구경 모드 기기는 준비 없이 함께 봐요</p>`}
       </div>
     </div>`;
 }
@@ -5776,7 +5803,7 @@ function vGames(){
         <div class="gmeta">
           <span>👥 ${g.minP || 2}명+</span>
           ${g.mins ? `<span>⏱ ${h(g.mins)}</span>` : ''}
-          ${g.mc==='need' ? '<span class="chip sky">📺 사회자</span>' : ''}
+          ${g.mc==='need' ? '<span class="chip sky">📺 구경 1명</span>' : ''}
           ${done[g.id] ? `<span class="chip mint">✓ ${done[g.id]}판</span>` : ''}
         </div>
       </div>
@@ -5795,7 +5822,7 @@ function vGames(){
     ${offBanner()}
     <p class="note" style="margin:2px 4px 12px">${S.isHost
       ? '골라서 <b>「이 게임으로 하기」</b>를 누르면 모두의 대기실에 뜨고, 다들 준비하면 시작할 수 있어요'
-      : '진행자가 고르면 대기실에 떠요 — 규칙을 미리 볼 수 있어요'}</p>
+      : '메인 화면에서 고르면 대기실에 떠요 — 규칙을 미리 볼 수 있어요'}</p>
     ${group('개인전', '', solo)}
     ${group('팀전', teams > 1 ? `${teams}팀으로 나뉘어 있어요` : '대기실에서 팀을 먼저 나눠주세요', team)}`;
 }
@@ -5819,7 +5846,7 @@ function vGame(){
         <span class="chip ${g.mode==='team'?'mint':''}">${g.mode==='team'?'팀전':'개인전'}</span>
         ${RULE().wmode === 'game' ? `<span class="chip amb">배점 ${weightLabel(gameWeight(g.id))}</span>` : ''}
         ${g.role ? `<span class="chip">${h(g.role)} 필요</span>` : ''}
-        ${g.mc==='need' ? '<span class="chip sky">📺 사회자 전담</span>' : ''}
+        ${g.mc==='need' ? '<span class="chip sky">📺 구경 모드 1명</span>' : ''}
       </div>
     </div>
 
@@ -5830,15 +5857,15 @@ function vGame(){
       const solved = g.mc === 'need' && nSpec;      // 관전 기기가 그 자리를 채우고 있다
       if (solved) return `<div class="mcbox ok">
         <span class="i">✅</span>
-        <span><b>${h(specNames)} 기기가 사회자를 맡고 있어요</b>
-          <span class="s">선수 중에서 따로 뽑지 않아도 됩니다 — ${playing().length}명 전원이 참여합니다.
-            ${g.privScreen ? '<b style="color:var(--amber)">단 이 게임은 그 화면을 가운데 두지 말고 사회자가 들고 보세요</b> — 화면에 답이 있습니다.' : ''}</span></span>
+        <span><b>${h(specNames)} 기기가 구경 모드예요</b>
+          <span class="s">참가자 중에서 따로 뽑지 않아도 됩니다 — ${playing().length}명 전원이 참여합니다.
+            ${g.privScreen ? '<b style="color:var(--amber)">단 이 게임은 그 화면을 가운데 두지 말고 그 사람이 들고 보세요</b> — 화면에 답이 있습니다.' : ''}</span></span>
       </div>`;
       return `<div class="mcbox ${g.mc==='need'?'need':''}">
         <span class="i">${g.mc==='need' ? '📺' : '🖐'}</span>
-        <span><b>${g.mc==='need' ? '겨루지 않는 사회자가 있어야 깔끔해요' : '지금 안 뛰는 사람이 폰을 맡아주세요'}</b>
+        <span><b>${g.mc==='need' ? '구경 모드 한 명이 있어야 깔끔해요' : '지금 안 뛰는 사람이 폰을 맡아주세요'}</b>
           <span class="s">${h(g.mcWhy)}${g.mc==='need'
-            ? '<br>대기실에서 기기 하나를 <b>「사회자(화면)」</b>로 지정하면 전원이 플레이할 수 있어요.' : ''}</span></span>
+            ? '<br>대기실에서 기기 하나를 <b>「구경 모드」</b>로 지정하면 전원이 플레이할 수 있어요.' : ''}</span></span>
       </div>`;
     })() : ''}
 
@@ -5858,7 +5885,7 @@ function vGame(){
       </div>
     </div>
     </div><div>
-    ${g.role && !(g.role === '사회자' && nSpec) ? `
+    ${g.role && !(g.role === '화면 담당' && nSpec) ? `
       <div class="card">
         <div class="sec" style="margin:0 0 12px">${h(g.role)} 뽑기</div>
         ${last ? `<div class="pickres">
@@ -6203,7 +6230,7 @@ function vYutPhone(){
   const m = YT();
   if (!m) return `<div class="empty"><div class="empty-e">🎲</div>
       <div class="empty-t">아직 판이 안 깔렸어요</div>
-      <div class="note">진행자 화면에서 「판 깔고 시작」을 누르면 여기에 윷이 나타납니다</div></div>`;
+      <div class="note">메인 화면에서 「판 깔고 시작」을 누르면 여기에 윷이 나타납니다</div></div>`;
 
   const mt = myTeam();
   const mine = mt >= 0 && mt === m.turn;
@@ -6225,9 +6252,9 @@ function vYutPhone(){
         다음 차례에 그게 이번 것인 줄 안다. 다만 **못 받은 것은 계속 보여준다**(다시 던져야 하니까). */
   const deliv = !sent || ended || (!mine && !failed) ? '' : `
     <div class="deliv ${delivered ? 'ok' : failed ? 'bad' : ''}">
-      ${delivered ? `✓ 진행자 화면 판에 올라갔어요 — <b>${h(sent.n)}</b>`
-        : failed ? `⚠ 진행자 화면이 아직 못 받았어요 — <b>그 기기 화면이 켜져 있는지</b> 확인하고 다시 던져주세요`
-        : `<span class="sp"></span> 진행자 화면으로 보내는 중… <b>${h(sent.n)}</b>`}
+      ${delivered ? `✓ 메인 화면 판에 올라갔어요 — <b>${h(sent.n)}</b>`
+        : failed ? `⚠ 메인 화면이 아직 못 받았어요 — <b>그 기기 화면이 켜져 있는지</b> 확인하고 다시 던져주세요`
+        : `<span class="sp"></span> 메인 화면으로 보내는 중… <b>${h(sent.n)}</b>`}
     </div>`;
 
   /* 진행자 기기가 끊겨 있으면 아무리 던져도 판이 안 움직인다 — 먼저 알려준다 */
@@ -6235,7 +6262,7 @@ function vYutPhone(){
   const hostDown = !ended && hostPl && !isOn(hostPl);
 
   return `
-    ${hostDown ? `<div class="banner warn">📵 진행자 기기가 끊겨 있어요 —
+    ${hostDown ? `<div class="banner warn">📵 메인 화면이 꺼져 있어요 —
       던져도 판에 안 올라갑니다. 그 기기 화면을 깨워주세요.</div>` : ''}
     <div class="gh" style="${gcVars('#8878AE')};padding:18px">
       <div class="gh-em">🎲</div>
@@ -6249,10 +6276,10 @@ function vYutPhone(){
     ${ended ? `<div class="pickres"><div class="pickres-l">결과</div>
         <div class="pickres-v">${h(teamName(m.winner))} 승리!</div></div>`
     : m.halt ? `<div class="haltbig"><div class="t">✋ 잠시!</div>
-        <div class="s">지금 다 같이 판단 중이에요 — 진행자 화면을 보세요.</div></div>`
+        <div class="s">지금 다 같이 판단 중이에요 — 메인 화면을 보세요.</div></div>`
     : m.pick ? `<div class="haltbig"><div class="t">✋ ${h(teamName(m.pick.team))} 벌칙</div>
         <div class="s">${myTeam() === m.pick.team
-          ? '<b>우리 팀이 되돌릴 말을 고를 차례예요</b> — 진행자 화면에서 고르세요.'
+          ? '<b>우리 팀이 되돌릴 말을 고를 차례예요</b> — 메인 화면에서 고르세요.'
           : `${h(teamName(m.pick.team))}이 되돌릴 말을 고르는 중입니다.`}</div></div>`
     : `
       ${m.last ? `<div class="sticks">
@@ -6260,12 +6287,12 @@ function vYutPhone(){
           <div class="sname">${h(m.last.n)}</div>
         </div>` : ''}
       ${(m.pending || []).length ? `<p class="note" style="text-align:center;margin:0 0 12px">
-          모아둔 결과 <b>${m.pending.map(x => h(x.n)).join(' · ')}</b> — 진행자 화면에서 말을 옮기세요</p>` : ''}
+          모아둔 결과 <b>${m.pending.map(x => h(x.n)).join(' · ')}</b> — 메인 화면에서 말을 옮기세요</p>` : ''}
 
       <button class="bigthrow" data-act="yut-throw" ${canThrow && !inFlight ? '' : 'disabled'}>
         ${inFlight && mine ? '보내는 중…'
           : !mine ? `${h(teamName(m.turn))} 차례예요`
-          : m.canThrow ? '🎲 윷 던지기' : '진행자 화면에서 말을 옮기세요'}
+          : m.canThrow ? '🎲 윷 던지기' : '메인 화면에서 말을 옮기세요'}
       </button>
       ${deliv}
       <p class="note" style="text-align:center;margin:10px 0 16px">
@@ -6300,14 +6327,14 @@ function vSong(){
     <div class="gh" style="${gcVars(g.color)};padding:17px">
       <div class="gh-n" style="font-size:18px;padding-right:0">${g.emoji} ${h(g.name)}</div>
       <p class="note" style="margin-top:7px;position:relative">
-        사회자 폰으로 유튜브 뮤직에서 틀어주세요 — 곡 정보는 사회자만 봅니다</p>
+        이 폰으로 유튜브 뮤직에서 틀어주세요 — 곡 정보는 이 사람만 봅니다</p>
     </div>
 
     <div class="mcbox need">
       <span class="i">📵</span>
-      <span><b>이 게임만은 진행자 기기를 가운데 두지 마세요</b>
+      <span><b>이 게임만은 화면을 가운데 두지 마세요</b>
         <span class="s">정답이 이 화면에 있습니다. 노래를 트는 사람은 답을 다 보게 되니
-          <b>겨루지 않는 사회자</b>가 자기 폰으로 진행하세요.</span></span>
+          <b>구경 모드인 사람</b>이 자기 폰으로 진행하세요.</span></span>
     </div>
 
     ${stockBox(p.gameId, usable, p.n, '곡')}
@@ -6412,7 +6439,7 @@ function vSong(){
       : `<!-- ⚠️ .priv — 정답이라 진행자 한 사람만 본다. 큰 화면에서 커지면 안 된다. -->
          <div class="wcard priv">
            <div>
-             <div class="wcat">🙈 사회자만 보세요 · ${h(SONG_DECKS[p.cur?.c]?.name || '')}</div>
+             <div class="wcat">🙈 이 사람만 보세요 · ${h(SONG_DECKS[p.cur?.c]?.name || '')}</div>
              <div class="wtxt ${(p.cur?.w||'').length > 8 ? 'long' : ''}">${h(p.cur?.w || '')}</div>
              <div class="note priv" style="margin-top:8px">${h(p.cur?.a || '')}</div>
            </div>
@@ -6639,7 +6666,7 @@ function vQuiz(){
     <p class="note" style="margin:0 4px">${p.sec
       ? `문제가 뜨고 <b>${p.sec}초</b>가 지나면 <b>정답이 자동으로 나옵니다.</b>
          먼저 맞혔으면 「정답 공개」를 눌러 바로 넘어가세요.`
-      : '진행자가 「정답 공개」를 누를 때까지 <b>정답이 안 나옵니다.</b> 천천히 생각할 때 쓰세요.'}</p>
+      : '메인 화면에서 「정답 공개」를 누를 때까지 <b>정답이 안 나옵니다.</b> 천천히 생각할 때 쓰세요.'}</p>
 
     </div><div>
     <div class="sec">출제 범위 <span class="n">${usable}문제</span></div>
@@ -7272,6 +7299,7 @@ function vBoard(){
   return `
     <div class="two"><div>
     ${offBanner()}
+    ${ROOM_TITLE() ? `<div class="gname gtop"><span class="gn-w">✦</span>${h(ROOM_TITLE())}<span class="gn-w">✦</span></div>` : ''}
     ${stakeBox()}
     ${podium}
     ${rows.length ? `<div class="lb">${rows.slice(listFrom).map((r,i) => `
@@ -7310,8 +7338,8 @@ function vBoard(){
       <div class="sec" style="margin:0 0 9px">점수 방식</div>
       <p class="note">1등 <b style="color:var(--amber)">10점</b> · 2등 7점 · 3등 5점 · 4등 3점 · 5등 2점 · 이하 1점<br>
       ${RULE().wmode === 'game'
-        ? '여기에 <b>게임마다 정한 배점</b>을 곱합니다 — 진행자가 설정에서 바꿀 수 있어요.'
-        : '<b>모든 게임이 똑같은 무게</b>예요 — 진행자가 설정에서 게임마다 다르게 줄 수 있어요.'}</p>
+        ? '여기에 <b>게임마다 정한 배점</b>을 곱합니다 — 메인 화면 설정에서 바꿀 수 있어요.'
+        : '<b>모든 게임이 똑같은 무게</b>예요 — 메인 화면 설정에서 게임마다 다르게 줄 수 있어요.'}</p>
       <p class="note" style="margin-top:8px"><b style="color:var(--mint)">팀전도 개인 점수로 쌓입니다</b> —
       팀 순위 점수를 팀원 전원이 <b>똑같이</b> 받아요. 그래서 팀을 새로 짜도 순위는 안 깨집니다.</p>
     </div>
@@ -7341,6 +7369,13 @@ function vSettings(){
       <button class="btn sm" data-act="rename" style="width:100%">이름 바꾸기</button>
     </div>
     ${S.isHost ? `
+    <div class="card">
+      <div class="sec" style="margin:0 0 11px">모임 이름</div>
+      <input class="inp" id="in-gname" maxlength="14" placeholder="예: 양양 2박 3일"
+        value="${h(ROOM_TITLE())}">
+      <p class="note" style="margin:8px 2px 10px">방 코드 카드·순위·지난 기록에 함께 보여요. 비우면 방 코드만 뜹니다.</p>
+      <button class="btn sm" data-act="gname-save" style="width:100%">이름 저장</button>
+    </div>
     <div class="card">
       <div class="sec" style="margin:0 0 11px">점수 · 경품</div>
       <p class="note" style="margin-bottom:10px">1등 <b style="color:var(--amber)">10점</b> ·
@@ -7377,10 +7412,10 @@ function vSettings(){
       <button class="btn sm" data-act="rule-stake" style="width:100%">경품·벌칙 저장</button>
     </div>
     <div class="card">
-      <div class="sec" style="margin:0 0 11px">진행자 도구</div>
+      <div class="sec" style="margin:0 0 11px">메인 화면 도구</div>
       <div class="stack">
         <button class="btn gh sm" data-act="reset-scores" style="width:100%">점수 전체 초기화</button>
-        <button class="btn gh sm" data-act="reset-rot" style="width:100%">술래·사회자 순번 초기화</button>
+        <button class="btn gh sm" data-act="reset-rot" style="width:100%">술래·역할 순번 초기화</button>
       </div>
     </div>
     </div><div>
@@ -7398,8 +7433,8 @@ function vSettings(){
     <div class="card">
       <div class="sec" style="margin:0 0 11px">방</div>
       <p class="note" style="margin-bottom:12px">${S.isHost
-        ? '진행자입니다. 이 기기가 점수의 기준이 되니 게임 중에는 앱을 닫지 마세요.'
-        : '참가자입니다. 순위 입력은 진행자 기기에서 합니다.'}</p>
+        ? '이 기기가 <b>메인 화면</b>입니다. 점수의 기준이 되니 게임 중에는 앱을 닫지 마세요.'
+        : '순위 입력은 <b>메인 화면</b>에서 합니다.'}</p>
       <button class="btn dan sm" data-act="leave" style="width:100%">방 나가기</button>
     </div>
     <p class="note" style="text-align:center;margin-top:20px">${APP_VERSION}</p>
@@ -7524,7 +7559,7 @@ async function act(a, d){
   case 'create': {
     const name = ($('#in-name')?.value || '').trim();
     if (!name) return toast('이름을 입력해 주세요');
-    await createRoom(name); break;
+    await createRoom(name, $('#in-title')?.value || ''); break;
   }
   case 'join': {
     const name = ($('#in-name')?.value || '').trim();
@@ -7584,7 +7619,7 @@ async function act(a, d){
     if (S.room.yut?.phase === 'play')
       return toast('윷판이 진행 중이에요 — 윷판을 끝내거나 정리한 뒤 팀을 다시 나눠주세요');
     if (n < 2){ S.room.teams = {count:0,assign:{}}; pushHostState(); }
-    else if (playing().length < n) return toast(`${n}팀을 나누려면 선수가 ${n}명 이상 필요해요`);
+    else if (playing().length < n) return toast(`${n}팀을 나누려면 참가자가 ${n}명 이상 필요해요`);
     else { makeTeams(n); confetti(45); }
     render(); break;
   }
@@ -7594,7 +7629,7 @@ async function act(a, d){
 
   /* 🎮 진행자가 다음 게임을 고른다 — 모두의 대기실에 뜨고, 전원의 준비가 풀린다 */
   case 'next-set': {
-    if (!S.isHost) return toast('게임은 진행자가 골라요');
+    if (!S.isHost) return toast('게임은 메인 화면에서 골라요');
     const g = G(d.id); if (!g) break;
     S.room.next = { g:g.id, at:now() };
     S.gameId = g.id;
@@ -7640,7 +7675,7 @@ async function act(a, d){
   case 'game': S._fromList = S.view === 'games'; S.gameId = d.id; go('game'); break;
 
   case 'pick': {
-    if (!S.isHost) return toast('진행자만 뽑을 수 있어요');
+    if (!S.isHost) return toast('메인 화면에서만 뽑을 수 있어요');
     const g = G(S.gameId);
     const before = (S.room.rotation?.[g.id] || []).filter(p => S.room.players[p] && !isSpec(S.room.players[p]));
     const all = playing().map(([pid]) => pid);
@@ -7675,7 +7710,7 @@ async function act(a, d){
 
   /* ── 진행 도구 ── */
   case 'tool-start': {
-    if (!S.isHost) return toast('진행 도구는 진행자 기기에서 열어주세요');
+    if (!S.isHost) return toast('진행 도구는 메인 화면에서 열어주세요');
     const g = G(S.gameId), n = playing().length;
     // ⚠️ 최소 인원은 GAMES[].minP 한 곳에서만 읽는다.
     //    예전엔 여기 2/3 이 하드코딩돼 있어서 상세 화면 표시와 따로 놀 수 있었다.
@@ -7720,7 +7755,7 @@ async function act(a, d){
   }
   /* 🎲 훈민정음 윷놀이 — 태블릿(호스트) */
   case 'yut-start': {
-    if (!S.isHost) return toast('말판은 진행자 기기에서 열어주세요');
+    if (!S.isHost) return toast('말판은 메인 화면에서 열어주세요');
     if ((S.room.teams?.count || 0) < 2) return toast('대기실에서 팀을 먼저 나눠주세요');
     yutStart(); S.play.phase = 'play'; confetti(60); render(true); break;
   }
@@ -7773,7 +7808,7 @@ async function act(a, d){
     const m = YT();
     if (!m || m.phase !== 'play') return;
     if (myTeam() !== m.turn) return toast('우리 팀 차례가 아니에요');
-    if (!m.canThrow) return toast('먼저 진행자 화면에서 말을 옮기세요');
+    if (!m.canThrow) return toast('먼저 메인 화면에서 말을 옮기세요');
     if (m.halt || m.pick) return toast('✋ 잠시! 판정이 먼저예요');
     if (!S.isHost && S.yutSent && S.yutSent.ok !== false && m.last?.at !== S.yutSent.at
         && now() - S.yutSent.at <= YUT_DELIVER_MS) return toast('방금 던진 게 아직 가는 중이에요');
@@ -7819,11 +7854,11 @@ async function act(a, d){
     const payload = { by:S.pid, team:t, at:now() };
     if (S.isHost){ m.halt = payload; pushYut({ halt:payload }); }
     else set(ref(db, `${ROOT}/rooms/${S.code}/yut/halt`), payload).catch(()=>{});
-    SFX.end(); vib([30,50,30]); toast('✋ 잠시! — 진행자 화면에서 판단합니다'); break;
+    SFX.end(); vib([30,50,30]); toast('✋ 잠시! — 메인 화면에서 판단합니다'); break;
   }
   /* 🔄 재시작 — 말을 전부 집으로, 기록·벌점까지 처음부터. 팀과 말 모양은 그대로 둔다. */
   case 'yut-restart': {
-    if (!S.isHost) return toast('말판은 진행자 기기에서 다시 시작해주세요');
+    if (!S.isHost) return toast('말판은 메인 화면에서 다시 시작해주세요');
     S.ask = { emoji:'🔄', title:'윷판을 처음부터 다시 시작할까요?',
       lose:['말 위치·기록·<b>영어 벌점이 전부 사라져요</b>',
             '지금 판은 <b>순위에 반영되지 않아요</b>'],
@@ -8121,7 +8156,7 @@ async function act(a, d){
   case 'pl-quit-go': { stopPlayTimer(); S.play = null; go('lobby'); break; }
 
   case 'score-start': {
-    if (!S.isHost) return toast('순위 입력은 진행자 기기에서 해주세요');
+    if (!S.isHost) return toast('순위 입력은 메인 화면에서 해주세요');
     const g = G(S.gameId);
     const teams = S.room.teams || {count:0};
     if (g.mode === 'team' && teams.count < 2) return toast('팀전이에요 — 대기실에서 팀을 먼저 나눠주세요');
@@ -8151,7 +8186,7 @@ async function act(a, d){
        (순위 0명 = 아무도 점수를 못 받는데 「진행한 게임」에는 한 판이 늘어난다). */
     if (!dr || (dr.order || []).length < 2) return toast('2명(팀) 이상 정해주세요');
     // ⚠️ 진행자에서 내려온 기기가 저장하면 「반영됐어요」가 뜨고 다음 스냅샷에 사라진다
-    if (!S.isHost){ S.draft = null; go('lobby'); return toast('진행자가 바뀌어서 저장하지 못했어요'); }
+    if (!S.isHost){ S.draft = null; go('lobby'); return toast('메인 화면이 바뀌어서 저장하지 못했어요'); }
     const sid = 's' + now().toString(36) + Math.random().toString(36).slice(2,6);
     if (!S.room.scores) S.room.scores = {};
     S.room.scores[sid] = { gameId:dr.gameId, mode:dr.mode, order:dr.order,
@@ -8187,7 +8222,7 @@ async function act(a, d){
      ⚠️ 진행 도구(S.play)는 **진행자 기기 메모리에만** 있다(윷판만 방 노드에 있다).
         도구를 켠 채로 넘기면 그 판이 통째로 사라지므로 막는다. */
   case 'host-take': {
-    if (S.isHost) return toast('이미 이 기기가 진행자예요');
+    if (S.isHost) return toast('이미 이 기기가 메인 화면이에요');
     if (!S.room?.players?.[S.pid]) return;
     /* ⚠️ 진행 중 여부는 **진행자 기기가 서버에 실어둔 것(busy)** 으로 본다. 예전엔 넘겨받는
           기기 자신의 S.play 를 봤는데, 진행자가 아닌 기기는 그게 늘 비어 있어 가드가 무의미했다.
@@ -8195,10 +8230,10 @@ async function act(a, d){
     const busy = S.room.busy, hostOn = isOn(S.room.players?.[S.room.host]);
     const busyName = busy === 'score' ? '순위 입력' : (G(busy)?.name || '게임');
     if (busy && hostOn)
-      return toast(`진행자 기기에서 ${busyName} 중이에요 — 끝난 뒤에 넘겨받을 수 있어요`);
+      return toast(`메인 화면에서 ${busyName} 중이에요 — 끝난 뒤에 넘겨받을 수 있어요`);
     S._takeSpec = d.spec === '1';
-    S.ask = { emoji:'🎛', title:'이 기기를 진행자로 바꿀까요?',
-      lose:[`지금 진행자인 <b>${h(pname(S.room.host) || '다른 기기')}</b>님 기기는 <b>일반 참가자가 돼요</b>`,
+    S.ask = { emoji:'🎛', title:'이 기기를 메인 화면으로 바꿀까요?',
+      lose:[`지금 메인 화면인 <b>${h(pname(S.room.host) || '다른 기기')}</b>님 기기는 <b>그냥 참가자가 돼요</b>`,
             busy ? `그 기기가 끊겨 있어서 <b>진행 중이던 ${h(busyName)}은 사라져요</b>`
                  : '그 기기에서 <b>게임 도구를 켜 둔 게 있으면 사라져요</b>'],
       safe:'순위·팀·나온 제시어는 <b>서버에 있어서 그대로 넘어와요</b>. 언제든 다시 넘길 수 있어요.',
@@ -8226,12 +8261,12 @@ async function act(a, d){
     }
     S._takeSpec = false;
     vib(18); confetti(30); render(true);
-    toast('🎛 이제 이 기기가 진행자예요');
+    toast('🎛 이제 이 기기가 메인 화면이에요');
     break;
   }
   /* 🏆 방 규칙 — 배점·경품·벌칙은 방장이 정한다 */
   case 'rule-wmode': {
-    if (!S.isHost) return toast('진행자 기기에서 바꿀 수 있어요');
+    if (!S.isHost) return toast('메인 화면에서 바꿀 수 있어요');
     S.room.rule = { ...RULE(), wmode:d.v };
     pushHostState(); vib(12); render(true);
     toast(d.v === 'game' ? '게임마다 배점을 정할 수 있어요' : '모든 게임을 똑같이 칩니다');
@@ -8243,8 +8278,16 @@ async function act(a, d){
     S.room.rule = { ...r, wmode:'game', weights:{ ...(r.weights || {}), [d.id]:Number(d.v) } };
     pushHostState(); vib(10); render(true); break;
   }
+  case 'gname-save': {
+    if (!S.isHost) return toast('메인 화면에서 바꿀 수 있어요');
+    const v = ($('#in-gname')?.value || '').trim().slice(0, 14);
+    S.room.title = v || null;
+    pushHostState(); vib(14); render(true);
+    toast(v ? `모임 이름을 「${v}」로 정했어요` : '모임 이름을 지웠어요');
+    break;
+  }
   case 'rule-stake': {
-    if (!S.isHost) return toast('진행자 기기에서 적을 수 있어요');
+    if (!S.isHost) return toast('메인 화면에서 적을 수 있어요');
     const prize = ($('#in-prize')?.value || '').trim().slice(0, 40);
     const pen   = ($('#in-penalty')?.value || '').trim().slice(0, 40);
     S.room.rule = { ...RULE(), prize:prize || null, penalty:pen || null };
@@ -8255,7 +8298,7 @@ async function act(a, d){
   case 'spec-toggle': {
     const me = S.room.players?.[S.pid]; if (!me) break;
     const on = !isSpec(me);
-    if (on && playing().length <= 1) return toast('선수가 아무도 안 남아요');
+    if (on && playing().length <= 1) return toast('겨루는 사람이 아무도 안 남아요');
     me.spec = on;
     update(ref(db, `${ROOT}/rooms/${S.code}/players/${S.pid}`), { spec:on }).catch(()=>{});
     if (on && S.room.teams?.assign?.[S.pid] != null){
@@ -8263,7 +8306,7 @@ async function act(a, d){
       if (S.isHost) pushHostState();
     }
     vib(12); render(true);
-    toast(on ? '📺 이 기기는 사회자(화면)입니다 — 겨루지 않아요' : '다시 선수로 참가합니다');
+    toast(on ? '📺 이 기기는 구경 모드예요 — 겨루지 않아요' : '다시 같이 겨룹니다');
     break;
   }
 

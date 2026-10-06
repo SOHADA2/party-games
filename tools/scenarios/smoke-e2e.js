@@ -236,7 +236,7 @@ if (new URLSearchParams(location.search).has('demo')){
       //    「.priv 블록 **안에** 제목이 있고, 블록을 지우면 **밖엔 없다**」로 정확히 본다.
       const priv = (sv.match(/<div class="wcard priv">[\s\S]*?<\/div>\s*<\/div>/) || [''])[0];
       ck('★★정답(제목)이 .priv 안에 있다',
-        priv.includes(S.play.cur.w) && sv.includes('사회자만 보세요'));
+        priv.includes(S.play.cur.w) && sv.includes('이 사람만 보세요'));
       ck('★★.priv 밖에는 곡 제목이 없다',
         !sv.replace(priv, '').includes(S.play.cur.w));
     }
@@ -400,7 +400,7 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('★대기실에 방 준비와 「다음 게임」이 있다', lv.includes('방 준비') && lv.includes('다음 게임'));
     ck('  초대·팀 나누기·게임 고르기가 다 있다',
       lv.includes('친구 초대') && lv.includes('팀 나누기') && lv.includes('게임 고르기'));
-    ck('  「이 기기」 선수/사회자 토글이 있다', lv.includes('사회자(화면)'));
+    ck('  「이 기기」 같이 겨루기/구경 모드 토글이 있다', lv.includes('구경 모드'));
     ck('★칩이 블록으로 퍼지지 않는다(자손 선택자 사고 재발 방지)',
       !/\.tdi \.tx span\{display:block/.test(document.documentElement.innerHTML));
 
@@ -955,8 +955,8 @@ if (new URLSearchParams(location.search).has('demo')){
        안 그러면 선수 중 한 명이 또 사회자로 빠져 이 기능의 의미가 없어진다. */
     S.gameId='body'; S.view='game'; render(true);
     const gv = document.getElementById('view').innerHTML;
-    ck('★사회자 기기가 있으면 사회자 뽑기 숨김', !gv.includes('사회자 뽑기'));
-    ck('  대신 사회자 기기를 안내한다', gv.includes('기기가 사회자를 맡고 있어요'));
+    ck('★구경 모드 기기가 있으면 화면 담당 뽑기 숨김', !gv.includes('화면 담당 뽑기'));
+    ck('  대신 그 기기를 안내한다', gv.includes('기기가 구경 모드예요'));
     // ★ 요구와 해결이 동시에 뜨면 안 된다 — 갖췄는데도 모자란 것처럼 보였다(v0.21.0에서 고침)
     ck('★★사회자 기기가 있으면 「있어야 깔끔해요」 요구가 사라진다',
       !gv.includes('있어야 깔끔해요'));
@@ -966,7 +966,7 @@ if (new URLSearchParams(location.search).has('demo')){
     S.view='game'; render(true);
     {
       const gv2 = document.getElementById('view').innerHTML;
-      ck('사회자 기기가 없으면 뽑기가 다시 뜬다', gv2.includes('사회자 뽑기'));
+      ck('구경 모드 기기가 없으면 뽑기가 다시 뜬다', gv2.includes('화면 담당 뽑기'));
       ck('★사회자 기기가 없으면 요구 문구가 다시 뜬다', gv2.includes('있어야 깔끔해요'));
     }
     S.room.players[P[0]].spec = true;
@@ -1164,8 +1164,8 @@ if (new URLSearchParams(location.search).has('demo')){
       /* 참가자 기기에는 지금 진행자가 누구인지와 넘겨받기가 보인다 */
       S.pid = other; S.isHost = false;
       const lb = view('lobby');
-      ck('★★참가자 기기에 지금 진행자가 누구인지 보인다',
-        lb.includes('🎛 진행자') && lb.includes(pname('h1')));
+      ck('★★참가자 기기에 지금 메인 화면이 누구인지 보인다',
+        lb.includes('🎛 메인 화면') && lb.includes(pname('h1')));
       ck('★★거기서 바로 넘겨받을 수 있다', lb.includes('data-act="host-take"'));
 
       /* 진행 중인 도구가 있으면 못 넘긴다 — 그 판이 통째로 사라지기 때문
@@ -1188,7 +1188,7 @@ if (new URLSearchParams(location.search).has('demo')){
       act('host-take', {});
       ck('★넘기기 전에 경고창이 뜬다', !!S.ask && S.ask.go === 'host-take-go');
       ck('  무엇이 바뀌는지 적혀 있다',
-        (S.ask.lose || []).join(' ').includes('일반 참가자'));
+        (S.ask.lose || []).join(' ').includes('참가자가 돼요'));
       globalThis.__W = [];
       act('ask-yes', {});
       ck('★★★이 기기가 진행자가 된다', S.isHost === true && S.room.host === S.pid);
@@ -1524,7 +1524,7 @@ if (new URLSearchParams(location.search).has('demo')){
 
       /* ① 아직 안 골랐다 */
       ck('★★진행자 대기실에 「게임 고르기」가 있다', view('lobby').includes('data-act="go-games"'));
-      ck('  참가자는 「고르는 중」을 본다', as(guest, () => view('lobby')).includes('진행자가 고르는 중'));
+      ck('  참가자는 「고르는 중」을 본다', as(guest, () => view('lobby')).includes('메인 화면에서 고르는 중'));
       ck('  참가자에게는 「게임 고르기」 버튼이 없다', !as(guest, () => view('lobby')).includes('data-act="go-games"'));
 
       /* ② 진행자가 고른다 */
@@ -1624,6 +1624,100 @@ if (new URLSearchParams(location.search).has('demo')){
 
       if (!human) delete S.room.players[guest];
       S.room.scores = {}; S.play = null; S.draft = null; S.room.busy = null; S.view = 'lobby';
+    }
+
+    /* ════ ✦ 모임 이름 · 부르는 이름 통일 (v0.42.0) ════
+       사장님: "모임 이름을 정하고 멋있게 꾸며 내부에도 배치하면 소속감 있는 게임" ·
+              "방장·태블릿·사회자 용어가 산재해 직관적이지 않다" */
+    {
+      S.pid = 'h1'; S.isHost = true; S.room.host = 'h1'; S.play = null; S.draft = null;
+      S.room.next = null; S.room.busy = null; S.room.title = null; S.room.scores = {};
+
+      /* 방 만들 때 적는 자리 — **선택**이라 비워도 된다 */
+      { const keep = S.code; S.code = null;
+        const hv = view('home');
+        ck('★★방 만들기 화면에 모임 이름 칸이 있다',
+          hv.includes('id="in-title"') && hv.includes('모임 이름'));
+        ck('  선택이라고 알려준다', hv.includes('(선택)'));
+        S.code = keep; }
+
+      /* 메인 화면에서만 정한다 */
+      S.view = 'settings'; render(true);
+      ck('★설정에 모임 이름 칸이 있다', !!document.getElementById('in-gname'));
+      globalThis.__W = [];
+      document.getElementById('in-gname').value = '  양양 2박 3일  ';
+      act('gname-save', {});
+      ck('★★★모임 이름이 방에 저장된다 (앞뒤 공백은 떼고)', ROOM_TITLE() === '양양 2박 3일');
+      ck('★★서버에도 나간다', (globalThis.__W || []).some(x => x[2] && x[2].title === '양양 2박 3일'));
+
+      /* 다 같이 보는 자리에 뜬다 */
+      const lv2 = view('lobby');
+      ck('★★★대기실 방 코드 카드에 모임 이름이 뜬다',
+        lv2.includes('gname') && lv2.includes('양양 2박 3일'));
+      ck('★★순위 탭에도 뜬다', view('board').includes('양양 2박 3일'));
+      /* ⚠️ 클래스 이름이 겹치면 **조용히 거대한 빈 상자**가 된다 — `.gname.board` 가 윷 말판
+         `.board`(aspect-ratio:1/1)에 걸려 445px 정사각형이 됐었다. 높이로 못 박는다. */
+      { S.view = 'board'; render(true);
+        const el = document.querySelector('.gname');
+        const hgt = el ? Math.round(el.getBoundingClientRect().height) : -1;
+        ck('  모임 이름 줄이 한 줄 높이다 (' + hgt + 'px — 클래스 이름 충돌 방지)', hgt > 0 && hgt < 90); }
+      S.view = 'lobby'; render(true);
+      ck('★머리글도 모임 이름이 된다', document.getElementById('hd-t').textContent === '양양 2박 3일');
+
+      /* 참가자 기기에도 똑같이 — 같은 모임이라는 느낌이 핵심이다 */
+      { const k = [S.pid, S.isHost]; S.pid = players()[1][0]; S.isHost = false;
+        ck('★★★참가자 기기에도 모임 이름이 보인다', view('lobby').includes('양양 2박 3일'));
+        [S.pid, S.isHost] = k; }
+      ck('★참가자는 모임 이름을 못 바꾼다', (() => {
+        const k = [S.pid, S.isHost]; S.pid = players()[1][0]; S.isHost = false;
+        S.view = 'settings'; render(true);
+        const none = !document.getElementById('in-gname');
+        act('gname-save', {});
+        [S.pid, S.isHost] = k; S.isHost = true;
+        return none && ROOM_TITLE() === '양양 2박 3일';
+      })());
+
+      /* 이름에 HTML 을 넣어도 실행되지 않는다 */
+      S.view = 'settings'; render(true);
+      document.getElementById('in-gname').value = '<img src=x onerror=1>';
+      act('gname-save', {});
+      const lv3 = view('lobby');
+      ck('★★★모임 이름이 HTML 로 실행되지 않는다',
+        !lv3.includes('<img src=x') && lv3.includes('&lt;img'));
+
+      /* 비우면 사라진다 */
+      S.view = 'settings'; render(true);
+      document.getElementById('in-gname').value = '';
+      act('gname-save', {});
+      ck('  비우면 방 코드만 뜬다', !ROOM_TITLE() && !view('lobby').includes('gname'));
+
+      /* 지난 기록에도 남는다 — 방이 사라져도 「그때 그 모임」으로 */
+      S.room.title = '양양 2박 3일';
+      S.room.scores = { a:{ gameId:'act', mode:'solo', order:players().slice(0,2).map(([p])=>p),
+        weight:1, assign:{}, at:1 } };
+      _histSig = null; snapRoom();
+      const rec0 = histAll()[0];
+      ck('★★★지난 기록에 모임 이름이 남는다', rec0 && rec0.t === '양양 2박 3일');
+      ck('  홈 기록 줄에도 보인다', view('home').includes('양양 2박 3일'));
+
+      /* ── 부르는 이름은 둘뿐: 메인 화면 · 구경 모드 ── */
+      S.room.title = null; S.room.scores = {}; S.view = 'lobby'; render(true);
+      const old = ['진행자', '사회자', '호스트', '방장'];
+      const screens = ['home', 'lobby', 'games', 'board', 'settings'];
+      const bad = [];
+      /* ⚠️ HTML 주석은 화면 글이 아니다 — 안 빼면 코드 주석 때문에 헛걸린다 */
+      const visible = v => view(v).replace(/<!--[\s\S]*?-->/g, '');
+      for (const v of screens){
+        const html = visible(v);
+        for (const w of old) if (html.includes(w)) bad.push(v + ':' + w);
+      }
+      S.gameId = 'song'; const gv9 = visible('game');
+      for (const w of old) if (gv9.includes(w)) bad.push('game:' + w);
+      ck('★★★화면 글에 옛 용어(진행자·사회자·호스트·방장)가 없다' + (bad.length ? ' — ' + bad.slice(0,4).join(', ') : ''),
+        !bad.length);
+      ck('  대신 「메인 화면」과 「구경 모드」를 쓴다',
+        view('lobby').includes('메인 화면') && view('lobby').includes('구경 모드'));
+      S.gameId = null; S.view = 'lobby';
     }
 
     /* ── 9) 정리 ── */
