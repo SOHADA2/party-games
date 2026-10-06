@@ -20,7 +20,7 @@ if (new URLSearchParams(location.search).has('demo')){
     S.room.players.h1 = { name:'나', joinedAt:1, seen:Date.now(), host:true };
     addBots(5); makeTeams(2); confetti = () => {};
     S.room.scores = {
-      s1:{ gameId:'yut', mode:'team', order:[0,1], weight:1, assign:{...S.room.teams.assign}, at:1 },
+      s1:{ gameId:'body', mode:'team', order:[0,1], weight:1, assign:{...S.room.teams.assign}, at:1 },
       s2:{ gameId:'quiz', mode:'solo', order:players().map(([p])=>p), weight:1, at:2 },
     };
 
@@ -42,7 +42,7 @@ if (new URLSearchParams(location.search).has('demo')){
         show('lobby'); fits('★★넘겨받기 카드가 떠도 대기실이 한 화면에 들어간다');
         S.isHost = keep; S.room.host = 'h1'; }
       /* 🎮 게임을 고른 대기실 — 「다음 게임」 카드가 제일 커지는 상태 */
-      S.room.next = { g:'yut', at:Date.now() };
+      S.room.next = { g:'body', at:Date.now() };
       show('lobby'); fits('★★게임을 고른 진행자 대기실이 한 화면에 들어간다');
       { const keep = S.isHost; S.isHost = false; S.room.host = players()[1][0];
         S.pid = players()[2][0];
@@ -52,18 +52,14 @@ if (new URLSearchParams(location.search).has('demo')){
 
       /* 진행 도구 — 「다 같이 보는」 화면이다. 여기가 넘치면 게임이 안 굴러간다. */
       for (const g of GAMES){
-        S.gameId = g.id; S.room.yut = null; go('game');
+        S.gameId = g.id; go('game');
         try { act('tool-start', {}); } catch(e){}
         if (!S.play) continue;
         const nm = g.name.split(' / ')[0];
         try {
-          if (g.tool === 'yut'){ act('yut-start', {}); }
           if (g.tool === 'cho'){ S.play.n = 3; act('cho-start', {}); }
           if (g.tool === 'quiz'){ S.play.n = 3; act('quiz-start', {}); act('quiz-show', {}); }
-          if (g.tool === 'song'){ S.play.n = 3; act('song-start', {}); }
           if (g.tool === 'deck'){ act('pl-start', {}); act('pl-begin', {}); }
-          if (g.tool === 'noise'){ act('no-brief', {}); }
-          if (g.tool === 'smile'){ act('sm-sul', { pid:players()[1][0] }); }
         } catch(e){}
         show('play'); fits('★★진행 화면: ' + nm);
         stopPlayTimer(); S.play = null;

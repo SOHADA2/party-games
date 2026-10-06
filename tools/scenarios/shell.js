@@ -7,7 +7,7 @@ if (new URLSearchParams(location.search).has('demo')){
     S.room=emptyRoom(); S.room.host='h1';
     S.room.players.h1={name:'나',joinedAt:1,seen:Date.now(),host:true};
     addBots(5); if(q.get('teams')) makeTeams(2);
-    S.room.scores.s1={gameId:'noise',mode:'solo',order:players().map(([p])=>p),weight:1,assign:{},at:1};
+    S.room.scores.s1={gameId:'act',mode:'solo',order:players().map(([p])=>p),weight:1,assign:{},at:1};
     S.room.scores.s2={gameId:'chosung',mode:'solo',order:players().map(([p])=>p).reverse(),weight:1,assign:{},at:2};
     S.gameId=q.get('g')||'chosung';
     /* &next=게임id → 그 게임을 고른 대기실 · &guest=1 과 같이 쓰면 참가자 화면 · &ready=1 → 내가 준비한 상태 */

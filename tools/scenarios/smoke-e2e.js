@@ -29,7 +29,10 @@ if (new URLSearchParams(location.search).has('demo')){
     /* ── 0) 레지스트리 ── */
     const ids = GAMES.map(g => g.id);
     say('게임', GAMES.length + '종:', ids.join(','));
-    ck('삭제한 게임이 안 남아 있음', !ids.includes('mafia') && !ids.includes('watch'));
+    /* 지운 게임이 되살아나지 않게 — 되살릴 땐 git 이력에서 데이터만 꺼내 쓴다 */
+    ck('삭제한 게임이 안 남아 있음',
+      ['mafia','watch','noise','smile','song','yut'].every(x => !ids.includes(x)));
+    ck('  남은 6종이 맞다', ids.join(',') === 'chosung,quiz,relay,body,act,cup');
     ck('id 중복 없음', ids.length === new Set(ids).size);
     ck('전 게임 필수 필드', GAMES.every(g => g.id && g.name && g.emoji && g.color && g.mode && g.rules));
     ck('전 게임 진행 도구 보유', GAMES.every(g => g.tool));
@@ -143,12 +146,11 @@ if (new URLSearchParams(location.search).has('demo')){
       S.room.used = {};
     }
 
-    /* ── 3) 멕썸노이즈 · 컵 레이스 (race-* 공유) ── */
-    for (const gid of ['noise','cup']){
+    /* ── 3) 컵 레이스 (race-*) ── */
+    for (const gid of ['cup']){
       S.gameId = gid; go('game'); act('tool-start', {});
       const p = S.play;
       ck(gid + ' 진입', p?.kind === gid);
-      if (gid === 'noise'){ act('no-brief', {}); ck('미션 문장 생성', !!p.sen && p.sen.length > 4); }
       for (let i = 0; i < P.length; i++){
         act('race-run', {}); p.elapsed = 1 + i;      // 스톱워치 값을 직접 박아 결정적으로
         act('race-end', { v: i === 1 ? '0' : '1' }); // 두 번째 사람만 실패
@@ -174,102 +176,6 @@ if (new URLSearchParams(location.search).has('demo')){
     act('ac-score', {});
     ck('심사용 빈 순위 화면', S.view === 'score' && S.play === null);
     act('score-cancel', {});
-
-    /* ── 5) 스마일~! (smile) — 판정 3분기 ── */
-    S.gameId = 'smile'; go('game'); act('tool-start', {});
-    const m = S.play;
-    ck('smile 진입', m?.kind === 'smile');
-    act('sm-sul', { pid:P[0] });
-    ck('술래 지정 + 대상 5명', m.sul === P[0] && m.pool.length === P.length - 1);
-    for (let i = 0; i < 10; i++) act('sm-shot', {});
-    ck('사진 10장 소진 → 판정', m.shots === 0 && m.phase === 'judge');
-    act('sm-apply', {});                                     // 0명 걸림 → 같은 술래 재도전
-    ck('0명 → 술래 유지', m.sul === P[0] && m.phase === 'run');
-    act('sm-judge', {}); act('sm-sel', { pid:P[1] }); act('sm-sel', { pid:P[2] }); act('sm-apply', {});
-    ck('다수 → 걸린 사람들끼리 재진행', m.sul === P[0] && m.pool.length === 2);
-    act('sm-judge', {}); act('sm-sel', { pid:P[1] }); act('sm-apply', {});
-    ck('1명 → 술래 교대', m.sul === P[1]);
-    ck('라운드 로그 3건', m.log.length === 3);
-    act('sm-done', {}); act('sm-score', {});
-    ck('smile 순위 화면', S.view === 'score' && S.play === null);
-    act('score-cancel', {});
-
-    /* ── 5.2) 🎵 노래 맞히기 (song) ──
-       ⚠️ 이 게임의 정답은 **곡 제목**이고, 그걸 진행자가 봐야 노래를 튼다.
-          그래서 초성 퀴즈와 반대로 「.priv 를 반드시 붙여야」 한다 —
-          태블릿 공용 화면에서 커지면 그 자리에서 게임이 끝난다. */
-    S.room.used = {};
-    S.gameId = 'song'; go('game'); act('tool-start', {});
-    ck('song 진입', S.play?.kind === 'song' && S.play.phase === 'setup');
-    say('곡 데이터', SONG_KEYS.length + '범위 ' + songPool(SONG_KEYS).length + '곡');
-    ck('★범위가 연도별로 나뉘어 있다',
-      ['y90','y20'].every(k => SONG_KEYS.includes(k)));
-    ck('  전 범위에 이름·이모지·곡 있음',
-      SONG_KEYS.every(k => SONG_DECKS[k].name && SONG_DECKS[k].emoji && SONG_DECKS[k].songs.length >= 15));
-    ck('  곡마다 제목과 가수가 다 있다',
-      songPool(SONG_KEYS).every(x => x.w && x.a));
-    // ⚠️ songPool() 은 이미 중복을 걸러 돌려준다 — 그걸 자기 자신과 비교하면 **항상 통과**한다.
-    //    원본 SONG_DECKS 배열을 봐야 진짜 중복이 잡힌다.
-    {
-      const raw = SONG_KEYS.flatMap(k => SONG_DECKS[k].songs.map(x => x[0] + '|' + x[1]));
-      const dup = [...new Set(raw.filter((x,i) => raw.indexOf(x) !== i))];
-      ck('★같은 곡이 두 범위에 들어가 있지 않다', dup.length === 0);
-      if (dup.length) say('  중복:', dup.slice(0,5).join(' / '));
-    }
-    ck('★시대가 다섯으로 나뉘어 있다',
-      ['y80','y90','y00a','y00b','y10a','y10b','y20'].every(k => SONG_KEYS.includes(k)));
-    ck('  곡이 충분히 많다(300곡 이상)', songPool(SONG_KEYS).length >= 300);
-    ck('★사회자 전담 게임이다 (트는 사람이 답을 보므로)',
-      G('song').mc === 'need' && G('song').minP >= 3);
-
-    S.play.cats = ['y10b']; S.play.n = 3;
-    act('song-start', {});
-    ck('곡 뽑힘', S.play.phase === 'run' && !!S.play.cur?.w);
-
-    // ⚠️ 곡을 **고정**한다. 랜덤으로 뽑으면 「I」(태연) 같은 한 글자 제목이 걸리는 순간
-    //    화면 아무 데나 매칭돼서 「.priv 밖에 제목이 없다」가 **가끔** 실패한다.
-    //    랜덤하게 실패하는 검사는 사람을 길들여 진짜 실패까지 무시하게 만든다.
-    S.play.cur = { w:'벚꽃엔딩', a:'버스커 버스커', c:'y10a' };
-    const sv = view('play');
-    {
-      // ⚠️ 앞의 정규식은 사실상 아무거나 통과했다(`[\s\S]{0,400}?[^<>]*`).
-      //    「.priv 블록 **안에** 제목이 있고, 블록을 지우면 **밖엔 없다**」로 정확히 본다.
-      const priv = (sv.match(/<div class="wcard priv">[\s\S]*?<\/div>\s*<\/div>/) || [''])[0];
-      ck('★★정답(제목)이 .priv 안에 있다',
-        priv.includes(S.play.cur.w) && sv.includes('이 사람만 보세요'));
-      ck('★★.priv 밖에는 곡 제목이 없다',
-        !sv.replace(priv, '').includes(S.play.cur.w));
-    }
-    ck('★유튜브 뮤직 딥링크가 걸려 있다',
-      sv.includes('music.youtube.com/search?q=') && sv.includes('target="_blank"'));
-    ck('  딥링크에 제목과 가수가 함께 들어간다', (() => {
-      const m = sv.match(/href="(https:\/\/music\.youtube\.com[^"]+)"/);
-      if (!m) return false;
-      const q = decodeURIComponent(m[1].split('q=')[1] || '');
-      return q.includes(S.play.cur.w) && q.includes(S.play.cur.a);
-    })());
-
-    const s1 = S.play.cur.w;
-    act('song-hit', { pid:P[1] });
-    ck('맞히면 +1 후 다음 곡', songScores()[P[1]] === 1 && S.play.cur.w !== s1);
-    act('song-undo', {});
-    ck('방금 취소 — 점수·곡 복구', songScores()[P[1]] === 0 && S.play.cur.w === s1);
-    act('song-pass', {});
-    ck('정답 공개 단계', S.play.phase === 'reveal');
-    ck('★공개하면 그때 제목이 크게 뜬다', (() => {
-      const v = view('play');
-      return v.includes(S.play.cur.w) && !/wcard priv/.test(v);
-    })());
-    act('song-skip', {});
-    act('song-hit', { pid:P[2] }); act('song-hit', { pid:P[2] });
-    ck('★곡 수를 채우면 자동 종료', S.play.phase === 'done' && S.play.log.length === 3);
-    ck('종료 화면에 가수까지 공개', view('play').includes(S.play.log[0].a));
-    ck('★판이 끝나면 중복 방지에 기록된다', usedWords('song').size === 3);
-    act('song-save', {});
-    ck('song 순위 화면', S.view === 'score' && S.play === null);
-    ck('★많이 맞힌 사람이 1등', S.draft.order[0] === P[2]);
-    act('score-cancel', {});
-    S.room.used = {};
 
     /* ── 5.3) ★ 중복 방지 — 판을 거듭해도 같은 제시어가 안 나온다 ──
        ⚠️ 셋을 따로 본다: ① 판 사이 ② 같은 판의 팀 사이 ③ 다 쓰면 자동 순환 */
@@ -410,188 +316,6 @@ if (new URLSearchParams(location.search).has('demo')){
     ck('★목록에 한 줄 요약이 나온다', GAMES.every(g => gv3.includes(g.line)));
     ck('  인원 메타가 나온다', gv3.includes('명+'));
     S.view = 'lobby'; render(true);
-    }
-
-    /* ── 5.45) 🎲 훈민정음 윷놀이 ──
-       ⚠️ 각자 폰이 방 노드에 쓰는 유일한 게임 + 규칙이 제일 복잡하다.
-          「대각선 통과 vs 방에 멈춤」과 「던진 값을 모아 배분」이 윷놀이의 핵심이다. */
-    {
-    makeTeams(2);
-    S.gameId = 'yut'; go('game'); act('tool-start', {});
-    ck('yut 진입', S.play?.kind === 'yut');
-    act('yut-start', {});
-    const m = () => S.room.yut;
-    ck('★판이 깔린다', m().phase === 'play' && m().pieces.length === 2);
-    ck('  팀마다 말 4개가 집에서 시작', m().pieces.every(a => a.length === 4 && a.every(x => x === -1)));
-    ck('★판이 29칸이다 (외곽20 + 대각선8 + 방1)', YUT_CELLS.filter(Boolean).length === 29);
-
-    /* ── 판 규칙: 여기가 v0.22 에서 제일 많이 틀렸던 곳 ── */
-    ck('★★바깥 한 바퀴가 20칸', yutMove(-1, 20) === YUT_HOME && yutMove(-1, 19) === 19);
-    ck('★모서리를 지나가면 지름길을 안 탄다', yutMove(4, 2) === 6 && yutMove(9, 2) === 11);
-    ck('★모서리에 멈췄다 출발하면 탄다', yutMove(5, 1) === 21 && yutMove(10, 1) === 26);
-    ck('★★방을 지나갈 땐 타고 온 대각선을 유지한다',
-      yutMove(5, 4) === 24 && yutMove(10, 4) === 28);
-    ck('★★방에 멈췄다 출발하면 날 쪽 지름길로 빠진다', yutMove(23, 1) === 28);
-    ck('  5 지름길은 반대 모서리(15)로 나간다', yutMove(5, 6) === 15);
-    ck('  5 지름길 전체가 11칸', yutMove(5, 11) === YUT_HOME);
-    ck('  10 지름길 전체가 6칸', yutMove(10, 6) === YUT_HOME);
-    ck('  방에서 나기까지 3칸', yutMove(23, 3) === YUT_HOME);
-
-    /* ── 던진 값을 모아서 배분한다 ── */
-    S.view = 'play'; render(true);
-    ck('★차례 팀이 던질 수 있다', m().canThrow === true && m().pending.length === 0);
-    yutApplyThrow({ n:'윷', v:4, again:true, sticks:[1,1,1,1] }, 'h1');
-    ck('★윷이 나오면 한 번 더 던질 수 있다', m().canThrow === true && m().pending.length === 1);
-    yutApplyThrow({ n:'도', v:1, again:false, sticks:[1,0,0,0] }, 'h1');
-    ck('★★던진 값이 쌓인다 (즉시 이동하지 않는다)',
-      m().pending.length === 2 && m().canThrow === false);
-    ck('  화면에 고를 결과가 뜬다', view('play').includes('data-act="yut-use"'));
-    ck('  윷짝 4개가 그려진다', (view('play').match(/class="stick/g) || []).length >= 4);
-
-    /* 모아둔 값을 골라 배분 — 도로 새 말, 윷으로 그 말 */
-    act('yut-use', { i:'1' });                        // 도(1칸) 선택
-    act('yut-move', { pos:'-1' });                    // 집에서 새 말
-    // ⚠️ 예전 검사는 4개가 한꺼번에 나오는 걸 「업기」라며 정상 취급했다 — 버그를 못 박은 검사였다.
-    //    집의 말은 하나씩만 나온다. 업기는 판 위에서 같은 칸에 겹쳤을 때만.
-    ck('★★새 말은 한 번에 하나만 나온다',
-      m().pieces[0].filter(x => x === 1).length === 1
-      && m().pieces[0].filter(x => x === -1).length === 3);
-    ck('  쓴 값은 사라진다', m().pending.length === 1 && m().pending[0].n === '윷');
-    ck('  남은 값이 있으면 턴이 안 넘어간다', m().turn === 0);
-    S.room.yut.pieces[0] = [1, 1, -1, -1];            // 판 위 같은 칸에 두 개(업힌 상태)
-    act('yut-use', { i:'0' });
-    act('yut-move', { pos:'1' });
-    ck('★판 위 같은 칸 말은 업고 함께 간다',
-      m().pieces[0].filter(x => x === 5).length === 2
-      && m().pieces[0].filter(x => x === -1).length === 2);
-    ck('★다 쓰면 턴이 넘어간다', m().turn === 1 && m().pending.length === 0 && m().canThrow === true);
-
-    /* ── 잡기 → 한 번 더 던진다 ── */
-    S.room.yut.pieces = [[3,-1,-1,-1],[1,-1,-1,-1]];
-    S.room.yut.turn = 1; S.room.yut.pending = [{ n:'개', v:2 }]; S.room.yut.canThrow = false;
-    S.play.useIdx = 0;
-    act('yut-move', { pos:'1' });
-    ck('★★상대 말을 잡으면 집으로 보낸다', m().pieces[0][0] === -1);
-    ck('★잡으면 한 번 더 던진다', m().canThrow === true && m().turn === 1);
-    /* ★★ 던질 게 남았으면 이동이 막힌다 — 실제 윷놀이는 다 던진 뒤에 값을 배분한다 */
-    ck('★★던질 게 남았으면 말을 못 옮긴다', (() => {
-      const before = JSON.stringify(m().pieces);
-      act('yut-move', { pos:'1' });
-      return JSON.stringify(m().pieces) === before;
-    })());
-
-    /* ── 나기(완주) → 승리 ──
-       ⚠️ canThrow 를 꺼야 한다 — 던질 게 남으면 앱이 이동을 막는다(윷·모는 던지기가 먼저). */
-    S.room.yut.pieces = [[0,0,0,0],[19,19,19,19]];
-    S.room.yut.turn = 1; S.room.yut.pending = [{ n:'도', v:1 }];
-    S.room.yut.canThrow = false; S.play.useIdx = 0;
-    act('yut-move', { pos:'19' });
-    ck('★말 4개를 다 내보내면 승리', m().phase === 'ended' && m().winner === 1);
-
-    /* ── ✋ 잠시! ── */
-    act('yut-start', {});
-    S.room.yut.pieces = [[3,7,-1,-1],[1,-1,-1,-1]];
-    S.room.yut.turn = 0;
-    S.play = { gameId:'yut', kind:'yut', phase:'play', useIdx:0 };
-    const other = Object.entries(S.room.teams.assign).find(([,t]) => Number(t) !== 0)?.[0];
-    const mine0 = Object.entries(S.room.teams.assign).find(([,t]) => Number(t) === 0)?.[0];
-    const meWas = S.pid;
-    S.pid = other; act('yut-halt', { team:'0' }); S.pid = meWas;
-    ck('★상대팀이 「잠시!」를 걸 수 있다', !!m().halt && m().halt.team === 0);
-    S.pid = mine0; act('yut-halt', { team:'0' }); S.pid = meWas;
-    ck('★우리 팀은 「잠시!」를 못 건다 (이미 걸린 것만 남음)', m().halt.by === other);
-    // 판정 중에는 판이 잠긴다 — 핸들러와 화면 양쪽 다
-    S.room.yut.pending = [{ n:'도', v:1 }]; S.play.useIdx = 0;
-    act('yut-move', { pos:'3' });
-    ck('★★잠시! 판정 중에는 말을 못 움직인다', m().pieces[0].includes(3));
-    ck('  판정 화면의 판에 누르는 셀이 없다', !view('play').includes('data-act="yut-move"'));
-    S.room.yut.pending = [];
-    act('yut-halt-ok', {});
-    ck('★★인정하면 「그 팀이 고르는」 단계로 간다', !!m().pick && m().pick.team === 0);
-    ck('  아직 아무 말도 안 빠졌다', m().pieces[0].filter(x => x === -1).length === 2);
-    ck('  영어 횟수는 이때 기록된다', (m().penalty || {})[0] === 1);
-    ck('  고르는 화면이 뜬다', view('play').includes('되돌릴 말을 고르세요'));
-    // ★ 앞선 말(7) 대신 뒤의 말(3)을 고를 수 있어야 한다
-    act('yut-pickback', { pos:'3' });
-    ck('★★고른 말이 집으로 간다 (앱이 고르지 않는다)',
-      !m().pieces[0].includes(3) && m().pieces[0].includes(7));
-    ck('  고르고 나면 pick 이 지워진다', !m().pick && !m().halt);
-
-    /* ── 쓰기 주체 분리 ── */
-    S.room.yut.pending = []; S.room.yut.canThrow = true; S.room.yut.turn = 0;
-    S.room.yut.throw = { n:'걸', v:3, again:false, sticks:[1,1,1,0], by:mine0 };
-    // ⚠️ 던지는 연출이 끝나야 판에 반영된다(연출이 결과를 바꾸진 않는다)
-    await yutConsume();
-    ck('★★참가자가 던진 결과를 호스트가 반영한다', m().pending.length === 1 && m().pending[0].v === 3);
-    ck('★★반영 뒤 throw 를 지운다', !m().throw);
-    S.room.yut.throw = { n:'모', v:5, again:true, sticks:[0,0,0,0], by:other };  // 남의 차례
-    await yutConsume();
-    ck('★남의 차례 던지기는 버린다', m().pending.length === 1 && !m().throw);
-
-    /* ── 화면 ── */
-    const sig1 = renderSig(); S.room.yut.turn = 1;
-    ck('★★yut 변화가 renderSig 에 잡힌다', renderSig() !== sig1);
-    S.room.yut.turn = 0;
-    S.pid = mine0; S.view = 'yut'; render(true);
-    const ph = document.getElementById('view').innerHTML;
-    ck('★폰에 윷 던지기와 잠시!가 있다',
-      ph.includes('data-act="yut-throw"') && ph.includes('data-act="yut-halt"'));
-    S.pid = meWas; S.view = 'play'; render(true);
-    ck('★집에 있는 말을 내보내는 버튼이 있다',
-      document.getElementById('view').innerHTML.includes('data-pos="-1"'));
-
-    /* ★★ 영어는 차례와 상관없이 나온다 — 2팀 차례에도 1팀을 지적할 수 있어야 한다 */
-    {
-      S.room.yut.halt = null; S.room.yut.pick = null; S.room.yut.penalty = {};
-      S.room.yut.pieces = [[3,7,-1,-1],[1,-1,-1,-1]];
-      S.room.yut.turn = 1;                      // 지금은 2팀 차례
-      const ph2 = view('play');
-      ck('★★태블릿에 팀마다 지적 버튼이 있다',
-        [0,1].every(ti => new RegExp(`data-act="yut-halt-here" data-team="${ti}"`).test(ph2)));
-      act('yut-halt-here', { team:'0' });
-      ck('★★2팀 차례에도 1팀을 지적할 수 있다', m().halt?.team === 0 && m().turn === 1);
-      ck('  판정 화면이 「차례와 상관없다」를 알려준다',
-        view('play').includes('차례와 상관없습니다'));
-      act('yut-halt-ok', {});
-      ck('★인정하면 1팀이 되돌릴 말을 고른다', m().pick?.team === 0);
-      act('yut-pickback', { pos:'7' });
-      ck('★★1팀 말이 집으로 갔다 (차례는 그대로 2팀)',
-        m().pieces[0].filter(x => x === -1).length === 3 && m().turn === 1);
-      ck('  2팀 말은 그대로다', m().pieces[1][0] === 1);
-      ck('  벌점은 1팀에 붙는다', m().penalty[0] === 1 && !m().penalty[1]);
-
-      /* 폰에서도 우리 팀만 빼고 고를 수 있다 */
-      const meW = S.pid; S.pid = mine0; S.view = 'yut'; render(true);
-      const phone2 = view('yut');
-      ck('★폰에도 팀을 고르는 지적 버튼이 있다',
-        phone2.includes('data-act="yut-halt" data-team="1"'));
-      ck('★★폰에서 우리 팀은 아예 안 보인다',
-        !phone2.includes('data-act="yut-halt" data-team="0"'));
-      S.pid = meW; S.view = 'play';
-    }
-
-    /* 🔄 재시작 — 말·기록·벌점이 처음으로 */
-    {
-      S.room.yut.pieces = [[3,7,9,-1],[1,4,-1,-1]];
-      S.room.yut.turn = 1; S.room.yut.penalty = { 0:2 };
-      S.room.yut.log = ['뭔가 있었다'];
-      act('yut-restart', {});
-      ck('★★재시작은 먼저 물어본다', !!S.ask && m().pieces[0].includes(7));
-      ck('  무엇이 사라지는지 적혀 있다', S.ask.lose.join(' ').includes('벌점'));
-      act('ask-no', {});
-      ck('  취소하면 판이 그대로다', m().pieces[0].includes(7));
-      act('yut-restart', {}); act('ask-yes', {});
-      ck('★★확인하면 말이 전부 집으로 간다',
-        m().pieces.every(ps => ps.every(x => x === -1)));
-      ck('  차례·기록·벌점도 처음으로', m().turn === 0 && !m().log.length
-        && !Object.keys(m().penalty || {}).length);
-      ck('  팀 수와 말 모양은 그대로', m().pieces.length === 2 && (m().skins || []).length === 2);
-      ck('★진행 화면에 재시작 버튼이 있다', view('play').includes('data-act="yut-restart"'));
-    }
-
-    act('yut-clear', {}); act('ask-yes', {});
-    ck('정리하면 판이 사라진다', !S.room.yut);
-    S.view = 'game';
     }
 
     /* ── 5.4) 덱 카테고리의 use 태그 ──
@@ -879,14 +603,14 @@ if (new URLSearchParams(location.search).has('demo')){
     /* ⚠️ S._lastPick 은 {gameId: pid} 맵이다(통째로 읽으면 안 된다).
        그리고 act('pick') 은 rollReveal 을 await 하는 async 다 — 누가 뽑혔는지는
        동기적으로 쌓이는 rotation 배열로 확인한다. */
-    S.gameId = 'noise'; go('game');
-    if (S.room.rotation) delete S.room.rotation.noise;
+    S.gameId = 'body'; go('game');
+    if (S.room.rotation) delete S.room.rotation.body;
     for (let i = 0; i < P.length; i++) act('pick', {});
-    const rot = S.room.rotation.noise || [];
+    const rot = S.room.rotation.body || [];
     ck('★전원 한 번씩 술래 (중복 없이)',
       rot.length === P.length && rot.slice().sort().join() === P.slice().sort().join());
     act('pick', {});
-    ck('전원 소진되면 리셋', (S.room.rotation.noise || []).length === 1);
+    ck('전원 소진되면 리셋', (S.room.rotation.body || []).length === 1);
 
     /* ── 7) 리더보드 — 지워진 게임의 옛 기록이 섞여도 안 죽는다 ── */
     S.room.scores.zz_old = { gameId:'mafia', mode:'solo', order:[P[0],P[1]], weight:2, assign:{}, at:1 };
@@ -900,7 +624,7 @@ if (new URLSearchParams(location.search).has('demo')){
 
     /* ── 8) ★ 사회자(관전) 기기 — 태블릿을 공용 화면으로 세워둘 때 ──
        가장 위험한 부분이다: 관전 기기가 「선수」로 새면 팀·술래·순위가 통째로 어긋난다. */
-    S.gameId='noise'; go('game');
+    S.gameId='body'; go('game');
     const before = playing().length;
     S.pid = P[0];                                        // 나(호스트) 기기를 사회자로
     act('spec-toggle', {});
@@ -929,19 +653,17 @@ if (new URLSearchParams(location.search).has('demo')){
 
     /* ⚠️ 사회자를 뺀 **선수 수(before-1)** 만큼만 뽑는다. 한 번 더 뽑으면 풀이 비어
        rotation 이 리셋되어(= [pick] 한 개) 검사가 헛돈다. */
-    if (S.room.rotation) delete S.room.rotation.noise;
+    if (S.room.rotation) delete S.room.rotation.body;
     for (let i = 0; i < before - 1; i++) act('pick', {});
-    const rot2 = S.room.rotation.noise || [];
+    const rot2 = S.room.rotation.body || [];
     ck('★술래 뽑기에서 제외', !rot2.includes(P[0]));
     ck('★선수 전원만 한 바퀴 (' + rot2.length + '/' + (before-1) + ')', rot2.length === before - 1);
 
-    act('tool-start', {});
+    S.gameId='cup'; go('game'); act('tool-start', {});
     ck('★도구 순번에서 제외', !S.play.order.includes(P[0]) && S.play.order.length === before - 1);
     quit();
 
-    S.gameId='smile'; go('game'); act('tool-start', {});
     act('sm-sul', { pid:P[1] });
-    ck('★스마일 대상 풀에서 제외', !S.play.pool.includes(P[0]));
     quit();
 
     S.gameId='act'; go('game'); act('tool-start', {});
@@ -971,7 +693,7 @@ if (new URLSearchParams(location.search).has('demo')){
     }
     S.room.players[P[0]].spec = true;
 
-    S.gameId='noise'; go('game');
+    S.gameId='body'; go('game');
     act('spec-toggle', {});                              // 되돌리기
     ck('관전 해제하면 선수로 복귀', playing().length === before);
     ck('해제하면 리더보드에 다시 뜬다', P[0] in calcPoints());
@@ -1206,7 +928,7 @@ if (new URLSearchParams(location.search).has('demo')){
       S.play = { kind:'deck', gameId:'body', phase:'run' }; S.view = 'play';
       applySnapshot({ createdAt:1, host:keepPid, status:'lobby',
         players:S.room.players, teams:S.room.teams, scores:S.room.scores,
-        rotation:S.room.rotation, used:S.room.used, yut:null });
+        rotation:S.room.rotation, used:S.room.used });
       ck('★★★옛 진행자는 스냅샷을 받는 순간 내려온다', S.isHost === false);
       ck('★★옛 기기에 남아 있던 도구 화면도 닫는다 (혼자 진행하는 척하지 않게)',
         !S.play && S.view !== 'play');
@@ -1234,19 +956,19 @@ if (new URLSearchParams(location.search).has('demo')){
       const P2 = playing().map(([pid]) => pid);
 
       ck('★★기본은 모든 게임 똑같이 (배점 ×1)',
-        gameWeight('yut') === 1 && gameWeight('cup') === 1 && gameWeight('chosung') === 1);
+        gameWeight('body') === 1 && gameWeight('cup') === 1 && gameWeight('chosung') === 1);
       ck('  게임 상세에 배점 칩을 안 띄운다 (기본일 땐 볼 것도 없다)',
-        !(S.gameId = 'yut', view('game')).includes('배점'));
+        !(S.gameId = 'body', view('game')).includes('배점'));
 
       /* 「게임마다 다르게」로 바꾸면 게임에 박힌 값이 **출발점**이 된다 */
       globalThis.__W = [];
       act('rule-wmode', { v:'game' });
       ck('★★게임마다 다르게로 바꿀 수 있다', RULE().wmode === 'game');
-      ck('  바꾸면 원래 값이 출발점이 된다 (윷놀이 ×2 · 컵 ×0.5)',
-        gameWeight('yut') === 2 && gameWeight('cup') === 0.5);
+      ck('  바꾸면 원래 값이 출발점이 된다 (몸으로 ×1.5 · 컵 ×0.5)',
+        gameWeight('body') === 1.5 && gameWeight('cup') === 0.5);
       ck('★서버에도 규칙이 나간다',
         (globalThis.__W || []).some(x => x[2] && x[2].rule && x[2].rule.wmode === 'game'));
-      ck('  이때만 게임 상세에 배점이 보인다', (S.gameId = 'yut', view('game')).includes('배점'));
+      ck('  이때만 게임 상세에 배점이 보인다', (S.gameId = 'body', view('game')).includes('배점'));
 
       /* ⚠️ 배점 칩 5개 + 게임 이름이라 **좁은 폰에서 가로로 넘칠 수 있다.**
          넘치면 칩 줄이 아래로 접혀야 한다 — 눈으로는 스크린샷 우측 잘림과 구분이 안 돼서 잰다. */
@@ -1263,7 +985,7 @@ if (new URLSearchParams(location.search).has('demo')){
         const cut = rows.map(r => r.querySelector('.n'))
           .filter(el => el && el.scrollWidth > el.clientWidth + 1);
         ck('★배점 줄이 좁은 폰(360px)에서도 안 넘친다 (' + rows.length + '줄)',
-          rows.length >= 10 && !over.length);
+          rows.length === GAMES.length && !over.length);
         ck('  게임 이름이 잘리지 않는다 (칩 줄이 아래로 접힌다)', !cut.length);
         app.style.maxWidth = keep;
       }
@@ -1271,7 +993,7 @@ if (new URLSearchParams(location.search).has('demo')){
       /* 방장이 직접 바꾼다 */
       act('rule-weight', { id:'cup', v:'2' });
       ck('★★★방장이 게임별 배점을 바꾼다', gameWeight('cup') === 2);
-      ck('  건드린 게임만 바뀐다', gameWeight('yut') === 2 && gameWeight('chosung') === 1);
+      ck('  건드린 게임만 바뀐다', gameWeight('body') === 1.5 && gameWeight('chosung') === 1);
 
       /* 바꾼 배점이 **그 뒤 저장하는 판**에 실린다 */
       S.gameId = 'cup'; act('tool-start', {}); act('score-start', {});
@@ -1325,8 +1047,8 @@ if (new URLSearchParams(location.search).has('demo')){
       })());
       ck('★참가자는 규칙을 못 바꾼다', (() => {
         const k = S.pid, kh = S.isHost; S.pid = P2[1]; S.isHost = false;
-        act('rule-weight', { id:'yut', v:'0' });
-        const ok = gameWeight('yut') === 2;
+        act('rule-weight', { id:'body', v:'0' });
+        const ok = gameWeight('body') === 1.5;
         S.pid = k; S.isHost = kh; return ok;
       })());
 
@@ -1479,29 +1201,12 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('★★「다음 사람」을 두 번 눌러도 한 명만 넘어간다', S.play.turn === 1);
       S.play = null;
 
-      /* ── 스마일: 이름 이스케이프 ── */
-      S.gameId = 'smile'; act('tool-start', {});
-      const evil = P3[1], keepName = S.room.players[evil].name;
-      S.room.players[evil].name = '<img src=x onerror=1>';
-      Object.assign(S.play, { phase:'judge', sul:P3[0], pool:[evil], sel:[evil] });
-      const smv = view('play');
-      ck('★★★참가자 이름이 HTML 로 실행되지 않는다 (스마일 판정 버튼)',
-        !smv.includes('<img src=x') && smv.includes('&lt;img'));
-      S.room.players[evil].name = keepName; S.play = null;
-
       /* ── 한 판 안에서 제시어 반복 ── */
       S.play = { gameId:'body', kind:'deck', drawn:new Set(['사자', '호랑이']) };
       const pk = freshPick('body', [{ w:'사자' }, { w:'호랑이' }, { w:'기린' }], 1);
       ck('★★이번 판에 이미 나온 제시어는 덱을 다시 만들어도 안 나온다',
         pk.list.length === 1 && pk.list[0].w === '기린');
       S.play = null;
-
-      /* ── 윷판이 펴진 채로 팀 다시 짜기 ── */
-      S.room.yut = { phase:'play', pieces:[[-1],[-1]] };
-      const keepTeams = JSON.stringify(S.room.teams);
-      act('teams', { n:'3' });
-      ck('★★윷판이 진행 중이면 팀을 다시 나누지 못한다', JSON.stringify(S.room.teams) === keepTeams);
-      S.room.yut = null;
 
       S.gameId = null; S.view = 'lobby'; S.room.scores = {};
     }
@@ -1596,9 +1301,6 @@ if (new URLSearchParams(location.search).has('demo')){
         applySnapshot(snapOf({ busy:'quiz' }));
         ck('★★★진행자가 시작하면 참가자 화면이 대기실로 넘어와 「진행 중」을 본다',
           S.view === 'lobby' && document.getElementById('view').innerHTML.includes('진행 중'));
-        S.room = { ...S.room, busy:null }; S.view = 'settings';
-        applySnapshot(snapOf({ busy:'yut' }));
-        ck('★★윷놀이는 곧장 「윷 던지기」 화면으로 데려간다', S.view === 'yut');
         S.room = { ...S.room, busy:'quiz' }; S.view = 'board';
         applySnapshot(snapOf({ busy:'quiz' }));
         ck('  이미 진행 중이던 스냅샷에는 끌고 가지 않는다(보던 화면 유지)', S.view === 'board');
@@ -1655,8 +1357,8 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('★★★대기실 방 코드 카드에 모임 이름이 뜬다',
         lv2.includes('gname') && lv2.includes('양양 2박 3일'));
       ck('★★순위 탭에도 뜬다', view('board').includes('양양 2박 3일'));
-      /* ⚠️ 클래스 이름이 겹치면 **조용히 거대한 빈 상자**가 된다 — `.gname.board` 가 윷 말판
-         `.board`(aspect-ratio:1/1)에 걸려 445px 정사각형이 됐었다. 높이로 못 박는다. */
+      /* ⚠️ 클래스 이름이 겹치면 **조용히 거대한 빈 상자**가 된다 — 예전에 `.gname.board` 가
+         말판 `.board`(aspect-ratio:1/1)에 걸려 445px 정사각형이 됐었다. 높이로 못 박는다. */
       { S.view = 'board'; render(true);
         const el = document.querySelector('.gname');
         const hgt = el ? Math.round(el.getBoundingClientRect().height) : -1;
@@ -1711,7 +1413,7 @@ if (new URLSearchParams(location.search).has('demo')){
         const html = visible(v);
         for (const w of old) if (html.includes(w)) bad.push(v + ':' + w);
       }
-      S.gameId = 'song'; const gv9 = visible('game');
+      S.gameId = 'body'; const gv9 = visible('game');
       for (const w of old) if (gv9.includes(w)) bad.push('game:' + w);
       ck('★★★화면 글에 옛 용어(진행자·사회자·호스트·방장)가 없다' + (bad.length ? ' — ' + bad.slice(0,4).join(', ') : ''),
         !bad.length);
