@@ -887,7 +887,7 @@ if (new URLSearchParams(location.search).has('demo')){
       S.pid = other; S.isHost = false;
       const lb = view('lobby');
       ck('★★참가자 기기에 지금 메인 화면이 누구인지 보인다',
-        lb.includes('🎛 메인 화면') && lb.includes(pname('h1')));
+        lb.includes('메인 화면 — ') && lb.includes(pname('h1')));
       ck('★★거기서 바로 넘겨받을 수 있다', lb.includes('data-act="host-take"'));
 
       /* 진행 중인 도구가 있으면 못 넘긴다 — 그 판이 통째로 사라지기 때문
@@ -1242,11 +1242,11 @@ if (new URLSearchParams(location.search).has('demo')){
 
       /* ③ 참가자 화면: 게임 카드 + 준비 */
       const gv = as(guest, () => view('lobby'));
-      ck('★★★참가자 대기실에 다음 게임과 ✋ 준비가 뜬다',
-        gv.includes('초성 퀴즈') && gv.includes('data-act="ready"') && gv.includes('✋ 준비'));
+      ck('★★★참가자 대기실에 다음 게임과 준비 버튼이 뜬다',
+        gv.includes('초성 퀴즈') && gv.includes('data-act="ready"') && />\s*준비<\/button>/.test(gv));
       ck('  규칙을 바로 볼 수 있다', gv.includes('data-act="game" data-id="chosung"'));
       const hv = view('lobby');
-      ck('★★진행자 대기실에는 🎮 게임 시작 버튼이 있다', hv.includes('data-act="game-start"'));
+      ck('★★진행자 대기실에는 게임 시작 버튼이 있다', hv.includes('data-act="game-start"'));
       ck('  진행자와 봇은 알아서 준비된다', readyOf('h1', S.room.players.h1)
         && PL.filter(isBot).every(pid => readyOf(pid, S.room.players[pid])));
       ck('  사람 참가자는 아직 준비 전이다', !readyOf(guest, S.room.players[guest]));
@@ -1419,7 +1419,58 @@ if (new URLSearchParams(location.search).has('demo')){
         !bad.length);
       ck('  대신 「메인 화면」과 「구경 모드」를 쓴다',
         view('lobby').includes('메인 화면') && view('lobby').includes('구경 모드'));
-      S.gameId = null; S.view = 'lobby';
+
+      /* ── ★ 장식용 그림글자(이모지) 금지 (v0.44.0) ──
+         사장님: "너무 사이트가 AI로 만든 것 같은 느낌이 드는데"
+         버튼·구역 제목·칩마다 그림글자를 달면 **어느 기기에나 있는 그림을 가져다 붙인
+         화면**처럼 보인다. 그래서 화면 글에서 그림글자를 **전부** 걷어냈다.
+         ⚠️ 딱 둘만 예외다 — 그건 장식이 아니라 **내용**이기 때문이다:
+            ① 게임의 얼굴(GAMES[].emoji)  ② 덱·퀴즈 범위의 얼굴(DECKS/QUIZ 의 emoji)
+         ⚠️ ✓ ✕ ○ × → ‹ › · ★ 같은 **글자**는 그림글자가 아니다(어느 글꼴에나 같은 모양으로
+            있고 줄을 흐트리지 않는다) — 여기서 안 잡는다.
+         ⚠️ 이 검사를 「없으면 통과」로 두지 말 것: 아래 bad2 가 **빈 배열이어도** 통과라
+            헛통과하기 쉽다. 그래서 바로 뒤에 **일부러 그림글자를 넣어 걸리는지** 확인한다. */
+      const PICTO = /[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F2FF}\u{2B00}-\u{2BFF}\u{FE0F}]|\u26A0|\u{1F3B2}/gu;
+      const okEmo = new Set([
+        ...GAMES.map(g => g.emoji),
+        ...Object.values(WORD_DECKS).map(d => d.emoji),
+        ...Object.values(QUIZ_DECKS).map(d => d.emoji),
+      ].filter(Boolean));
+      const picto = html => {
+        let t = html;
+        for (const e of okEmo) t = t.split(e).join('');   // 내용인 얼굴 그림은 빼고 본다
+        return [...new Set((t.match(PICTO) || []))];
+      };
+      const bad2 = [];
+      for (const v of [...screens, 'hist']){
+        const f = picto(visible(v));
+        if (f.length) bad2.push(v + ':' + f.join(''));
+      }
+      for (const gid of GAMES.map(g => g.id)){
+        S.gameId = gid; const f = picto(visible('game'));
+        if (f.length) bad2.push(gid + ':' + f.join(''));
+      }
+      S.gameId = null;
+      ck('★★★화면 글에 장식용 그림글자가 없다' + (bad2.length ? ' — ' + bad2.slice(0,4).join(' / ') : ''),
+        !bad2.length);
+      ck('  (이 검사가 살아 있다 — 일부러 넣으면 걸린다)', picto('<b>시작 🎉</b>').length === 1);
+      ck('  게임의 얼굴 그림은 그대로 둔다', visible('games').includes(GAMES[0].emoji));
+
+      /* ── ★ 그라데이션 글자·주색 그라데이션 금지 (v0.44.0) ──
+         글자에 비스듬한 색 띠를 입히면(-webkit-background-clip:text) 화려하지만
+         **어느 화면에나 같은 띠**가 깔려 틀로 찍은 것처럼 보이고 글씨도 흐려진다.
+         색은 --hot 한 가지로 평평하게 쓴다. */
+      /* ⚠️ 이 검사 자신이 `background-clip:text` 라는 글자를 품고 있다 — 문서 전체를
+            훑으면 **검사 코드가 자기 자신에 걸린다**(처음에 그렇게 짰다가 헛실패했다).
+            그래서 ① <style> 안과 ② 화면이 그려 낸 글(style= 속성 포함)만 본다. */
+      const css = document.querySelector('style')?.textContent || '';
+      const clipped = [...screens, 'hist'].filter(v => visible(v).includes('background-clip'));
+      ck('★★그라데이션 글자가 한 곳도 없다' + (clipped.length ? ' — ' + clipped.join(', ') : ''),
+        !/background-clip:\s*text/.test(css) && !clipped.length);
+      ck('★주색 그라데이션(--hero) 토큰이 없다', !/--hero\s*:/.test(css));
+      ck('  색 번짐 그림자(--glow) 토큰도 없다', !/--glow\s*:/.test(css));
+
+      S.view = 'lobby';
     }
 
     /* ── 9) 정리 ── */
