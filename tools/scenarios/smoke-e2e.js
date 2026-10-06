@@ -1229,7 +1229,10 @@ if (new URLSearchParams(location.search).has('demo')){
 
       /* ① 아직 안 골랐다 */
       ck('★★진행자 대기실에 「게임 고르기」가 있다', view('lobby').includes('data-act="go-games"'));
-      ck('  참가자는 「고르는 중」을 본다', as(guest, () => view('lobby')).includes('메인 화면에서 고르는 중'));
+      ck('  참가자는 「고르는 중」과 어디서 고르는지를 본다', (() => {
+        const v = as(guest, () => view('lobby'));
+        return v.includes('고르는 중') && v.includes('메인 화면에서 고르면');
+      })());
       ck('  참가자에게는 「게임 고르기」 버튼이 없다', !as(guest, () => view('lobby')).includes('data-act="go-games"'));
 
       /* ② 진행자가 고른다 */
@@ -1247,6 +1250,53 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('  규칙을 바로 볼 수 있다', gv.includes('data-act="game" data-id="chosung"'));
       const hv = view('lobby');
       ck('★★진행자 대기실에는 게임 시작 버튼이 있다', hv.includes('data-act="game-start"'));
+
+      /* ── ★ 대기실이 「게임 로비」처럼 보이는가 (v0.45.0) ──
+         사장님: "보통의 게임 같은 대기실 느낌이 안 들어 — **어떤 게임을 설정하는지가 눈에 잘
+         보여야** 하고, 고른 게임이 **다른 사람들에게도** 나와야 하고, **그 게임 설명을 볼 수
+         있어야** 하고, 폰으로 보니까 **세로 레이아웃**이 맞아야 한다" */
+      {
+        /* ① 고른 게임이 진행자·참가자 **양쪽** 대기실에 이름과 한 줄로 뜬다 */
+        const G0 = G('chosung');
+        for (const [who, v] of [['진행자', hv], ['참가자', gv]]){
+          ck(`★★★${who} 대기실에 고른 게임의 이름과 설명 한 줄이 뜬다`,
+            v.includes(G0.name) && v.includes(G0.line || G0.tag));
+        }
+        /* ② 설명을 **대기실 안에서** 펼쳐 본다 — 진행 순서와 이기는 조건이 거기 있다.
+           ⚠️ 「규칙 버튼이 있다」로 검사하면 안 된다. 그건 **다른 화면으로 나가는 것**이라
+              사장님이 지적한 그 불편(준비 버튼과 멀어진다)이 그대로 남는다. */
+        ck('★★★설명이 대기실 안에 들어 있다 (화면을 떠나지 않아도 된다)',
+          gv.includes('어떻게 하나요?') && (G0.how || []).every(x => gv.includes(x)));
+        ck('  이기는 조건도 같이 있다', !G0.win || gv.includes(G0.win));
+        ck('  접힌 채로 시작한다 (펼친 채면 참가자 목록이 화면 밖으로 밀린다)',
+          /<details class="np-how">(?!\s*<summary[^>]*open)/.test(gv) && !/np-how[^>]*\sopen/.test(gv));
+        ck('  자세한 규칙으로 가는 길은 그대로 있다', gv.includes('data-act="game" data-id="chosung"'));
+
+        /* ③ 게임을 고르면 방 코드는 한 줄로 비킨다 — 주인공이 둘이면 둘 다 안 보인다 */
+        ck('★★고른 뒤 방 코드가 한 줄로 비킨다', hv.includes('rc slim') && !hv.includes('class="rc-v"'));
+        ck('  그래도 코드는 계속 보인다 (늦게 오는 친구가 묻는다)', hv.includes('rc-mini'));
+        const keepNext = NEXT();
+        S.room.next = null;
+        ck('★안 골랐을 때는 방 코드가 크다', (() => { const v = view('lobby');
+          return v.includes('class="rc-v"') && !v.includes('rc slim'); })());
+        S.room.next = keepNext;
+
+        /* ④ 세로(폰)에서 **게임 바로 아래가 참가자**다. 설정 부스러기는 그 뒤로.
+           ⚠️ DOM 순서로는 못 믿는다 — 묶음은 가로 2단 기준이고 세로는 CSS order 가 세운다.
+              그래서 **실제로 그려진 자리(top)** 로 잰다. */
+        S.view = 'lobby'; render(true);
+        const topOf = sel => { const e = document.querySelector(sel);
+          return e ? e.getBoundingClientRect().top : null; };
+        const tGame = topOf('.nextp'), tPl = topOf('.pchips'), tDev = topOf('.seg2');
+        ck('★★★세로 순서: 게임 → 참가자 → 이 기기' +
+            ` (${Math.round(tGame)} · ${Math.round(tPl)} · ${Math.round(tDev)})`,
+          tGame != null && tPl != null && tDev != null && tGame < tPl && tPl < tDev);
+        ck('  (이 검사가 살아 있다 — 가로 2단이면 자리가 달라진다)', innerWidth < 860 || innerWidth / innerHeight < 1.25);
+
+        /* ⑤ 준비한 사람은 **칩 자체가** 바뀐다 (작은 글씨를 하나하나 읽지 않아도 된다) */
+        const anyReady = playing().some(([pid,pl]) => readyOf(pid, pl));
+        ck('★준비한 사람의 칩에 표시가 붙는다', anyReady && view('lobby').includes('rdy-on'));
+      }
       ck('  진행자와 봇은 알아서 준비된다', readyOf('h1', S.room.players.h1)
         && PL.filter(isBot).every(pid => readyOf(pid, S.room.players[pid])));
       ck('  사람 참가자는 아직 준비 전이다', !readyOf(guest, S.room.players[guest]));

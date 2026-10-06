@@ -1,4 +1,4 @@
-/* 앱 셸 화면 스냅샷 — ?demo=1&v=home|lobby|games|game|score|board|settings (&teams=1 &guest=1) */
+/* 앱 셸 화면 스냅샷 — ?demo=1&v=home|lobby|games|game|score|board|settings (&teams=1 &guest=1 &how=1) */
 if (new URLSearchParams(location.search).has('demo')){
   const q=new URLSearchParams(location.search);
   const v=q.get('v')||'lobby';
@@ -22,4 +22,6 @@ if (new URLSearchParams(location.search).has('demo')){
     else S.view=v;
   }
   render(true);
+  /* &how=1 → 대기실의 「어떻게 하나요?」를 펼친 채로 찍는다(접힌 건 스냅샷으로 못 본다) */
+  if(q.get('how')) setTimeout(()=>{ document.querySelector('.np-how')?.setAttribute('open',''); }, 50);
 }
