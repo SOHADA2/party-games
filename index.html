@@ -310,19 +310,76 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .chip.elec{background:rgba(92,90,147,.16);color:#4E4C82}
 
 /* ══════════════════════════════════════════════════════════
-   홈
+   들어오는 길 — 타이틀 · 입장 · 로비 (v0.46.0)
+   ⚠️ 이 셋은 **게임의 첫인상**이다. 폼을 늘어놓지 말 것 —
+      한 화면에 한 가지만 묻는다(들어올래 → 누구야 → 어디로).
 ══════════════════════════════════════════════════════════ */
-.hero{padding:24px 4px 8px;position:relative}
-/* 첫 줄. ⚠️ 예전엔 깜빡이는 점이 달린 영어 알약(PARTY NIGHT)이었다 —
-   뜻은 없고 「만들어 낸 랜딩 페이지」 신호만 남았다. 지금은 아래 제목에 딸린 조용한 한 줄이다. */
-.hero-kick{
-  display:block;font-size:12.5px;font-weight:800;letter-spacing:.02em;
-  color:var(--amber);margin-bottom:12px;
-}
-.hero-t{font-size:38px;font-weight:800;letter-spacing:-.045em;line-height:1.12;margin:0}
-.hero-t em{
-  font-style:normal;color:var(--hot);
-}
+/* ① 타이틀 — 머리글 없이 화면을 통째로 쓴다 */
+.title{min-height:calc(100dvh - 2px);display:grid;place-items:center;padding:24px 4px}
+.title-in{width:100%;max-width:420px;text-align:center}
+.t-line{display:flex;justify-content:center;gap:7px;margin-bottom:26px}
+.t-ch{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;
+  font-size:22px;color:#fff;box-shadow:var(--sh1),inset 0 0 0 2px rgba(255,255,255,.5);
+  animation:bob 3.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.t-nm{font-size:40px;font-weight:800;letter-spacing:-.05em;line-height:1.14;margin:0}
+.t-nm em{font-style:normal;color:var(--hot)}
+.t-sub{margin:14px 0 0;font-size:14px;color:var(--dim);font-weight:700}
+.t-go{margin-top:30px;font-size:18px;padding:19px}
+.t-again{margin-top:9px}
+.t-v{margin-top:26px;font-size:11.5px;color:var(--dim2);font-weight:700}
+
+/* ② 입장 — 고른 캐릭터를 크게 되비춘다(고르는 맛) */
+.mebig{display:flex;flex-direction:column;align-items:center;gap:11px;padding:6px 0 18px}
+.mebig-av{width:96px;height:96px;border-radius:26px;display:grid;place-items:center;
+  font-size:50px;color:#fff;box-shadow:var(--sh2),inset 0 0 0 3px rgba(255,255,255,.5);
+  transition:background .2s}
+.mebig-q{font-size:40px;font-weight:800;color:var(--dim2)}
+.mebig-t{font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--dim)}
+.chgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px}
+.chq{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 4px 9px;
+  border-radius:var(--r-m);background:var(--surf);border:1px solid var(--line);
+  transition:transform .14s var(--spring),border-color .15s,background .15s}
+.chq-e{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:21px;
+  background:var(--chc);color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.45)}
+.chq-n{font-size:11.5px;font-weight:800;color:var(--dim2);letter-spacing:-.02em}
+.chq:active{transform:scale(.94)}
+.chq.on{border-color:var(--chc);border-width:2px;padding:10px 3px 8px;background:var(--surf2)}
+.chq.on .chq-n{color:var(--tx)}
+
+/* ③ 로비 — 내가 누구인지 한 줄, 그 아래 방들 */
+.melead{display:flex;align-items:center;gap:12px;width:100%;padding:11px 13px;
+  border-radius:var(--r-l);background:var(--surf);border:1px solid var(--line);
+  box-shadow:var(--sh1);text-align:left;margin-bottom:4px;
+  transition:transform .14s var(--spring)}
+.melead:active{transform:scale(.985)}
+.melead-b{flex:1;min-width:0}
+.melead-b b{display:block;font-size:17px;font-weight:800;letter-spacing:-.03em}
+.melead-b span{display:block;font-size:12px;color:var(--dim2);font-weight:700;margin-top:2px}
+.secbtn{margin-left:auto;flex:none;padding:5px 10px;border-radius:8px;font-size:11.5px;
+  font-weight:800;color:var(--dim);background:var(--surf);border:1px solid var(--line2)}
+.secbtn:active{transform:scale(.93)}
+.secbtn[disabled]{opacity:.45}
+.sec:has(.secbtn)::after{margin-right:2px}
+.rooms{display:flex;flex-direction:column;gap:8px}
+.rm{display:flex;align-items:center;gap:11px;width:100%;padding:11px 12px;
+  border-radius:var(--r-m);background:var(--surf);border:1px solid var(--line);
+  box-shadow:var(--sh1);text-align:left;animation:slideIn .38s var(--ease) both;
+  transition:transform .14s var(--spring),border-color .15s}
+.rm:active{transform:scale(.985);border-color:var(--hot)}
+.rm-c{flex:none;padding:7px 9px;border-radius:9px;background:var(--well);border:1px solid var(--line2);
+  font-size:16px;font-weight:800;letter-spacing:.1em;color:var(--tx)}
+.rm-b{flex:1;min-width:0}
+.rm-b b{display:block;font-size:14.5px;font-weight:800;letter-spacing:-.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rm-b>span{display:block;font-size:11.5px;color:var(--dim2);font-weight:700;margin-top:2px}
+/* 누가 있는지 얼굴로 — 숫자보다 「들어가도 되나」가 빨리 읽힌다 */
+.rm-av{flex:none;display:flex}
+.rm-av i{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;
+  font-size:12px;font-style:normal;margin-left:-6px;
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55),0 0 0 1.5px var(--surf)}
+.rm-av i:first-child{margin-left:0}
+.empty-s{font-size:12.5px;color:var(--dim2);margin-top:5px}
 
 .divider{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--dim2);font-size:12px;font-weight:700}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line)}
@@ -406,6 +463,11 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
   box-shadow:0 2px 5px rgba(58,50,42,.2),inset 0 1px 0 rgba(255,255,255,.32);
 }
 .av.sm{width:30px;height:30px;border-radius:10px;font-size:12.5px}
+.av.lg{width:48px;height:48px;border-radius:var(--r-m);font-size:19px}
+/* 캐릭터를 고른 사람의 말 — 판 위의 「말(馬)」처럼 보이게 테두리를 두른다.
+   ⚠️ 얼굴 그림은 자식 <span> 에 둔다. .av 의 글자 그림자가 그림글자에 먹으면 지저분해진다. */
+.av.ch{box-shadow:var(--sh1),inset 0 0 0 2px rgba(255,255,255,.55)}
+.av.ch>span{font-size:1.25em;line-height:1;filter:drop-shadow(0 1px 1px rgba(58,50,42,.25))}
 .pl-n{flex:1;min-width:0;font-weight:700;font-size:15px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
 .pl-pt{font-weight:900;font-size:16px;color:var(--amber);flex:none}
@@ -944,7 +1006,9 @@ details.more .in{padding:0 15px 15px}
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
 }
 @media (max-width:359px){
-  .hero-t{font-size:34px} .rc-v{font-size:44px} .roll-n{font-size:42px}
+  .t-nm{font-size:33px} .roll-n{font-size:42px}
+  .t-ch{width:36px;height:36px;font-size:19px}
+  .chgrid{grid-template-columns:repeat(auto-fill,minmax(70px,1fr))}
 }
 /* 게임 상세 — 「누가 폰을 맡는가」 안내 */
 .mcbox{display:flex;gap:11px;align-items:flex-start;padding:13px 15px;border-radius:var(--r-m);
@@ -1141,7 +1205,9 @@ details.more .in{padding:0 15px 15px}
   .gh{padding:16px;margin-bottom:10px}
   .btn{padding:14px}
   .stack{gap:8px}
-  .hero{padding:14px 4px 4px}
+  .title{min-height:0;padding:10px 4px}
+  .t-nm{font-size:34px}
+  .t-go{margin-top:20px}
   .mcbox{padding:11px 13px}
   .facts{margin-bottom:11px}
   .steps{gap:7px}
@@ -1241,7 +1307,7 @@ details.more .in{padding:0 15px 15px}
 <div class="grain"></div>
 
 <div id="app">
-  <header>
+  <header id="hd">
     <button class="hd-back" id="hd-back" style="display:none" aria-label="뒤로">‹</button>
     <div class="hd-t" id="hd-t">숙소 게임</div>
     <div class="hd-r">
@@ -1269,7 +1335,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.45.0';
+const APP_VERSION = 'v0.46.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -1298,6 +1364,28 @@ const TEAM_COLORS = ['#C1573A','#5C5A93','#3F7F62','#B08432','#3A6E8F','#AC4F62'
       파스텔로 밝히면 이름이 사라진다. */
 const AV_COLORS = ['#B08432','#C1573A','#5C5A93','#3F7F62','#3A6E8F','#AC4F62',
                    '#43857B','#A9636B','#75863F','#7B6B9E','#4A7B93','#A0793F'];
+/* ══ 동물 캐릭터 ══
+   각자 고르는 **말(馬)**이다. 대기실·순위·진행 화면 어디서나 이 얼굴로 나온다.
+   ⚠️ 여기 그림글자는 **장식이 아니라 내용**이다(게임의 얼굴 `GAMES[].emoji` 와 같은 자격) —
+      「장식용 그림글자 금지」 검사의 예외 목록에 들어 있다.
+   ⚠️ 색은 토큰(판 위의 말)의 바탕이다. 같은 색이 둘이면 멀리서 못 가리므로 전부 다르게.
+   ⚠️ 이름은 **동물 이름만** 쓴다 — 사람 이름처럼 보이는 말은 어디에도 넣지 않는다(이름 원칙). */
+const CHARS = [
+  { k:'fox',    n:'여우',   e:'🦊', c:'#C1573A' },
+  { k:'bear',   n:'곰',     e:'🐻', c:'#8A6A52' },
+  { k:'cat',    n:'고양이', e:'🐱', c:'#A0721F' },
+  { k:'dog',    n:'강아지', e:'🐶', c:'#7C9147' },
+  { k:'rabbit', n:'토끼',   e:'🐰', c:'#AC4F62' },
+  { k:'panda',  n:'판다',   e:'🐼', c:'#5C5A93' },
+  { k:'frog',   n:'개구리', e:'🐸', c:'#3F7F62' },
+  { k:'penguin',n:'펭귄',   e:'🐧', c:'#3A6E8F' },
+  { k:'tiger',  n:'호랑이', e:'🐯', c:'#C08A33' },
+  { k:'koala',  n:'코알라', e:'🐨', c:'#6B6259' },
+  { k:'chick',  n:'병아리', e:'🐥', c:'#B8912A' },
+  { k:'otter',  n:'수달',   e:'🦦', c:'#43857B' },
+];
+const CHAR = k => CHARS.find(c => c.k === k) || null;
+
 /* 순위 표시. ⚠️ 메달 그림글자(🥇)는 기기마다 크기·획이 달라 줄이 들쑥날쑥했다 —
    글자로 적으면 어디서나 같은 줄에 선다. */
 const MEDAL = ['1위','2위','3위'];
@@ -3343,6 +3431,13 @@ const LS = 'partygames_session';
 /* 지난 기록 — 방이 사라져도(모두 나가거나 12시간 뒤 코드가 재사용돼도) 최종 순위는 이 기기에 남는다.
    ⚠️ RTDB 가 아니라 **localStorage** 다. 방 노드는 언젠가 사라지지만 이건 안 사라진다.
       그래서 「모두 나가도 다시 확인할 수 있게」가 성립한다. */
+/* 이 기기의 프로필 — 이름과 캐릭터. 방을 나가도 남는다(다음에 또 그 얼굴로 들어온다). */
+const LSP = 'partygames_profile';
+const loadMe = () => { try{ const v = JSON.parse(localStorage.getItem(LSP) || 'null');
+  return v && v.name ? { name:String(v.name).slice(0,8), ch:v.ch || null } : null; }catch{ return null; } };
+const saveMe = () => { try{ localStorage.setItem(LSP, JSON.stringify(S.me)); }catch{} };
+const MYCH = () => S.me?.ch || null;
+
 const LSR = 'partygames_rooms';
 const HIST_MAX = 30;
 const histAll = () => { try{ return JSON.parse(localStorage.getItem(LSR) || '[]'); }catch{ return []; } };
@@ -3383,7 +3478,12 @@ function snapRoom(){
   list.unshift(rec); histPut(list);
 }
 const S = {
-  view:'home', code:null, pid:null, isHost:false, online:true,
+  /* ⚠️ 첫 화면은 **타이틀**이다(v0.46.0) — 「웹사이트 같다」를 고치려고 게임처럼
+     타이틀 → 입장(이름·캐릭터) → 로비(방 찾기) → 대기실 순서로 들어간다. */
+  view:'title', code:null, pid:null, isHost:false, online:true,
+  me:null,     // 이 기기의 프로필 { name, ch } — localStorage 에 남는다
+  rooms:null,  // 로비에서 받아온 열린 방 목록 (null = 아직 안 받음)
+  roomsAt:0, roomsBusy:false,
   room:null, gameId:null, draft:null, unsub:null, hb:null, _lastPick:{},
   play:null,   // 진행 도구 상태 (호스트 기기 로컬 전용 — 제시어가 남의 폰에 새면 안 됨)
   ask:null,    // 경고창 { emoji, title, lose[], safe, ok, go, d } — go 가 「예」를 눌렀을 때 부를 액션
@@ -3605,7 +3705,7 @@ function watchConnection(){
   onValue(ref(db, '.info/connected'), snap => {
     S.online = !!snap.val();
     const d = $('#hd-dot'); if (d) d.classList.toggle('off', !S.online);
-    if (S.view !== 'home') render();
+    if (S.view !== 'title') render();
   });
 }
 
@@ -3736,12 +3836,43 @@ async function newCode(){
   return String(Math.floor(1000 + Math.random()*9000));
 }
 
+/* ══ 열린 방 목록 (v0.46.0) ══
+   사장님: "팀원들이 **방을 찾아서** 들어오도록 하고 싶고"
+   ⚠️ `party/rooms` **전체**를 한 번 읽는다. 방마다 점수·기록이 들어 있어 가볍지 않으므로
+      **로비를 열 때와 새로고침을 누를 때만** 읽는다(구독하지 않는다).
+   ⚠️ 방은 지워지지 않고 48시간 쌓인다 → **최근에 누가 숨 쉰 방만** 보여준다.
+      안 거르면 몇 달 전 방이 목록에 남아 「아무도 없는 방」에 들어가게 된다. */
+const ROOM_LIVE = 10 * 60 * 1000;      // 10분 안에 하트비트가 있었던 방만 「열린 방」
+async function loadRooms(){
+  if (S.roomsBusy) return;
+  S.roomsBusy = true; render(true);
+  let out = null;
+  try{
+    const v = (await get(ref(db, `${ROOT}/rooms`)))?.val() || {};
+    out = [];
+    for (const [code, r] of Object.entries(v)){
+      if (!/^\d{4}$/.test(code) || !r) continue;
+      const ps = Object.values(r.players || {}).filter(x => x && x.name);
+      if (!ps.length) continue;
+      const last = Math.max(r.touchedAt || 0, ...ps.map(x => x.seen || 0));
+      if (now() - last > ROOM_LIVE) continue;
+      out.push({ code, title:(r.title || '').trim(), n:ps.length,
+                 busy:!!(r.busy && r.busy !== 'score'), last,
+                 chars:ps.slice(0, 5).map(x => x.ch || null) });
+    }
+    out.sort((a,b) => b.last - a.last);
+  }catch{ out = null; }
+  S.rooms = out; S.roomsAt = now(); S.roomsBusy = false;
+  render(true);
+  if (out === null) toast('방 목록을 못 불러왔어요 — 코드로 들어가 주세요');
+}
+
 async function createRoom(name, title){
   const code = await newCode();
   S.pid = uid(); S.isHost = true; S.code = code;
   S.room = emptyRoom(); S.room.host = S.pid;
   S.room.title = (title || '').trim().slice(0, 14) || null;
-  S.room.players[S.pid] = { name, joinedAt:now(), seen:now(), host:true };
+  S.room.players[S.pid] = { name, joinedAt:now(), seen:now(), host:true, ch:MYCH() };
   try{ await set(roomRef(code), { ...S.room, touchedAt:now() }); }
   catch{ toast('오프라인 상태 — 이 기기에서만 진행돼요'); }
   saveSession(); subscribe(code); startHeartbeat(); keepAwake();
@@ -3755,7 +3886,7 @@ async function joinRoom(code, name){
   if (!v){ toast('그런 방이 없어요'); return false; }
   S.pid = uid(); S.isHost = false; S.code = code;
   S.room = roomFrom(v);
-  try{ await set(ref(db, `${ROOT}/rooms/${code}/players/${S.pid}`), { name, joinedAt:now(), seen:now() }); }catch{}
+  try{ await set(ref(db, `${ROOT}/rooms/${code}/players/${S.pid}`), { name, joinedAt:now(), seen:now(), ch:MYCH() }); }catch{}
   saveSession(); subscribe(code); startHeartbeat(); keepAwake();
   go('lobby'); return true;
 }
@@ -3779,7 +3910,7 @@ function leaveRoom(){
   clearInterval(S.hb);
   if (S.code && S.pid && !S.isHost) remove(ref(db, `${ROOT}/rooms/${S.code}/players/${S.pid}`)).catch(()=>{});
   Object.assign(S, { unsub:null, code:null, pid:null, isHost:false, room:null, draft:null, gameId:null, _lastPick:{} });
-  clearSession(); go('home');
+  clearSession(); go('find'); loadRooms();
 }
 
 /* ══════════════════════════════════════════════
@@ -3819,12 +3950,18 @@ const botCount = () => players().filter(([pid]) => isBot(pid)).length;
 
 function addBots(n){
   const used = players().map(([,p]) => p.name);
+  const usedCh = players().map(([,p]) => p.ch).filter(Boolean);
   const upd = {};
   for (let i = 0; i < n; i++){
     const pid = 'bot_' + uid();
     const name = BOT_NAMES.find(x => !used.includes(x)) || ('봇' + (((Math.random()*900)|0) + 100));
     used.push(name);
-    const rec = { name, joinedAt: now() + i, seen: now(), bot: true };
+    /* 테스트 봇도 캐릭터를 가진다 — 안 그러면 대기실이 「나만 얼굴, 나머지는 글자」가 되어
+       화면을 눈으로 확인할 때 실제 모습과 달라진다. 내 캐릭터는 피해서 고른다. */
+    const pool = CHARS.filter(c => c.k !== MYCH() && !usedCh.includes(c.k));
+    const ch = (pool.length ? pool : CHARS)[(Math.random() * (pool.length || CHARS.length)) | 0].k;
+    usedCh.push(ch);
+    const rec = { name, joinedAt: now() + i, seen: now(), bot: true, ch };
     S.room.players[pid] = rec;              // 낙관적 로컬 반영(오프라인에서도 보이게)
     upd['players/' + pid] = rec;
   }
@@ -4273,8 +4410,16 @@ function go(view){
   S.view = view; render(); scrollTo(0,0);
 }
 
-const av = (pid, name, cls='') =>
-  `<div class="av ${cls}" style="background:${avColor(pid)}">${h(String(name||'?')[0])}</div>`;
+/* 말(아바타). 캐릭터를 고른 사람은 **그 얼굴**로, 아직 안 고른 사람은 이름 첫 글자로.
+   ⚠️ 부르는 쪽을 안 고치려고 `ch` 를 여기서 직접 찾는다 — 호출부가 10곳이라
+      하나라도 빠뜨리면 그 화면만 옛 얼굴이 된다. 넷째 인자는 **방에 들어가기 전**
+      미리보기용이다(아직 players 에 내가 없다). */
+const av = (pid, name, cls='', ch) => {
+  const C = CHAR(ch !== undefined ? ch : S.room?.players?.[pid]?.ch);
+  return C
+    ? `<div class="av ${cls} ch" style="background:${C.c}"><span>${C.e}</span></div>`
+    : `<div class="av ${cls}" style="background:${avColor(pid)}">${h(String(name||'?')[0])}</div>`;
+};
 
 /* ── 렌더 게이팅 ────────────────────────────────────────────
    render()는 Firebase 스냅샷마다 호출된다. 각 기기가 20초마다 하트비트(seen)를 쓰므로
@@ -4377,10 +4522,12 @@ function render(force){
     ? `${h(S.code)}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></svg>` : '';
   // 탭 루트(대기실·게임·순위·설정)는 하단 탭으로 오가므로 뒤로가기는 하위 화면에만 둔다
   // ⚠️ 게임 목록은 이제 탭이 아니라 대기실의 하위 화면이다 → 뒤로가기를 띄운다
-  back.style.display = ['games','game','play','score','hist'].includes(S.view) ? '' : 'none';
+  back.style.display = ['games','game','play','score','hist','enter'].includes(S.view) ? '' : 'none';
+  /* 타이틀은 **머리글 없이** 통째로 쓴다 — 게임의 첫 화면에 주소창 같은 띠가 있으면 안 된다 */
+  $('#hd').style.display = S.view === 'title' ? 'none' : '';
   // 하단 탭 — 방 안 + 진행 화면이 아닐 때만. 하위 화면은 부모 탭을 켠다.
   const nav = $('#nav');
-  const showNav = inRoom && S.view !== 'play' && S.view !== 'home';
+  const showNav = inRoom && S.view !== 'play' && !['title','enter','find'].includes(S.view);
   nav.style.display = showNav ? '' : 'none';
   $('#app').classList.toggle('has-nav', showNav);
   const tabOf = { lobby:'lobby', games:'lobby', game:'lobby', score:'lobby',
@@ -4388,14 +4535,14 @@ function render(force){
   nav.querySelectorAll('.nav-b').forEach(b => b.classList.toggle('on', b.dataset.nav === tabOf));
   /* 방 안에서는 머리글도 모임 이름으로 — 어느 화면에 있든 「우리 모임」이 보인다 */
   const gt = ROOM_TITLE();
-  title.textContent = ({ home:'숙소 게임', lobby:(gt || '대기실'), games:'게임 고르기',
+  title.textContent = ({ title:'숙소 게임', enter:'입장', find:'로비', lobby:(gt || '대기실'), games:'게임 고르기',
     game:G(S.gameId)?.name || '게임', play:G(S.gameId)?.name || '진행 중',
     score:'순위 입력', board:'종합 순위', settings:'설정',
     hist:'지난 기록' })[S.view] || '숙소 게임';
 
   const v = $('#view');
   const keep = grabFocus();
-  v.innerHTML = ({ home:vHome, lobby:vLobby, games:vGames, game:vGame, play:vPlay,
+  v.innerHTML = ({ title:vTitle, enter:vEnter, find:vFind, lobby:vLobby, games:vGames, game:vGame, play:vPlay,
     score:vScore, board:vBoard, settings:vSettings,
     hist:vHist })[S.view]() + vAsk();
 
@@ -4421,7 +4568,8 @@ $('#hd-back').onclick = () => {
   if (S.view === 'score'){ S.draft = null; go('lobby'); }
   // 진행자가 목록에서 들어온 상세면 목록으로, 대기실 카드의 「규칙」에서 왔으면 대기실로
   else if (S.view === 'game') go(S._fromList ? 'games' : 'lobby');
-  else if (S.view === 'hist') go('home');
+  else if (S.view === 'hist') go(S.code ? 'board' : 'find');
+  else if (S.view === 'enter') go(S.code ? 'lobby' : 'find');
   else go('lobby');
 };
 $('#hd-code').onclick = shareRoom;
@@ -4514,31 +4662,107 @@ function vHist(){
     </div></div>`;
 }
 
-function vHome(){
-  const last = (() => { try{ return JSON.parse(localStorage.getItem(LS) || 'null'); }catch{ return null; } })();
+/* ══ 들어오는 길 — 타이틀 → 입장 → 로비 → 대기실 (v0.46.0) ══
+   사장님: "첫 타이틀 부분 → 로그인해서 들어가면 → 로비로 들어가고 → 팀원들이 방을 찾아서
+   들어오도록 하고 싶고, 거기서 게임 선택하고 게임 시작 — 지금은 살짝 웹사이트 느낌이 많이 나"
+   ⚠️ **한 화면에 다 넣지 않는다**가 핵심이다. 옛 홈은 이름·모임 이름·방 만들기·코드·기록이
+      한 장에 다 있었다 — 그게 「웹사이트의 가입 폼」처럼 보이던 이유다.
+      게임은 **한 화면에 한 가지**만 묻는다: 들어올래? → 너는 누구야? → 어디로 갈래? */
+
+/* ① 타이틀 — 누르기 전까지 아무것도 묻지 않는다 */
+function vTitle(){
+  const sess = (() => { try{ return JSON.parse(localStorage.getItem(LS) || 'null'); }catch{ return null; } })();
+  /* 타이틀의 캐릭터 줄 — 고정 6마리. ⚠️ 매번 랜덤으로 뽑지 말 것:
+     render() 는 스냅샷마다 불려서 얼굴이 계속 바뀐다(앱이 불안해 보인다). */
+  const line = ['fox','rabbit','bear','penguin','cat','frog'].map((k,i) => {
+    const c = CHAR(k);
+    return `<span class="t-ch" style="background:${c.c};animation-delay:${i*140}ms">${c.e}</span>`;
+  }).join('');
+  return `
+    <div class="title"><div class="title-in">
+      <div class="t-line">${line}</div>
+      <h1 class="t-nm">숙소에서<br>하기 좋은<br><em>게임 모음</em></h1>
+      <p class="t-sub">폰만 있으면 됩니다 · 게임 ${GAMES.length}종</p>
+      <button class="btn pri t-go" data-act="t-start">시작하기</button>
+      ${sess ? `<button class="btn gh t-again" data-act="rejoin">
+        ${h(sess.name || '')}(으)로 ${h(sess.code)}번 방 다시 들어가기</button>` : ''}
+      <div class="t-v">${APP_VERSION}</div>
+    </div></div>`;
+}
+
+/* ② 입장 — 이름과 캐릭터. 이 기기가 「누구인지」를 정하는 유일한 자리다 */
+function vEnter(){
+  const me = S.me || {};
+  const pick = me.ch || null;
+  const C = CHAR(pick);
   return `
     <div class="two"><div>
-    <div class="hero">
-      <div class="hero-kick">폰만 있으면 됩니다</div>
-      <h1 class="hero-t">숙소에서<br>하기 좋은<br><em>게임 모음</em></h1>
-      <p class="lede">한 명이 방을 만들고 나머지는 4자리 코드로 입장. 게임은 다 같이 하고, 폰은 진행·점수·순위만 챙깁니다.</p>
+    <div class="mebig">
+      <div class="mebig-av ${C ? 'ch' : ''}" style="background:${C ? C.c : 'var(--wash2)'}">
+        ${C ? C.e : '<span class="mebig-q">?</span>'}</div>
+      <div class="mebig-t">${C ? `${h(C.n)}로 들어갑니다` : '캐릭터를 골라주세요'}</div>
     </div>
-
-    ${last ? `<button class="btn gh" data-act="rejoin" style="margin:20px 0 0">
-        ↩︎ ${h(last.name||'')}(으)로 ${h(last.code)}번 방 다시 들어가기</button>` : ''}
-
-    ${installBannerHtml()}
-    ${histHtml()}
+    <div class="sec">캐릭터</div>
+    <div class="chgrid">
+      ${CHARS.map(c => `
+        <button class="chq ${c.k === pick ? 'on' : ''}" data-act="me-pick" data-k="${c.k}"
+          style="--chc:${c.c}" aria-label="${h(c.n)}">
+          <span class="chq-e">${c.e}</span><span class="chq-n">${h(c.n)}</span>
+        </button>`).join('')}
+    </div>
     </div><div>
-    <div class="sec">시작하기</div>
+    <div class="sec">이름</div>
     <div class="card">
-      <input class="inp" id="in-name" maxlength="8" placeholder="닉네임 (최대 8자)" value="${h(last?.name || '')}">
-      <div style="height:8px"></div>
+      <input class="inp" id="in-name" maxlength="8" placeholder="닉네임 (최대 8자)" value="${h(me.name || '')}">
+      <div style="height:10px"></div>
+      <button class="btn pri" data-act="me-save">${S.code ? '바꾸기' : '확인'}</button>
+      ${S.code ? `<div style="height:8px"></div>
+        <button class="btn gh" data-act="go-lobby">그만두기</button>` : ''}
+    </div>
+    <p class="note" style="margin:12px 4px 0">같이 노는 사람들 화면에도 이 얼굴과 이름으로 보여요</p>
+    </div></div>`;
+}
+
+/* ③ 로비 — 방을 만들거나, 열린 방을 찾아 들어간다 */
+function vFind(){
+  const me = S.me || {};
+  const C = CHAR(me.ch);
+  const rs = S.rooms;
+  let list;
+  if (S.roomsBusy && rs === null) list = `<div class="note" style="padding:14px 4px">열린 방을 찾는 중…</div>`;
+  else if (rs === null) list = `<div class="note" style="padding:14px 4px">아직 못 불러왔어요 — 새로고침을 눌러주세요</div>`;
+  else if (!rs.length) list = `<div class="empty"><div class="empty-t">지금 열린 방이 없어요</div>
+      <div class="empty-s">먼저 방을 만들어 코드를 알려주세요</div></div>`;
+  else list = rs.map((r,i) => `
+    <button class="rm" data-act="join-room" data-code="${r.code}" style="animation-delay:${i*40}ms">
+      <span class="rm-c">${h(r.code)}</span>
+      <span class="rm-b">
+        <b>${r.title ? h(r.title) : '이름 없는 방'}</b>
+        <span>${r.n}명${r.busy ? ' · 게임 중' : ' · 대기 중'}</span>
+      </span>
+      <span class="rm-av">${r.chars.map(k => { const c = CHAR(k);
+        return `<i style="background:${c ? c.c : 'var(--wash2)'}">${c ? c.e : ''}</i>`; }).join('')}</span>
+      <span class="g-ar">›</span>
+    </button>`).join('');
+
+  return `
+    <div class="two"><div>
+    <button class="melead" data-act="me-edit">
+      <span class="av lg ${C ? 'ch' : ''}" style="background:${C ? C.c : 'var(--wash2)'}">${C ? `<span>${C.e}</span>` : h(String(me.name || '?')[0])}</span>
+      <span class="melead-b"><b>${h(me.name || '이름 없음')}</b><span>${C ? h(C.n) : '캐릭터 없음'} · 눌러서 바꾸기</span></span>
+      <span class="g-ar">›</span>
+    </button>
+
+    <div class="sec">방 만들기</div>
+    <div class="card">
       <!-- 모임 이름은 **선택**이다 — 비워도 방이 만들어진다(코드가 이름을 대신한다) -->
       <input class="inp" id="in-title" maxlength="14" placeholder="모임 이름 (선택) · 예: 양양 2박 3일">
       <div style="height:10px"></div>
-      <button class="btn pri" data-act="create">방 만들기</button>
-      <div class="divider">또는 코드로 참여</div>
+      <button class="btn pri" data-act="create">새 방 만들기</button>
+    </div>
+
+    <div class="sec">코드로 들어가기</div>
+    <div class="card">
       <div class="code-wrap">
         <input class="code-input" id="in-code" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off">
         <div class="code-boxes" id="code-boxes">
@@ -4548,8 +4772,15 @@ function vHome(){
       <div style="height:10px"></div>
       <button class="btn" data-act="join">참여하기</button>
     </div>
+    </div><div>
 
-    <p class="note" style="text-align:center;margin-top:22px">
+    <div class="sec">열린 방${rs?.length ? ` <span class="n">${rs.length}</span>` : ''}
+      <button class="secbtn" data-act="rooms-refresh" ${S.roomsBusy ? 'disabled' : ''}>새로고침</button></div>
+    <div class="rooms">${list}</div>
+
+    ${histHtml()}
+    ${installBannerHtml()}
+    <p class="note" style="text-align:center;margin-top:18px">
       홈 화면에 추가하면 앱처럼 열립니다<br><span style="opacity:.6">${APP_VERSION}</span></p>
     </div></div>`;
 }
@@ -5895,15 +6126,43 @@ async function act(a, d){
   vib();
   switch(a){
 
-  case 'create': {
+  /* ── 들어오는 길 (v0.46.0) ── */
+  case 't-start': go(S.me?.name ? 'find' : 'enter'); if (S.me?.name) loadRooms(); break;
+  case 'me-pick': {
+    S.me = { name:S.me?.name || '', ch:d.k };
+    /* ⚠️ 여기서 저장까지 하지 않는다 — 이름을 아직 안 적었을 수 있다.
+       다만 입력 중인 이름은 지키려고 먼저 읽어 둔다(재렌더가 입력칸을 새로 그린다). */
+    const n = ($('#in-name')?.value || '').trim(); if (n) S.me.name = n;
+    vib(); render(true); break;
+  }
+  case 'me-edit': go('enter'); break;
+  case 'me-save': {
     const name = ($('#in-name')?.value || '').trim();
-    if (!name) return toast('이름을 입력해 주세요');
+    if (!name) return toast('이름을 적어 주세요');
+    if (!S.me?.ch) return toast('캐릭터를 골라 주세요');
+    S.me = { name, ch:S.me.ch }; saveMe();
+    if (S.code && S.pid){
+      /* 방 안에서 바꾼 것이면 내 칸만 갱신한다 — 참가자도 쓸 수 있는 유일한 경로다 */
+      S.room.players[S.pid] = { ...(S.room.players[S.pid] || {}), name, ch:S.me.ch };
+      update(ref(db, `${ROOT}/rooms/${S.code}/players/${S.pid}`), { name, ch:S.me.ch }).catch(()=>{});
+      saveSession(); go('lobby'); toast('바꿨어요');
+    } else { go('find'); loadRooms(); }
+    break;
+  }
+  case 'rooms-refresh': loadRooms(); break;
+  case 'join-room': {
+    if (!S.me?.name) return go('enter');
+    await joinRoom(String(d.code), S.me.name); break;
+  }
+  case 'create': {
+    const name = (S.me?.name || '').trim();
+    if (!name) return go('enter');
     await createRoom(name, $('#in-title')?.value || ''); break;
   }
   case 'join': {
-    const name = ($('#in-name')?.value || '').trim();
+    const name = (S.me?.name || '').trim();
     const code = ($('#in-code')?.value || '').trim();
-    if (!name) return toast('이름을 입력해 주세요');
+    if (!name) return go('enter');
     if (code.length !== 4) return toast('4자리 방 코드를 입력해 주세요');
     await joinRoom(code, name); break;
   }
@@ -6456,7 +6715,7 @@ async function act(a, d){
   }
   /* 지난 기록 — 방이 사라져도 이 기기에 남아 있는 최종 순위 */
   case 'hist-open': S.histI = Number(d.i) || 0; go('hist'); break;
-  case 'go-home': go('home'); break;
+  case 'go-home': go('find'); break;
   case 'hist-del': {
     const i = Number(d.i) || 0, r = histAll()[i];
     if (!r) return;
@@ -6472,7 +6731,7 @@ async function act(a, d){
     const i = Number(d.i) || 0;
     const list = histAll(); list.splice(i, 1); histPut(list);
     _histSig = '';                       // 지운 뒤 같은 방에 있으면 다시 쌓이게 한다
-    if (S.view === 'hist') go('home'); else render(true);
+    if (S.view === 'hist') go(S.code ? 'board' : 'find'); else render(true);
     toast('기록을 지웠어요'); break;
   }
 
@@ -6485,6 +6744,7 @@ async function act(a, d){
    부팅
 ══════════════════════════════════════════════ */
 watchConnection();
+S.me = loadMe();          // 이 기기의 이름·캐릭터 (없으면 입장 화면에서 정한다)
 render();
 
 (async () => {
@@ -6494,7 +6754,11 @@ render();
     if (await rejoin(sess)) return;
     clearSession();
   }
+  /* ?r=1234 링크로 들어왔다 — 코드를 받아 놓고 **로비로 데려간다**(타이틀에서 멈추면
+     링크를 눌러 온 사람이 한 번 더 눌러야 한다). 이름이 없으면 입장 화면이 먼저다. */
   if (q && /^\d{4}$/.test(q)){
+    go(S.me?.name ? 'find' : 'enter');
+    if (S.me?.name) loadRooms();
     const el = $('#in-code');
     if (el){ el.value = q; el.dispatchEvent(new Event('input')); }
   }

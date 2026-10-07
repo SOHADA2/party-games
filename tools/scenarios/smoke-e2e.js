@@ -16,6 +16,9 @@ if (new URLSearchParams(location.search).has('demo')){
   const say = (...a) => L.push(a.join(' '));
   const ck  = (label, cond) => { if (!cond) bad++; L.push(label + ': ' + (cond ? 'OK' : '✕FAIL')); return cond; };
   try{
+    /* ⚠️ 앱이 **어느 화면으로 켜지는지**는 시나리오가 S.view 를 건드리기 **전에** 재야 한다.
+       나중에 S.view='title' 로 세워놓고 보면 무엇을 바꾸든 통과한다(실제로 그렇게 헛통과했다). */
+    const bootView = S.view;
     window.confirm = () => { throw new Error('confirm() 을 쓰면 안 된다 — 앱 안 경고창(S.ask)으로 물어야 한다'); };
     /* 되돌릴 수 없는 액션은 이제 경고창을 띄운다 → 「예」까지 눌러야 실제로 실행된다 */
     const quit = () => { act('pl-quit', {}); if (S.ask) act('ask-yes', {}); };
@@ -559,6 +562,10 @@ if (new URLSearchParams(location.search).has('demo')){
         act('quiz-hit', { pid:P[2] });
         act('quiz-sec', { v:'0' });
         ck('★생각 시간을 끄면 타이머가 안 돈다', S.play.sec === 0 && !S.play._t);
+        /* ⚠️ 뽑힌 문제를 그대로 쓰면 안 된다 — 정답이 「2」·「쌀」처럼 짧으면 화면 아무 데나
+           걸려서 **뽑기에 따라 실패하는 검사**가 된다(실측 5회 중 1회). 답을 고정한다.
+           v0.25.0·v0.24.0 에 같은 병을 두 번 적어뒀는데 이 줄만 남아 있었다. */
+        S.play.cur = { w:'세계에서 가장 긴 강은?', a:'나일강찾기테스트', c:'world' };
         ck('  그 상태에서도 정답은 아직 안 나온다',
           S.play.phase === 'run' && !view('play').includes(S.play.cur.a));
         act('quiz-sec', { v:'5' });
@@ -580,7 +587,10 @@ if (new URLSearchParams(location.search).has('demo')){
       const qDone = view('play');
       ck('종료 화면에 정답 목록', qDone.includes(S.play.log[0].a));
       ck('★★종료 화면에 문제도 같이 적힌다', qDone.includes(S.play.log[0].w));
-      ck('★판이 끝나면 나온 문제가 기록된다', usedWords('quiz').size === 3);
+      /* ⚠️ 「크기가 3」으로 보면 안 된다 — 앞선 판이 남긴 기록이 섞이면 가끔 어긋난다(실측 1/7).
+         **이번 판의 문제가 전부 들어갔는가**로 본다(앞뒤 상태와 무관해진다). */
+      ck('★판이 끝나면 나온 문제가 기록된다', (() => { const u = usedWords('quiz');
+        return S.play.log.every(x => u.has(x.w)); })());
 
       act('quiz-save', {});
       ck('quiz 순위 화면', S.view === 'score' && S.play === null);
@@ -787,10 +797,11 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('  진행한 게임도 같이 남는다', rec[0].games.length === 2);
       ck('  날짜·시간을 만들 수 있다', /월 .*일/.test(fmtDay(rec[0].last)) && /[0-9]:[0-9]/.test(fmtTime(rec[0].last)));
 
-      /* 홈 화면 — 시간과 일자가 보여야 한다 */
-      go('home');
-      const hh = view('home');
-      ck('★★홈 화면에 지난 기록이 뜬다', hh.includes('지난 기록'));
+      /* 로비 화면 — 시간과 일자가 보여야 한다 (v0.46.0: 홈이 타이틀·입장·로비로 쪼개졌다) */
+      S.me = { name:'나', ch:'fox' };
+      go('find');
+      const hh = view('find');
+      ck('★★로비 화면에 지난 기록이 뜬다', hh.includes('지난 기록'));
       ck('★★날짜와 시간이 적혀 있다',
         hh.includes(fmtDay(rec[0].last).split(' ')[0]) && hh.includes(fmtTime(rec[0].last)));
       ck('  1등과 인원·판 수를 요약해준다',
@@ -809,7 +820,7 @@ if (new URLSearchParams(location.search).has('demo')){
       act('hist-del', { i:'0' });
       ck('★지금 있는 방의 기록은 못 지운다',
         !S.ask && JSON.parse(localStorage.getItem('partygames_rooms')).length === 1);
-      ck('  홈에서도 그 줄엔 ✕ 가 없다', !/rec-x[^]{0,80}data-i="0"/.test(view('home')));
+      ck('  로비에서도 그 줄엔 ✕ 가 없다', !/rec-x[^]{0,80}data-i="0"/.test(view('find')));
 
       /* 방을 나간 뒤에는 지울 수 있다 — 되돌릴 수 없으니 물어본다 */
       const keepC = S.code; S.code = null;
@@ -1387,7 +1398,7 @@ if (new URLSearchParams(location.search).has('demo')){
 
       /* 방 만들 때 적는 자리 — **선택**이라 비워도 된다 */
       { const keep = S.code; S.code = null;
-        const hv = view('home');
+        const hv = view('find');
         ck('★★방 만들기 화면에 모임 이름 칸이 있다',
           hv.includes('id="in-title"') && hv.includes('모임 이름'));
         ck('  선택이라고 알려준다', hv.includes('(선택)'));
@@ -1450,12 +1461,12 @@ if (new URLSearchParams(location.search).has('demo')){
       _histSig = null; snapRoom();
       const rec0 = histAll()[0];
       ck('★★★지난 기록에 모임 이름이 남는다', rec0 && rec0.t === '양양 2박 3일');
-      ck('  홈 기록 줄에도 보인다', view('home').includes('양양 2박 3일'));
+      ck('  로비 기록 줄에도 보인다', (S.me = { name:'나', ch:'fox' }, view('find')).includes('양양 2박 3일'));
 
       /* ── 부르는 이름은 둘뿐: 메인 화면 · 구경 모드 ── */
       S.room.title = null; S.room.scores = {}; S.view = 'lobby'; render(true);
       const old = ['진행자', '사회자', '호스트', '방장'];
-      const screens = ['home', 'lobby', 'games', 'board', 'settings'];
+      const screens = ['title', 'enter', 'find', 'lobby', 'games', 'board', 'settings'];
       const bad = [];
       /* ⚠️ HTML 주석은 화면 글이 아니다 — 안 빼면 코드 주석 때문에 헛걸린다 */
       const visible = v => view(v).replace(/<!--[\s\S]*?-->/g, '');
@@ -1482,6 +1493,7 @@ if (new URLSearchParams(location.search).has('demo')){
             헛통과하기 쉽다. 그래서 바로 뒤에 **일부러 그림글자를 넣어 걸리는지** 확인한다. */
       const PICTO = /[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F2FF}\u{2B00}-\u{2BFF}\u{FE0F}]|\u26A0|\u{1F3B2}/gu;
       const okEmo = new Set([
+        ...CHARS.map(c => c.e),          // 각자 고른 동물 캐릭터 = 그 사람의 얼굴(v0.46.0)
         ...GAMES.map(g => g.emoji),
         ...Object.values(WORD_DECKS).map(d => d.emoji),
         ...Object.values(QUIZ_DECKS).map(d => d.emoji),
@@ -1521,6 +1533,92 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('  색 번짐 그림자(--glow) 토큰도 없다', !/--glow\s*:/.test(css));
 
       S.view = 'lobby';
+    }
+
+    /* ══ 8.9) 들어오는 길 — 타이틀 → 입장 → 로비 → 대기실 (v0.46.0) ══
+       사장님: "첫 타이틀 → 로그인해서 들어가면 → 로비 → 팀원들이 **방을 찾아서** 들어오고
+       → 거기서 게임 선택하고 게임 시작. 지금은 살짝 **웹사이트 느낌**이 많이 나.
+       (나중에는 각자 **동물 캐릭터** 골라서 로비에서 돌아다니게 하고 싶어)" */
+    {
+      const keepMe = S.me, keepCode = S.code, keepRoom = S.room, keepPid = S.pid;
+      const keepHost = S.isHost, keepRooms = S.rooms;
+
+      /* ① 타이틀 — 누르기 전엔 아무것도 묻지 않는다. 그게 「웹사이트 폼」과의 차이다 */
+      S.code = null; S.room = null; S.me = null; S.view = 'title'; render(true);
+      ck('★★★앱은 타이틀 화면으로 켜진다', bootView === 'title');
+      const tv = view('title');
+      ck('★★타이틀은 아무것도 묻지 않는다 (이름·코드 입력칸이 없다)',
+        tv.includes('data-act="t-start"') && !tv.includes('id="in-name"') && !tv.includes('id="in-code"'));
+      ck('  머리글(주소창 같은 띠)을 감춘다', document.querySelector('#hd').style.display === 'none');
+
+      /* ② 이름이 없으면 입장으로, 있으면 로비로 — 두 번 묻지 않는다 */
+      act('t-start', {});
+      ck('★★★이름이 없으면 입장 화면으로 간다', S.view === 'enter');
+      const ev = view('enter');
+      ck('  거기서 캐릭터를 고른다', CHARS.every(c => ev.includes(`data-k="${c.k}"`)));
+      ck('  고르는 캐릭터가 2종 이상이다', CHARS.length >= 8);
+      ck('  캐릭터 키·색이 겹치지 않는다',
+        new Set(CHARS.map(c => c.k)).size === CHARS.length &&
+        new Set(CHARS.map(c => c.c)).size === CHARS.length);
+
+      /* ③ 이름만 적고 넘어갈 수 없다 — 캐릭터가 이 게임의 「나」다 */
+      S.me = { name:'', ch:null };
+      act('me-save', {});
+      ck('★이름이 없으면 못 넘어간다', S.view === 'enter');
+      act('me-pick', { k:'fox' });
+      ck('★★고른 캐릭터가 바로 반영된다', S.me.ch === 'fox' && view('enter').includes('chq on'));
+
+      /* ④ 입장을 마치면 로비 — 여기가 「방을 찾는」 자리다 */
+      S.me = { name:'나', ch:'fox' };
+      act('t-start', {});
+      ck('★★★이름이 있으면 바로 로비로 간다', S.view === 'find');
+      const fv = view('find');
+      ck('★★★로비에 방 만들기와 열린 방 목록이 같이 있다',
+        fv.includes('data-act="create"') && fv.includes('data-act="rooms-refresh"'));
+      ck('  코드로 들어가는 길도 남아 있다 (늦게 오는 친구용)', fv.includes('id="in-code"'));
+      ck('★로비에서 내 얼굴과 이름을 보고 바꿀 수 있다',
+        fv.includes('data-act="me-edit"') && fv.includes('나'));
+      ck('  로비에서는 이름을 다시 묻지 않는다', !fv.includes('id="in-name"'));
+
+      /* ⑤ 열린 방 목록 — 눌러서 들어간다 */
+      S.rooms = [{ code:'4821', title:'양양 2박 3일', n:5, busy:false, last:now(),
+                   chars:['fox','bear','cat'] }];
+      const fv2 = view('find');
+      ck('★★★열린 방이 모임 이름·인원과 함께 뜬다',
+        fv2.includes('양양 2박 3일') && fv2.includes('5명') && fv2.includes('4821'));
+      ck('  눌러서 바로 들어간다', fv2.includes('data-act="join-room" data-code="4821"'));
+      ck('  게임 중인 방은 그렇다고 알려준다',
+        (S.rooms = [{ ...S.rooms[0], busy:true }], view('find')).includes('게임 중'));
+      ck('  방이 하나도 없으면 먼저 만들라고 말해준다',
+        (S.rooms = [], view('find')).includes('먼저 방을 만들'));
+
+      /* ⑥ ★ 오래된 방을 목록에 올리지 않는다 — 아무도 없는 방에 들어가게 된다 */
+      ck('★★열린 방 기준이 10분이다 (48시간 쌓인 옛 방이 안 섞인다)',
+        ROOM_LIVE > 0 && ROOM_LIVE <= 30 * 60 * 1000);
+
+      /* ⑦ 방에 들어가면 **내 캐릭터가 서버로 나간다** — 다른 사람 화면에도 그 얼굴이다.
+         ⚠️ 참가자가 쓰는 칸은 players/{pid} 하나뿐이라는 원칙을 깨지 않는다. */
+      S.me = { name:'나', ch:'penguin' };
+      globalThis.__W = [];
+      S.code = keepCode; S.room = keepRoom; S.pid = keepPid; S.isHost = keepHost;
+      S.room.players[S.pid] = { ...S.room.players[S.pid], ch:null };
+      /* ⚠️ me-save 는 **화면의 입력칸**에서 이름을 읽는다 — 상태만 바꿔놓고 부르면
+         이름이 빈 값이라 조용히 되돌아간다(실제로 여기서 한 번 헛돌았다). 그려놓고 부른다. */
+      S.view = 'enter'; render(true);
+      document.querySelector('#in-name').value = '나';
+      act('me-save', {});
+      const w = (globalThis.__W || []).filter(x => String(x[1] || '').includes('players/' + S.pid));
+      ck('★★★캐릭터를 바꾸면 내 칸만 서버에 쓴다',
+        w.length === 1 && w[0][2] && w[0][2].ch === 'penguin');
+      ck('  남의 칸이나 방 전체를 건드리지 않는다',
+        !(globalThis.__W || []).some(x => /players\/(?!$)/.test(String(x[1] || '')) && !String(x[1]).includes(S.pid)));
+      ck('★★대기실 참가자 칩에 그 얼굴이 나온다',
+        view('lobby').includes(CHAR('penguin').e));
+      ck('  캐릭터가 없는 사람은 이름 첫 글자로 나온다',
+        av('nochar', '토끼', 'sm', null).includes('토'));
+
+      S.me = keepMe; S.rooms = keepRooms; S.code = keepCode; S.room = keepRoom;
+      S.pid = keepPid; S.isHost = keepHost; S.view = 'lobby'; render(true);
     }
 
     /* ── 9) 정리 ── */
