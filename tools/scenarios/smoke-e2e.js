@@ -864,13 +864,80 @@ if (new URLSearchParams(location.search).has('demo')){
       act('leave', {});
       ck('★★방 나가기도 경고창이 뜬다', !!S.ask && S.code === '0000');
       const lv = view('lobby');
-      ck('  진행자에게는 「순위를 저장할 수 없다」를 알린다', lv.includes('순위를 저장할 수 없어요'));
+      /* v0.47.0 — 메인 화면이 나가면 **남은 사람에게 넘어간다.** 옛 문구(「아무도 순위를
+         저장할 수 없어요」)는 이제 거짓말이라 경고도 같이 바꿨다.
+         ⚠️ 지금 이 방은 **봇뿐**이라 넘길 사람이 없다 → 「이 방은 끝나요」가 맞다.
+            넘어가는 쪽 문구는 아래 「나가면 진짜로 나간다」 블록에서 사람을 들이고 본다. */
+      ck('  넘길 사람이 없으면 「이 방은 끝나요」를 알린다', lv.includes('이 방은 끝나요'));
       act('ask-no', {});
       ck('★취소하면 방에 남는다', !S.ask && S.code === '0000');
       S.isHost = false; act('leave', {});
       ck('★참가자에게는 「내 점수가 사라진다」를 알린다',
         S.ask.lose.join(' ').includes('내 점수'));
       act('ask-no', {}); S.isHost = true;
+
+      /* ── ★ 나가면 **진짜로 나간다** (v0.47.0) ──
+         사장님: "방에서 나가도 **나간 사람이 거기 남아 있는 게 문제** — 방에서 나가면
+         그 방에서 나와져야 함. 새롭게 아이디를 만들면 그 아이디에 접속할 방법이 사라지는 듯"
+         ⚠️ 옛 코드는 `!S.isHost` 일 때만 자기 노드를 지웠다 → **방을 만든 기기**가 나가면
+            명단에 영영 남았고, pid 는 매번 새로 발급되니 되돌릴 길이 없었다. */
+      {
+        const keep = { code:S.code, pid:S.pid, host:S.isHost, room:S.room, me:S.me,
+                       rooms:S.rooms, view:S.view };
+        /* ⚠️ 방에 **진짜 사람**이 있어야 넘길 수 있다 — 이 방은 봇뿐이라 한 명 들인다.
+           봇은 기기가 없으므로 넘겨주면 죽은 방이 된다(그래서 일부러 뺀다). */
+        S.room.players.hu1 = { name:'사람', joinedAt:2, seen:now() };
+        const heir = leaveHeir();
+        ck('★넘겨줄 사람을 고를 때 봇은 빼고 고른다', heir === 'hu1');
+        act('leave', {});
+        ck('★★메인 화면에게는 「누구에게 넘어가는지」를 알린다',
+          S.ask.lose.join(' ').includes('넘어가요') && S.ask.lose.join(' ').includes('사람'));
+        act('ask-no', {});
+
+        /* ① 메인 화면 기기가 나간다 */
+        globalThis.__W = [];
+        act('leave', {}); act('ask-yes', {});
+        const w = (globalThis.__W || []).filter(x => String(x[1] || '').endsWith('/' + keep.code));
+        const upd = w.length ? w[w.length - 1][2] : null;
+        ck('★★★나가면 내 자리를 서버에서 지운다 (메인 화면 기기도)',
+          !!upd && upd['players/' + keep.pid] === null);
+        ck('★★★메인 화면을 남은 사람에게 넘긴다', !!upd && upd.host === heir);
+        ck('  넘겨받은 사람에게 표시도 옮긴다', !!upd && upd['players/' + heir + '/host'] === true);
+        ck('  내 기기에만 있던 「진행 중」도 내린다', !!upd && upd.busy === null);
+        ck('★나간 기기는 방에서 빠져나온다', !S.code && !S.room && S.view === 'find');
+
+        /* ② 넘겨받은 기기는 **스스로 메인 화면이 된다** — 강등만 있고 승격이 없으면
+              방을 만든 사람이 나가는 순간 방에 진실원이 하나도 없다. */
+        S.code = keep.code; S.pid = heir; S.isHost = false; S.room = keep.room;
+        const snap = { ...keep.room, host:heir, players:{ ...keep.room.players } };
+        delete snap.players[keep.pid];
+        applySnapshot(snap);
+        ck('★★★서버가 나를 지목하면 메인 화면으로 승격한다', S.isHost === true);
+        ck('  나간 사람은 명단에 없다', !players().some(([pid]) => pid === keep.pid));
+
+        /* ③ 아무도 안 남으면 방이 끝난다고 말한다 (넘길 사람이 없다) */
+        S.pid = keep.pid; S.isHost = true;
+        S.room = { ...keep.room, players:{ [keep.pid]:keep.room.players[keep.pid] } };
+        delete keep.room.players.hu1;
+        act('leave', {});
+        ck('★혼자면 「이 방은 끝나요」라고 알린다', S.ask.lose.join(' ').includes('이 방은 끝나요'));
+        globalThis.__W = [];
+        act('ask-yes', {});
+        const w2 = (globalThis.__W || []).filter(x => String(x[1] || '').endsWith('/' + keep.code));
+        ck('  넘길 사람이 없으면 host 를 비운다',
+          w2.length && w2[w2.length - 1][2].host === '');
+
+        /* ④ 방 자체가 사라진 경우엔 **아무것도 쓰지 않는다**(빈 방이 되살아난다) */
+        S.code = keep.code; S.pid = keep.pid; S.isHost = false; S.room = keep.room;
+        globalThis.__W = [];
+        applySnapshot(null);
+        ck('★★방이 사라졌을 때는 서버에 아무것도 안 쓴다',
+          !(globalThis.__W || []).some(x => String(x[1] || '').includes(keep.code)));
+
+        Object.assign(S, { code:keep.code, pid:keep.pid, isHost:keep.host, room:keep.room,
+                           me:keep.me, rooms:keep.rooms });
+        S.view = 'lobby'; render(true);
+      }
 
       /* ③ 화면을 옮기면 열려 있던 경고창은 사라진다 */
       act('leave', {}); go('board');

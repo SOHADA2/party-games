@@ -1335,7 +1335,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.46.0';
+const APP_VERSION = 'v0.47.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -3763,7 +3763,9 @@ function subscribe(code){
    ⚠️ onValue 콜백에서 **떼어 놨다.** 검증 사본은 onValue 를 막기 때문에, 안에 박아두면
       「진행자가 넘어가면 옛 진행자가 내려오는가」 같은 걸 아예 검사할 수 없다. */
 function applySnapshot(v){
-  if (!v){ if (!S.isHost){ toast('방이 사라졌어요'); leaveRoom(); } return; }
+  /* ⚠️ 방 자체가 없어졌으면 **아무것도 쓰지 않고** 나간다 — 지우기·넘기기를 쓰면
+        없는 방에 host 같은 찌꺼기 필드가 생겨 빈 방이 되살아난다. */
+  if (!v){ if (!S.isHost){ toast('방이 사라졌어요'); leaveRoom({ write:false }); } return; }
   /* ⚠️ 진행자가 다른 기기로 넘어갔다 — 나는 **즉시 진행자에서 내려와야** 한다.
         안 내려오면 두 기기가 서로 진실원이라 믿고 번갈아 덮어써서 판이 요동친다. */
   if (S.isHost && v.host && v.host !== S.pid){
@@ -3777,6 +3779,18 @@ function applySnapshot(v){
     S.draft = null;
     if (S.view === 'play' || S.view === 'score') S.view = 'lobby';
     toast(`메인 화면이 ${(v.players?.[v.host]?.name) || '다른 기기'}님 기기로 넘어갔어요`);
+  }
+  /* ★ 서버가 나를 메인 화면으로 지목했다 — 앞 사람이 나가며 넘긴 것이다(v0.47.0).
+     ⚠️ **승격은 강등과 반드시 짝이어야 한다.** 강등만 있던 동안에는 방을 만든 기기가
+        나가는 순간 방에 진실원이 하나도 없었다(아무도 게임을 시작할 수 없다).
+     ⚠️ 승격 직전에 방 값을 **서버 것으로 통째로** 받는다. 참가자로 있던 동안의 S.room 은
+        한 스냅샷 뒤처져 있을 수 있는데, 그대로 진실원이 되면 그 차이를 서버에 되밀어 버린다. */
+  if (!S.isHost && v.host && v.host === S.pid && v.players?.[S.pid]?.name){
+    S.room = roomFrom(v);
+    S.isHost = true; saveSession();
+    stopPlayTimer(); S.play = null;        // 앞 진행자의 도구는 그 기기에만 있었다
+    if (S.view === 'play') S.view = 'lobby';
+    toast('이제 이 기기가 메인 화면이에요 — 점수·순서를 여기서 챙깁니다');
   }
   /* 내가 방 명단에서 사라졌다 = 진행자가 내보냈다. 조용히 남아 있으면 하트비트가
      **이름 없는 유령 선수**를 되살린다 → 스스로 나간다. (진행자는 스스로를 못 내보낸다) */
@@ -3905,10 +3919,43 @@ async function rejoin(sess){
   go('lobby'); return true;
 }
 
-function leaveRoom(){
+/* 나가면 **진짜로 나간다** (v0.47.0).
+   사장님: "방에서 나가도 **나간 사람이 거기 남아 있는 게 문제** — 방에서 나가면 그 방에서
+   나와져야 함. 새롭게 아이디를 만들면 그 아이디에 접속할 방법이 사라지는 듯"
+
+   ⚠️ **예전엔 `!S.isHost` 일 때만 자기 노드를 지웠다.** 그래서 **방을 만든 기기**(메인 화면)가
+      나가면 명단에 영영 남았다. pid 는 접속할 때마다 새로 발급되므로 다시 들어가도 그 유령을
+      치울 길이 없다(그 기기가 메인 화면이라 남이 내보낼 수도 없었다). 이게 버그의 전부다.
+   ⚠️ 메인 화면이 나가면 **남은 사람에게 넘긴다.** 안 넘기면 진실원이 사라져 아무도 게임을
+      시작하거나 순위를 저장할 수 없다(강등만 있고 승격이 없었다 — applySnapshot 참조).
+   ⚠️ 지우기와 넘기기를 **한 번의 update** 로 보낸다. 따로 보내면 하나만 닿았을 때
+      「호스트 없는 방」이나 「유령 호스트」가 남는다. */
+function leaveHeir(){
+  const rest = players().filter(([pid, pl]) => pid !== S.pid && !pl.bot);
+  const best = rest.filter(([, pl]) => isOn(pl) && !isSpec(pl))[0]
+            || rest.filter(([, pl]) => isOn(pl))[0]
+            || rest[0];
+  return best ? best[0] : null;
+}
+function leaveRoom(opts){
+  const write = !(opts && opts.write === false);
+  const code = S.code, pid = S.pid, wasHost = S.isHost;
+  const heir = (write && wasHost && code && pid) ? leaveHeir() : null;
   if (S.unsub) S.unsub();
   clearInterval(S.hb);
-  if (S.code && S.pid && !S.isHost) remove(ref(db, `${ROOT}/rooms/${S.code}/players/${S.pid}`)).catch(()=>{});
+  if (write && code && pid){
+    const upd = { [`players/${pid}`]: null };
+    if (wasHost){
+      upd.host = heir || '';
+      upd.busy = null;                       // 내 기기에만 있던 진행 도구는 같이 사라진다
+      if (heir) upd[`players/${heir}/host`] = true;
+    }
+    /* ⚠️ **await 하지 않는다.** 오프라인이면 Firebase 의 쓰기 프로미스는 **연결될 때까지
+          안 끝난다** — 기다리면 「나가기」를 눌러도 화면이 그대로 멈춘다. 쓰기는 큐에 남아
+          나중에 나가므로, 화면은 지금 비우고 실패만 알린다. */
+    update(roomRef(code), upd)
+      .catch(() => toast('인터넷이 끊겨 있어 명단에 남아 있을 수 있어요'));
+  }
   Object.assign(S, { unsub:null, code:null, pid:null, isHost:false, room:null, draft:null, gameId:null, _lastPick:{} });
   clearSession(); go('find'); loadRooms();
 }
@@ -4489,9 +4536,16 @@ function vAsk(){
       사람 이름 같은 값을 넣을 때는 반드시 h() 를 거칠 것. */
 function askLeave(){
   const pts = calcPoints()[S.pid];
+  /* ⚠️ 경고는 **실제로 벌어지는 일**을 적어야 한다. v0.47.0 부터 메인 화면이 나가면
+        남은 사람에게 넘어가므로, 옛 문구(「아무도 순위를 저장할 수 없어요」)는 거짓말이다. */
+  const heir = S.isHost ? leaveHeir() : null;
   const mine = S.isHost
-    ? ['메인 화면이 사라져서 <b>아무도 순위를 저장할 수 없어요</b>',
-       '방 코드를 잊으면 <b>지금까지의 점수로 못 돌아와요</b>']
+    ? (heir
+      ? [`메인 화면이 <b>${h(pname(heir))}님 기기로 넘어가요</b>`,
+         '진행 중이던 게임 도구는 <b>이 기기에만 있어서 사라져요</b>',
+         `지금까지 쌓은 <b>내 점수${pts ? ` ${fmtPt(pts)}점` : ''}이 사라져요</b>`]
+      : ['남는 사람이 없어서 <b>이 방은 끝나요</b>',
+         '방 코드를 잊으면 <b>지금까지의 점수로 못 돌아와요</b>'])
     : ['다시 들어오면 <b>새 사람으로 취급돼요</b>',
        `지금까지 쌓은 <b>내 점수${pts ? ` ${fmtPt(pts)}점` : ''}이 사라져요</b>`];
   S.ask = { title:'방에서 나갈까요?', lose:mine,
