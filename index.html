@@ -288,7 +288,7 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
    ⚠️ display:contents 가 핵심이다 — 묶음(.lw)을 없애야 order 가 네 덩이에 먹는다. */
 .two.lob{display:flex;flex-direction:column}
 .two.lob>.lw{display:contents}
-.lob-a{order:1} .lob-b{order:2} .lob-c{order:3} .lob-d{order:4} .lob-e{order:5}
+.lob-a{order:1} .lob-b{order:2} .lob-d{order:3} .lob-e{order:4}
 .note{font-size:12.5px;color:var(--dim2);line-height:1.65;word-break:keep-all}
 
 /* ★ 버튼은 **눌리는 물건**이다 (v0.49.0).
@@ -901,7 +901,12 @@ details.more .in{padding:0 15px 15px}
 .nextp{position:relative;padding:16px;border-radius:var(--r-l);margin-bottom:6px;
   background:linear-gradient(var(--gcSoft),var(--gcSoft)),var(--surf);
   border:0;box-shadow:0 4px 0 var(--gcLine)}
-.nextp.empty{background:var(--surf);border:1.5px dashed var(--line2);box-shadow:var(--sh1)}
+/* ⚠️ 이 수식 클래스를 `empty` 로 두면 **공용 `.empty`**(가운데 정렬 + 40px 여백)에 같이 걸린다.
+   실제로 그래서 「어떤 게임을 할까요?」 줄이 왼쪽 아이콘과 따로 놀고 가운데로 밀려 있었다
+   (사장님: "이 부분 레이아웃이 이상해"). v0.42.0 의 `.gname.board` 사고와 **같은 병**이다.
+   ★ 짧은 공용 낱말(empty·board·card·row…)을 수식 클래스로 쓰지 말 것. */
+.nextp.none{background:var(--surf);border:2px dashed var(--line2);box-shadow:none}
+.nextp.none .np-h{margin-bottom:14px}
 .nextp.live{border-width:2px;border-color:var(--gc)}
 .np-h{display:flex;align-items:center;gap:12px;margin-bottom:8px}
 /* 아직 안 고른 자리 — 비워 두면 뭘 해야 하는지 안 보이고, 그림글자를 넣으면 딴 앱 같다 */
@@ -943,6 +948,22 @@ details.more .in{padding:0 15px 15px}
   padding:9px 11px;border-radius:var(--r-s);background:var(--well);border:1px solid var(--line);
   font-size:13px;font-weight:700;line-height:1.5;word-break:keep-all}
 .np-win .k{flex:none;font-size:11px;font-weight:800;color:var(--amber);white-space:nowrap}
+/* ★ 팀 나누기 — 팀전을 고른 뒤에만 이 카드 안에 뜬다 (v0.50.0) */
+.np-tm{margin-top:11px;padding:11px 12px;border-radius:var(--r-m);
+  background:var(--well);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.np-tm.need{background:rgba(160,114,31,.13)}
+.np-tmh{flex:1 1 130px;min-width:0}
+.np-tmh b{display:block;font-size:14px;font-weight:800;letter-spacing:-.02em;word-break:keep-all}
+.np-tm.need .np-tmh b{color:var(--amber)}
+.np-tmh span{display:block;font-size:12px;color:var(--dim2);font-weight:700;margin-top:2px}
+.np-tmb{display:flex;gap:6px;flex:0 0 auto;margin-left:auto}
+.np-tmb .btn.sm{padding:9px 13px;font-size:13px}
+/* ⚠️ 고른 팀 수를 주 버튼(.pri)으로 칠하지 말 것 — 한 화면에 주 버튼은 하나(게임 시작)다.
+   고른 것은 **눌려 있는 상태**로 보여준다: 턱을 없애고 안으로 들어가게. */
+.np-tmb .btn.sm.on{background:rgba(160,114,31,.2);color:var(--amber);
+  box-shadow:inset 0 2px 0 rgba(160,114,31,.26);transform:translateY(1px)}
+.np-tmb .btn.sm.on:active{transform:translateY(1px)}
+
 .np-act{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .np-go{font-size:17px;padding:16px}
 .np-go small{font-size:12px;font-weight:700;opacity:.85}
@@ -1377,7 +1398,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.49.0';
+const APP_VERSION = 'v0.50.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -4925,7 +4946,6 @@ function vLobby(){
       </div>`).join('');
   }
 
-  const step2 = t.count > 1;
   /* ★ 대기실은 **네 덩이**다(v0.45.0). 폰에서는 이 순서 그대로 쌓이고,
      가로 화면에서만 CSS 가 자리를 다시 배정한다(.two.lob).
        ⓐ 무엇을 하는가 (방 코드 · 게임 배너)   ⓑ 누가 있는가 (참가자 · 팀)
@@ -4967,30 +4987,6 @@ function vLobby(){
     </div>`}
 
     ${nextPanel()}
-
-    </div><div class="lob-c">
-
-    <!-- 방 준비 — 게임을 고르기 전에 한 번 해두는 것들. 팀 나누기는 팀전 때만 필요하다.
-         ⚠️ **진행자에게만** 보인다. 참가자는 팀을 못 나누고 초대는 방 코드 카드의 「공유」로 된다 —
-            참가자 화면에 두면 쓸 수 없는 목록이 자리만 차지해 가로 태블릿에서 대기실이 넘쳤다(실측 25px). -->
-    ${S.isHost ? `
-    <!-- ⚠️ 「친구 초대」 줄은 v0.48.0 에서 뺐다 — 방 코드·공유 버튼·「이 코드를 입력하면
-         들어와요」가 **바로 위 방 코드 카드에 전부** 있었고, 들어온 인원은 **바로 위
-         참가자 목록**에 있었다. 같은 걸 세 번 말하던 자리다. 남은 건 팀 나누기 하나라
-         번호(1·2)도 뗐다(순서가 아니라 **팀전일 때만 하는 것** 하나다). -->
-    <div class="sec">팀 나누기 <span class="chip">팀전만</span></div>
-    <div class="todo">
-      <div class="tdi ${step2 ? 'ok' : ''}">
-        <div class="no">${step2 ? '✓' : '—'}</div>
-        <div class="tx"><b>${step2 ? `${t.count}팀으로 나눴어요` : '아직 안 나눴어요'}</b>
-          <span>팀전 게임을 고르면 필요해요</span></div>
-        ${S.isHost ? `<div class="ac">
-          <button class="btn sm ${t.count===2?'':'gh'}" data-act="teams" data-n="2">2팀</button>
-          <button class="btn sm ${t.count===3?'':'gh'}" data-act="teams" data-n="3">3팀</button>
-          ${t.count > 1 ? `<button class="btn sm gh" data-act="teams" data-n="0">해제</button>` : ''}
-        </div>` : ''}
-      </div>
-    </div>` : ''}
 
     </div><div class="lob-d">
 
@@ -5081,14 +5077,16 @@ function nextPanel(){
 
   /* ② 아직 안 골랐다 — 비어 있어도 **무엇을 기다리는 자리인지** 보이게 한다 */
   if (!nx || !g) return `
-    <div class="nextp empty">
+    <div class="nextp none">
       <div class="np-h"><span class="np-ic np-q">?</span>
         <div class="np-b"><span class="np-k">다음 게임</span>
           <b>${S.isHost ? '어떤 게임을 할까요?' : '고르는 중이에요'}</b></div></div>
+      <div class="np-act">
       ${S.isHost
         ? `<button class="btn pri np-go" data-act="go-games">게임 고르기</button>`
         : `<p class="note" style="margin:0">메인 화면에서 고르면 여기에 뜹니다 —
              그때 <b>준비</b>를 누르면 돼요</p>`}
+      </div>
     </div>`;
 
   /* ③ 골랐다 — 각자 준비, 진행자는 시작 */
@@ -5127,7 +5125,25 @@ function nextPanel(){
         <div class="np-bar"><i style="width:${all ? Math.round(rd / all * 100) : 0}%"></i></div>
       </div>
 
-      ${needTeams ? `<div class="banner warn" style="margin:12px 0 0">팀전이에요 — 아래 「방 준비」에서 팀을 먼저 나눠주세요</div>` : ''}
+      <!-- ★ 팀 나누기는 **팀전을 고른 뒤 여기서** 한다 (v0.50.0).
+           사장님: "팀 나누기 부분이 여기서 필요할까? **팀이 필요한 게임은 해당 게임에
+           들어갔을 때 정할 수 있게** 해주면 되지 않을까? 추후 게임을 바꿀 때면
+           **이전 게임 팀으로 설정**한다던지 그런 옵션을 넣어주면 될 것 같아"
+           → 개인전만 하는 날에는 팀이라는 말이 화면에 아예 안 나온다. -->
+      ${g.mode === 'team' && S.isHost ? `
+        <div class="np-tm ${needTeams ? 'need' : ''}">
+          <div class="np-tmh">
+            <b>${needTeams ? '팀을 나눠주세요' : `${teams}팀으로 나눠져 있어요`}</b>
+            ${needTeams ? '' : '<span>지난 판 그대로 씁니다</span>'}
+          </div>
+          <div class="np-tmb">
+            <button class="btn sm ${teams===2?'on':''}" data-act="teams" data-n="2">2팀</button>
+            <button class="btn sm ${teams===3?'on':''}" data-act="teams" data-n="3">3팀</button>
+            ${teams > 1 ? `<button class="btn sm gh" data-act="teams" data-n="${teams}" data-mix="1">다시 섞기</button>` : ''}
+          </div>
+        </div>` : ''}
+      ${g.mode === 'team' && !S.isHost && needTeams
+        ? `<div class="banner warn" style="margin:12px 0 0">팀전이에요 — 메인 화면에서 팀을 나누는 중이에요</div>` : ''}
 
       <div class="np-act">
       ${S.isHost ? `
@@ -6316,6 +6332,9 @@ async function act(a, d){
     const n = Number(d.n);
     if (n < 2){ S.room.teams = {count:0,assign:{}}; pushHostState(); }
     else if (playing().length < n) return toast(`${n}팀을 나누려면 참가자가 ${n}명 이상 필요해요`);
+    /* ⚠️ 이미 그 팀 수면 **그대로 둔다** — 지난 판 팀을 이어 쓰는 게 기본이다(v0.50.0).
+          다시 섞는 건 「다시 섞기」(data-mix) 를 눌렀을 때만. */
+    else if (!d.mix && n === (S.room.teams?.count || 0)) toast(`이미 ${n}팀이에요 — 섞으려면 「다시 섞기」`);
     else { makeTeams(n); confetti(45); }
     render(); break;
   }

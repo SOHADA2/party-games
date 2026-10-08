@@ -306,7 +306,21 @@ if (new URLSearchParams(location.search).has('demo')){
 
     /* 대기실 체크리스트 */
     const lv = document.getElementById('view').innerHTML;
-    ck('★대기실에 팀 나누기와 「다음 게임」이 있다', lv.includes('팀 나누기') && lv.includes('다음 게임'));
+    /* ⚠️ 「팀 나누기」 구역은 v0.50.0 에서 대기실에서 뺐다 — 팀은 **팀전을 고른 뒤
+       그 카드 안에서** 나눈다(사장님: "팀이 필요한 게임은 해당 게임에 들어갔을 때").
+       그래서 개인전만 하는 날에는 팀이라는 말이 화면에 아예 안 나와야 한다. */
+    ck('★대기실에 「다음 게임」이 있다', lv.includes('다음 게임'));
+    /* ⚠️ 「2팀」 같은 글자로 세지 말 것 — 이미 나뉘어 있으면 **팀 박스**가 「1팀 · 2팀」을
+       정상적으로 보여준다(그건 현황이지 조작이 아니다). **나누는 조작**이 없는지를 본다. */
+    /* ⚠️ 수식 클래스가 **공용 이름**과 겹치면 조용히 남의 규칙을 뒤집어쓴다.
+       `.nextp.empty` 가 공용 `.empty`(가운데 정렬 + 40px 여백)에 걸려 「어떤 게임을 할까요?」가
+       아이콘과 따로 놀았다(v0.50.0 에서 `.none` 으로 개명). `.gname.board` 에 이은 **두 번째**다.
+       → 빈 카드의 글이 **왼쪽 정렬인지**로 못 박는다. */
+    { const nc = document.querySelector('.nextp');
+      ck('★★빈 「다음 게임」 카드가 공용 .empty 규칙에 안 걸린다',
+        !!nc && getComputedStyle(nc).textAlign !== 'center'); }
+    ck('★★게임을 안 골랐으면 팀을 나누는 자리가 없다',
+      !lv.includes('팀 나누기') && !lv.includes('np-tm') && !/data-act="teams"/.test(lv));
     /* ⚠️ 「친구 초대」 줄은 v0.48.0 에서 뺐다 — 코드·공유·인원이 바로 위 방 코드 카드와
        참가자 목록에 이미 있었다. 초대에 필요한 것이 **아직 다 있는지**를 대신 본다. */
     /* ⚠️ 방 코드는 **글자 하나씩 span 으로** 쪼개 그린다(들어올 때 적는 칸과 같은 모양).
@@ -652,7 +666,9 @@ if (new URLSearchParams(location.search).has('demo')){
       return document.querySelectorAll('#view .lb-r, #view .pod').length; };
     ck('★사회자는 순위표에 줄이 안 생긴다 (' + lbRows() + '/' + (before-1) + ')', lbRows() === before - 1);
 
-    S.room.teams = { count:2, assign:{} }; act('teams', { n:'2' });
+    /* ⚠️ 같은 팀 수를 그냥 누르면 이제 **안 섞는다**(지난 판 팀을 이어 쓰는 게 기본).
+       다시 섞으려면 mix 를 함께 보낸다 — 「다시 섞기」 버튼이 그렇게 부른다. */
+    S.room.teams = { count:2, assign:{} }; act('teams', { n:'2', mix:'1' });
     ck('★팀 편성에서 제외', S.room.teams.assign[P[0]] == null
       && Object.keys(S.room.teams.assign).length === before - 1);
 
@@ -1446,8 +1462,32 @@ if (new URLSearchParams(location.search).has('demo')){
       act('pl-quit', {}); if (S.ask) act('ask-yes', {});
       act('next-set', { id:'body' });
       const tv = view('lobby');
-      ck('★★팀전인데 팀을 안 나눴으면 시작 버튼이 잠기고 이유가 뜬다',
-        /data-act="game-start"[^>]*disabled/.test(tv) && tv.includes('팀을 먼저 나눠주세요'));
+      ck('★★팀전인데 팀을 안 나눴으면 시작 버튼이 잠긴다',
+        /data-act="game-start"[^>]*disabled/.test(tv));
+      ck('★★★팀 나누기가 **그 게임 카드 안에** 있다',
+        /class="np-tm need"/.test(tv) && tv.includes('팀을 나눠주세요')
+        && /data-act="teams" data-n="2"/.test(tv));
+      ck('  개인전을 고르면 팀 이야기가 사라진다', (() => {
+        act('next-set', { id:'chosung' });
+        const v = view('lobby');
+        act('next-set', { id:'body' });
+        return !v.includes('np-tm') && !v.includes('팀을 나눠주세요');
+      })());
+      /* ★ 지난 판 팀을 그대로 이어 쓴다 — 매번 다시 나누게 하지 않는다 */
+      { act('teams', { n:'2' });
+        const v2 = view('lobby');
+        ck('★★★나누고 나면 「지난 판 그대로」라고 알려준다',
+          v2.includes('2팀으로 나눠져 있어요') && v2.includes('지난 판 그대로'));
+        ck('  시작 버튼이 풀린다', !/data-act="game-start"[^>]*disabled/.test(v2));
+        ck('  「다시 섞기」가 있다', /data-act="teams"[^>]*data-mix="1"/.test(v2));
+        const a1 = JSON.stringify(S.room.teams.assign);
+        act('teams', { n:'2' });
+        ck('★같은 팀 수를 다시 눌러도 안 섞인다 (지난 팀 유지)',
+          JSON.stringify(S.room.teams.assign) === a1);
+        act('teams', { n:'2', mix:'1' });
+        ck('  「다시 섞기」는 실제로 다시 나눈다',
+          Object.keys(S.room.teams.assign).length === playing().length);
+        S.room.teams = { count:0, assign:{} }; }
 
       /* ⑩ 한 판 끝(순위 저장)이면 다음 게임을 비운다 */
       act('next-set', { id:'act' });
