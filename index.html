@@ -1335,7 +1335,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.47.0';
+const APP_VERSION = 'v0.48.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -4571,8 +4571,11 @@ function render(force){
   const inRoom = !!S.code;
   dot.style.display = inRoom ? '' : 'none';
   dot.classList.toggle('off', !S.online);
-  code.style.display = inRoom ? '' : 'none';
-  code.innerHTML = inRoom
+  /* ⚠️ 대기실에는 방 코드 카드가 이미 있다 — 머리글 배지까지 띄우면 **한 화면에 코드가 두 번**이다.
+     다른 화면(순위·설정·게임)에서는 이 배지가 코드를 보는 **유일한** 자리라 그대로 둔다. */
+  const codeHere = S.view === 'lobby';
+  code.style.display = (inRoom && !codeHere) ? '' : 'none';
+  code.innerHTML = (inRoom && !codeHere)
     ? `${h(S.code)}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></svg>` : '';
   // 탭 루트(대기실·게임·순위·설정)는 하단 탭으로 오가므로 뒤로가기는 하위 화면에만 둔다
   // ⚠️ 게임 목록은 이제 탭이 아니라 대기실의 하위 화면이다 → 뒤로가기를 띄운다
@@ -4587,9 +4590,12 @@ function render(force){
   const tabOf = { lobby:'lobby', games:'lobby', game:'lobby', score:'lobby',
                   board:'board', hist:'board', settings:'settings' }[S.view];
   nav.querySelectorAll('.nav-b').forEach(b => b.classList.toggle('on', b.dataset.nav === tabOf));
-  /* 방 안에서는 머리글도 모임 이름으로 — 어느 화면에 있든 「우리 모임」이 보인다 */
-  const gt = ROOM_TITLE();
-  title.textContent = ({ title:'숙소 게임', enter:'입장', find:'로비', lobby:(gt || '대기실'), games:'게임 고르기',
+  /* ★ 머리글은 **지금 어느 화면인가**만 말한다 (v0.48.0).
+     ⚠️ 예전엔 대기실에서 머리글도 모임 이름이었다 — 바로 아래 방 코드 카드가 같은 이름을
+        또 크게 띄우고 있어서 **한 화면에 모임 이름이 두 번**이었다(사장님 지적).
+        모임 이름은 **다 같이 보는 두 자리**(대기실 방 코드 카드 · 순위 탭 머리)가 맡고,
+        머리글은 길 안내만 맡는다 — 역할이 안 겹친다. */
+  title.textContent = ({ title:'숙소 게임', enter:'입장', find:'로비', lobby:'대기실', games:'게임 고르기',
     game:G(S.gameId)?.name || '게임', play:G(S.gameId)?.name || '진행 중',
     score:'순위 입력', board:'종합 순위', settings:'설정',
     hist:'지난 기록' })[S.view] || '숙소 게임';
@@ -4833,9 +4839,9 @@ function vFind(){
     <div class="rooms">${list}</div>
 
     ${histHtml()}
+    <!-- ⚠️ 「홈 화면에 추가하면 앱처럼 열립니다」는 뺐다 — 바로 위 설치 배너가 그 말을 한다 -->
     ${installBannerHtml()}
-    <p class="note" style="text-align:center;margin-top:18px">
-      홈 화면에 추가하면 앱처럼 열립니다<br><span style="opacity:.6">${APP_VERSION}</span></p>
+    <p class="note" style="text-align:center;margin-top:18px;opacity:.6">${APP_VERSION}</p>
     </div></div>`;
 }
 
@@ -4876,7 +4882,7 @@ function vLobby(){
       </div>`).join('');
   }
 
-  const step1 = nPlay >= 2, step2 = t.count > 1;
+  const step2 = t.count > 1;
   /* ★ 대기실은 **네 덩이**다(v0.45.0). 폰에서는 이 순서 그대로 쌓이고,
      가로 화면에서만 CSS 가 자리를 다시 배정한다(.two.lob).
        ⓐ 무엇을 하는가 (방 코드 · 게임 배너)   ⓑ 누가 있는가 (참가자 · 팀)
@@ -4925,19 +4931,16 @@ function vLobby(){
          ⚠️ **진행자에게만** 보인다. 참가자는 팀을 못 나누고 초대는 방 코드 카드의 「공유」로 된다 —
             참가자 화면에 두면 쓸 수 없는 목록이 자리만 차지해 가로 태블릿에서 대기실이 넘쳤다(실측 25px). -->
     ${S.isHost ? `
-    <div class="sec">방 준비</div>
+    <!-- ⚠️ 「친구 초대」 줄은 v0.48.0 에서 뺐다 — 방 코드·공유 버튼·「이 코드를 입력하면
+         들어와요」가 **바로 위 방 코드 카드에 전부** 있었고, 들어온 인원은 **바로 위
+         참가자 목록**에 있었다. 같은 걸 세 번 말하던 자리다. 남은 건 팀 나누기 하나라
+         번호(1·2)도 뗐다(순서가 아니라 **팀전일 때만 하는 것** 하나다). -->
+    <div class="sec">팀 나누기 <span class="chip">팀전만</span></div>
     <div class="todo">
-      ${nx || S.room.busy ? '' : `
-      <div class="tdi ${step1 ? 'ok' : 'now'}">
-        <div class="no">${step1 ? '✓' : '1'}</div>
-        <div class="tx"><b>친구 초대</b>
-          <span>${step1 ? `${nPlay}명 들어왔어요` : `코드 ${h(S.code)} 를 알려주세요 · 2명 이상이면 시작`}</span></div>
-        <div class="ac"><button class="btn sm gh" data-act="share">공유</button></div>
-      </div>`}
       <div class="tdi ${step2 ? 'ok' : ''}">
-        <div class="no">${step2 ? '✓' : '2'}</div>
-        <div class="tx"><b>팀 나누기 <span class="chip">팀전만</span></b>
-          <span>${step2 ? `${t.count}팀으로 나눴어요` : '팀전 게임을 할 때만 필요해요'}</span></div>
+        <div class="no">${step2 ? '✓' : '—'}</div>
+        <div class="tx"><b>${step2 ? `${t.count}팀으로 나눴어요` : '아직 안 나눴어요'}</b>
+          <span>팀전 게임을 고르면 필요해요</span></div>
         ${S.isHost ? `<div class="ac">
           <button class="btn sm ${t.count===2?'':'gh'}" data-act="teams" data-n="2">2팀</button>
           <button class="btn sm ${t.count===3?'':'gh'}" data-act="teams" data-n="3">3팀</button>
@@ -4959,9 +4962,11 @@ function vLobby(){
             부르는 이름은 **메인 화면**으로 통일한다.
          ⚠️ 넘겨받는 길은 **하나만** 둔다. 카드와 큰 버튼을 같이 띄웠더니 같은 일을 하는
             것이 둘이 되어 가로 태블릿에서 대기실이 150px 넘쳤다(실측). -->
+    <!-- ⚠️ 내가 메인 화면일 때의 안내 줄은 v0.48.0 에서 뺐다 — **내 참가자 칩에 이미
+         「메인 화면」 배지**가 붙어 있다. 남의 기기일 때만 띄운다(거기엔 「넘겨받기」라는
+         할 일이 붙어 있어서 배지와 역할이 다르다). -->
     ${S.isHost
-      ? `<p class="note lobby-aux" style="margin:10px 4px 0"><b>메인 화면 — 이 기기</b>
-           · 점수·순서·게임 도구가 여기서 돌아갑니다</p>`
+      ? ''
       : bigScreen()
       ? `<button class="instbn" style="margin-top:12px" data-act="host-take" data-spec="1">
           <div class="instbn-ic">${ico('screen', 21)}</div>
@@ -5050,7 +5055,6 @@ function nextPanel(){
   const meReady = readyOf(S.pid, me);
   const teams = S.room.teams?.count || 0;
   const needTeams = g.mode === 'team' && teams < 2;
-  const waiting = playing().filter(([pid,p]) => !readyOf(pid,p));
   return `
     <div class="nextp" style="${gcVars(g.color)}">
       <div class="np-h"><span class="np-ic">${g.emoji}</span>
@@ -5087,10 +5091,10 @@ function nextPanel(){
         <button class="btn pri np-go" data-act="game-start" ${needTeams ? 'disabled' : ''}>
           게임 시작${rd < all && !needTeams ? ` <small>· ${all - rd}명 대기</small>` : ''}</button>`
       : meIn ? `
+        <!-- ⚠️ 「아직: ○○」 줄은 v0.48.0 에서 뺐다 — 바로 아래 참가자 칩이 사람마다
+             ✓준비 / …대기 를 달고 있어 **같은 말을 두 번** 하고 있었다. -->
         <button class="btn ${meReady ? 'gh' : 'pri'} np-go" data-act="ready">
-          ${meReady ? '준비 완료 — 누르면 취소' : '준비'}</button>
-        ${waiting.length ? `<p class="note" style="text-align:center;margin:0">
-          아직: ${waiting.slice(0, 4).map(([,p]) => h(p.name)).join(', ')}${waiting.length > 4 ? ` 외 ${waiting.length - 4}명` : ''}</p>` : ''}`
+          ${meReady ? '준비 완료 — 누르면 취소' : '준비'}</button>`
       : `<p class="note" style="text-align:center;margin:0">구경 모드 기기는 준비 없이 함께 봐요</p>`}
       </div>
     </div>`;
@@ -6046,9 +6050,10 @@ function vSettings(){
     </div>
     <div class="card">
       <div class="sec" style="margin:0 0 11px">점수 · 경품</div>
-      <p class="note" style="margin-bottom:10px">1등 <b style="color:var(--amber)">10점</b> ·
-        2등 7점 · 3등 5점 · 4등 3점 · 5등 2점 · 이하 1점.
-        <b>게임마다 무게를 다르게</b> 줄 수도 있어요.</p>
+      <!-- ⚠️ 순위 점수표(1등 10점 …)는 **순위 탭의 「점수 방식」 카드**가 맡는다.
+           여기서 또 적으면 같은 표가 앱에 두 번 있는 것이다 — 이 화면의 일은 「고르기」다. -->
+      <p class="note" style="margin-bottom:10px">게임마다 <b>무게를 다르게</b> 줄 수 있어요 —
+        점수표는 <b>순위 탭</b>에 있습니다.</p>
       <div class="seg2" style="margin-bottom:8px">
         <button class="${RULE().wmode === 'game' ? '' : 'on'}"
           ${RULE().wmode === 'game' ? 'data-act="rule-wmode" data-v="even"' : ''}>모든 게임 똑같이</button>

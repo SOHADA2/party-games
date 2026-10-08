@@ -306,9 +306,14 @@ if (new URLSearchParams(location.search).has('demo')){
 
     /* 대기실 체크리스트 */
     const lv = document.getElementById('view').innerHTML;
-    ck('★대기실에 방 준비와 「다음 게임」이 있다', lv.includes('방 준비') && lv.includes('다음 게임'));
-    ck('  초대·팀 나누기·게임 고르기가 다 있다',
-      lv.includes('친구 초대') && lv.includes('팀 나누기') && lv.includes('게임 고르기'));
+    ck('★대기실에 팀 나누기와 「다음 게임」이 있다', lv.includes('팀 나누기') && lv.includes('다음 게임'));
+    /* ⚠️ 「친구 초대」 줄은 v0.48.0 에서 뺐다 — 코드·공유·인원이 바로 위 방 코드 카드와
+       참가자 목록에 이미 있었다. 초대에 필요한 것이 **아직 다 있는지**를 대신 본다. */
+    /* ⚠️ 방 코드는 **글자 하나씩 span 으로** 쪼개 그린다(들어올 때 적는 칸과 같은 모양).
+       그래서 innerHTML 로 '0000' 을 찾으면 영영 못 찾는다 — 그려진 글(textContent)로 본다. */
+    ck('  초대에 필요한 것(코드·공유)과 게임 고르기가 다 있다',
+      document.getElementById('view').textContent.includes(S.code)
+      && lv.includes('data-act="share"') && lv.includes('게임 고르기'));
     ck('  「이 기기」 같이 겨루기/구경 모드 토글이 있다', lv.includes('구경 모드'));
     ck('★칩이 블록으로 퍼지지 않는다(자손 선택자 사고 재발 방지)',
       !/\.tdi \.tx span\{display:block/.test(document.documentElement.innerHTML));
@@ -1491,8 +1496,50 @@ if (new URLSearchParams(location.search).has('demo')){
         const el = document.querySelector('.gname');
         const hgt = el ? Math.round(el.getBoundingClientRect().height) : -1;
         ck('  모임 이름 줄이 한 줄 높이다 (' + hgt + 'px — 클래스 이름 충돌 방지)', hgt > 0 && hgt < 90); }
+      /* ── ★★ 한 화면에 같은 정보는 **한 번만** (v0.48.0) ──
+         사장님: "지금 화면에 **중복되는 정보가 너무 많아** (예를 들어 방 번호) 그런 거
+         검토해서 깔끔하게 만들어줘"
+         ⚠️ 머리글(#hd)까지 같이 세는 것이 핵심이다 — 대기실에서 머리글이 모임 이름을,
+            방 코드 배지가 코드를 띄우는 바람에 **카드와 겹쳐 둘 다 두 번**이었다.
+         ⚠️ `textContent` 로 센다. HTML 주석·속성(data-act 등)은 화면 글이 아니다. */
+      {
+        const seen = v => { S.view = v; render(true);
+          const hd = document.getElementById('hd');
+          const hdTxt = hd.style.display === 'none' ? '' : hd.textContent;
+          return (hdTxt + ' ' + document.getElementById('view').textContent).replace(/\s+/g, ' '); };
+        const cnt = (t, n) => t.split(n).length - 1;
+        ck('  (세는 함수가 살아 있다)', cnt('양양 양양', '양양') === 2);
+
+        /* ⚠️ 「같은 **문장**이 두 번 있나」로 훑는 방식은 못 쓴다 — 실제로 짜서 고치기 전
+           판에 돌려봤더니 **아무것도 못 잡았다**(머리글의 「대기실 양양 2박 3일」과 카드의
+           「양양 2박 3일」은 토막이 달라 서로 다른 글로 센다). 그래서 **무엇이 두 번 나오면
+           안 되는지를 이름으로 적어** 센다 — 모임 이름 · 방 코드 · 고른 게임 이름. */
+        /* ⚠️ 게임을 **골라 둔 상태**로 봐야 한다 — 안 고르면 게임 이름 조항이 그냥
+           건너뛰어진다(처음에 그렇게 짰다가, 머리글에 게임 이름을 넣는 역검증에서
+           **아무것도 안 걸려** 죽은 조항인 걸 알았다). */
+        const keepNx = S.room.next;
+        S.room.next = { g:'chosung', at:now() };
+        const dup = [];
+        const nextG = G(NEXT()?.g);
+        for (const v of ['lobby', 'board', 'games', 'settings']){
+          const t = seen(v);
+          if (cnt(t, '양양 2박 3일') > 1) dup.push(v + ':모임이름x' + cnt(t, '양양 2박 3일'));
+          if (cnt(t, S.code) > 1) dup.push(v + ':방코드x' + cnt(t, S.code));
+        }
+        if (nextG && cnt(seen('lobby'), nextG.name) > 1)
+          dup.push('lobby:게임이름x' + cnt(seen('lobby'), nextG.name));
+        ck('★★★한 화면에 모임 이름·방 코드가 두 번 나오지 않는다' + (dup.length ? ' — ' + dup.join(', ') : ''),
+          !dup.length);
+        /* ⚠️ 「두 번 없다」만 보면 **아예 지워도 통과**한다. 있어야 할 자리에 있는지도 본다. */
+        ck('★그래도 대기실에서는 모임 이름과 방 코드를 볼 수 있다',
+          cnt(seen('lobby'), '양양 2박 3일') === 1 && cnt(seen('lobby'), S.code) === 1);
+        ck('★순위 탭에도 모임 이름이 있다', cnt(seen('board'), '양양 2박 3일') === 1);
+        ck('  방을 나가야 코드를 잊지 않게 — 다른 탭에서는 머리글 배지가 코드를 보여준다',
+          cnt(seen('settings'), S.code) === 1 && cnt(seen('games'), S.code) === 1);
+        ck('★고른 게임 이름도 대기실에 한 번만 나온다', cnt(seen('lobby'), nextG.name) === 1);
+        S.room.next = keepNx;
+      }
       S.view = 'lobby'; render(true);
-      ck('★머리글도 모임 이름이 된다', document.getElementById('hd-t').textContent === '양양 2박 3일');
 
       /* 참가자 기기에도 똑같이 — 같은 모임이라는 느낌이 핵심이다 */
       { const k = [S.pid, S.isHost]; S.pid = players()[1][0]; S.isHost = false;
