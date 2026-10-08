@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#F4F1EB">
+<meta name="theme-color" content="#FBF4E8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="친구들과 숙소에서 하는 게임 진행·순위 도구">
@@ -16,6 +16,11 @@
 <meta name="apple-mobile-web-app-title" content="숙소 게임">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 제목용 글꼴. ⚠️ 본문은 Pretendard 그대로다 — 둘 다 바꾸면 긴 글이 안 읽힌다.
+     ⚠️ 못 받으면 Pretendard 로 떨어진다(화면은 멀쩡). sw.js 가 캐시해 오프라인에서도 산다. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
 <style>
 /* ══════════════════════════════════════════════════════════
    디자인 토큰
@@ -23,8 +28,8 @@
 :root{
   /* 배경 — 따뜻한 종이. ⚠️ 네온·형광 금지: 이 앱은 숙소 조명 아래 상 위에 놓고 본다.
         어두운 화면 + 발광색은 사진처럼 화려하지만 **글씨가 안 읽힌다.** */
-  --ink:#F4F1EB; --ink2:#EDE8DF;
-  --surf:#FFFFFF; --surf2:#FAF7F1; --surf3:#F0EBE1;
+  --ink:#FBF4E8; --ink2:#F3EADB;
+  --surf:#FFFFFF; --surf2:#FDF8F0; --surf3:#F3ECDF;
 
   /* 선 — 밝은 바닥에서는 **어두운 알파**가 선이 된다(흰 알파는 사라진다) */
   --line:rgba(58,50,42,.13);
@@ -40,7 +45,9 @@
   --tx:#2C2722; --dim:#6B6259; --dim2:#948B82;
 
   /* 액센트 — 흙빛으로 채도를 낮췄다. 밝은 바닥에서 **글자로도 읽히는** 진하기다. */
-  --hot:#C1573A; --amber:#A0721F; --elec:#5C5A93;
+  --hot:#CB5E3C; --amber:#A0721F; --elec:#5C5A93;
+  /* 주 버튼 아래에 깔리는 **두께**. 게임 버튼이 눌리는 물건으로 보이는 이유의 전부다. */
+  --hot-d:#9C4225;
   --mint:#3F7F62; --rose:#AC4F62; --sky:#3A6E8F;
   /* ⚠️ --hero(주색 그라데이션)는 v0.44.0 에서 없앴다. 글자·버튼·번호표에 두루 쓰이면서
         화면 어디를 봐도 같은 비스듬한 색 띠가 깔려 「틀로 찍은 화면」처럼 보였다.
@@ -55,13 +62,25 @@
         「만들어 낸 화면」 느낌을 만든다 — 눌림은 테두리와 한 겹 선으로 낸다. */
   --edge:inset 0 -1.5px 0 rgba(58,50,42,.16);
 
-  /* 모서리 — 둥글기를 낮춰 종이·카드답게. ⚠️ 전부 같은 값으로 두지 말 것:
-        크기와 상관없이 같은 곡률이면 「틀로 찍은」 느낌이 난다. */
-  --r-s:8px; --r-m:11px; --r-l:14px; --r-xl:16px;
+  /* ★ 두께 (v0.49.0) — 부품 아래에 깔리는 단단한 턱.
+     ⚠️ 번지는 그림자가 아니라 **흐림 0** 이다. 흐리면 종이가 뜬 것이고, 안 흐리면 물건이다.
+        이 한 가지가 「웹사이트」와 「게임」을 가른다(사장님: "그냥 일반적인 사이트 같아"). */
+  --drop:0 4px 0 rgba(58,50,42,.15);
+  --drop-sm:0 3px 0 rgba(58,50,42,.13);
+
+  /* 모서리 — 역할마다 다르게. 버튼은 알약, 카드는 둥글게, 칩은 작게.
+     ⚠️ **전부 같은 값으로 두지 말 것**: 크기와 상관없이 같은 곡률이면 「틀로 찍은」 느낌이 난다. */
+  --r-s:10px; --r-m:14px; --r-l:20px; --r-xl:26px; --pill:999px;
   --sb:env(safe-area-inset-bottom,0px);
   --st:env(safe-area-inset-top,0px);
   --ease:cubic-bezier(.22,1,.36,1);
   --spring:cubic-bezier(.34,1.4,.64,1);
+
+  /* ★ 제목 글꼴 (v0.49.0) — 둥근 손글씨풍. **제목·주 버튼·게임 이름에만** 쓴다.
+     ⚠️ 본문·설명·숫자에는 쓰지 말 것 — 길게 읽히는 글과 자릿수 맞춤이 무너진다.
+     ⚠️ 인터넷이 없으면 Pretendard 로 떨어진다(글꼴만 바뀌고 화면은 멀쩡하다).
+        서비스워커가 fonts.gstatic.com 을 캐시하므로 한 번 받으면 오프라인에서도 산다. */
+  --font-d:'Jua','Pretendard Variable',Pretendard,'Apple SD Gothic Neo',sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
@@ -70,6 +89,7 @@ body{
   background:var(--ink);
   color:var(--tx);
   font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Noto Sans KR',system-ui,-apple-system,sans-serif;
+  /* ★ 제목용 글꼴은 --font-d 로만 쓴다(아래). 본문까지 번지면 길게 읽히는 글이 무너진다. */
   /* 방 코드·점수·기록이 바뀔 때 폭이 흔들리지 않게 숫자를 고정폭으로 */
   font-variant-numeric:tabular-nums;
   font-size:16px; line-height:1.5; font-weight:500;
@@ -85,14 +105,19 @@ input{font:inherit;font-size:16px;letter-spacing:inherit}
 /* ── 배경 레이어: 오로라 + 그레인 ── */
 .bg{position:fixed;inset:0;z-index:-2;overflow:hidden;background:var(--ink)}
 .aur{position:absolute;border-radius:50%;will-change:transform}
-.aur.a{width:120vw;height:120vw;left:-45vw;top:-55vw;
-  background:radial-gradient(circle,rgba(193,87,58,.13),rgba(193,87,58,0) 64%);
+/* ★ 바닥 (v0.49.0) — 흐릿한 오로라에서 **테두리가 또렷한 큰 원**으로.
+   경계가 보여야 「뒤에 뭔가 있는 공간」이 된다. 흐리기만 하면 그냥 색이 얼룩진 종이다.
+   ⚠️ 색은 종이톤 안에서만 — 네온 금지. transform 만 움직인다(리페인트 없음). */
+/* ⚠️ 원을 화면 **가운데로 들이지 말 것** — 또렷한 가장자리가 글 뒤를 가로지르면
+      읽다가 선이 보인다. 셋 다 **모서리 밖**에 걸쳐 두고, 대비는 바탕과 겨우 구분될 만큼만. */
+.aur.a{width:96vw;height:96vw;max-width:680px;max-height:680px;right:-40vw;top:-40vw;
+  background:#F6E9D2;
   animation:drift1 34s ease-in-out infinite}
-.aur.b{width:110vw;height:110vw;right:-50vw;top:8vh;
-  background:radial-gradient(circle,rgba(92,90,147,.11),rgba(92,90,147,0) 64%);
+.aur.b{width:80vw;height:80vw;max-width:560px;max-height:560px;left:-42vw;bottom:-30vw;
+  background:#F4ECDD;
   animation:drift2 44s ease-in-out infinite}
-.aur.c{width:100vw;height:100vw;left:-25vw;bottom:-45vw;
-  background:radial-gradient(circle,rgba(63,127,98,.08),rgba(63,127,98,0) 62%);
+.aur.c{width:52vw;height:52vw;max-width:380px;max-height:380px;right:-26vw;bottom:24vh;
+  background:#F7EEDE;
   animation:drift3 54s ease-in-out infinite}
 @keyframes drift1{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(9vw,7vh,0)}}
 @keyframes drift2{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(-11vw,10vh,0)}}
@@ -124,11 +149,11 @@ input{font:inherit;font-size:16px;letter-spacing:inherit}
 /* 하단 탭 아이콘 — 직접 그린 벡터다(그림글자였던 🏠🏆⚙️ 를 v0.44.0 에서 바꿨다).
    ⚠️ 색은 건드리지 않는다 — currentColor 라 탭이 켜지면 글자와 같이 물든다. */
 .nav-b .ic{display:block;height:21px;opacity:.5}
-.nav-b.on{color:var(--amber);background:rgba(160,114,31,.1)}
+.nav-b.on{color:var(--amber);background:rgba(160,114,31,.13);box-shadow:0 2px 0 rgba(160,114,31,.22)}
 .nav-b.on .ic{opacity:1}
 .ico{width:20px;height:20px;display:block;fill:none;stroke:currentColor;
   stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-.nav-b:active{transform:scale(.94)}
+.nav-b:active{transform:translateY(2px)}
 
 /* 고정 액션바 — 그 화면의 주 행동 하나를 손 닿는 곳에 둔다.
    ⚠️ 긴 규칙을 스크롤하다 시작 버튼을 놓치던 것을 막는 장치다. */
@@ -160,8 +185,8 @@ input{font:inherit;font-size:16px;letter-spacing:inherit}
 
 /* ── 참가자 칩(대기실) — 점수는 🏆 탭에서 본다. 여기서는 「누가 있나」만 ── */
 .pchips{display:flex;flex-wrap:wrap;gap:8px}
-.pchip{display:flex;align-items:center;gap:8px;padding:7px 10px 7px 7px;border-radius:14px;
-  background:var(--surf);border:1px solid var(--line);box-shadow:var(--lift);font-weight:700;font-size:14px;
+.pchip{display:flex;align-items:center;gap:8px;padding:7px 10px 7px 7px;border-radius:15px;
+  background:var(--surf);border:0;box-shadow:var(--drop-sm);font-weight:700;font-size:14px;
   position:relative;max-width:100%;animation:slideIn .38s var(--ease) both}
 .pchip.me{border-color:rgba(193,87,58,.35);background:linear-gradient(rgba(193,87,58,.09),rgba(193,87,58,.09)),var(--surf)}
 .pchip.spec{border-color:rgba(58,110,143,.35)}
@@ -239,8 +264,8 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 ══════════════════════════════════════════════════════════ */
 .card{
   background:var(--surf);
-  border:1px solid var(--line);border-radius:var(--r-l);
-  padding:18px;margin-bottom:12px;box-shadow:var(--sh1);
+  border:0;border-radius:var(--r-l);
+  padding:18px;margin-bottom:12px;box-shadow:var(--drop-sm);
 }
 /* 카드 안에 또 카드를 넣지 말 것 — 테두리가 겹치면 층이 생겨 읽는 순서가 흐려진다.
    안쪽 묶음은 이 한 겹 선으로 가른다. */
@@ -255,7 +280,7 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 }
 .sec::after{content:'';flex:1;height:1px;background:var(--line)}
 .sec .n{color:var(--amber);font-size:12.5px}
-.dsp{font-size:32px;font-weight:900;letter-spacing:-.045em;line-height:1.14;margin:0}
+.dsp{font-family:var(--font-d);font-size:33px;font-weight:400;letter-spacing:-.01em;line-height:1.24;margin:0}
 .lede{color:var(--dim);font-size:14.5px;line-height:1.62;word-break:keep-all;margin:10px 0 0}
 
 /* ★ 대기실의 세로 순서 — 「무엇을 → 누가 → 방 준비 → 이 기기」(v0.45.0).
@@ -266,38 +291,49 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .lob-a{order:1} .lob-b{order:2} .lob-c{order:3} .lob-d{order:4} .lob-e{order:5}
 .note{font-size:12.5px;color:var(--dim2);line-height:1.65;word-break:keep-all}
 
+/* ★ 버튼은 **눌리는 물건**이다 (v0.49.0).
+   아래에 흐림 0 의 턱을 깔고, 누르면 그 턱만큼 **실제로 내려앉는다**.
+   ⚠️ scale(.975) 로 줄이던 것을 translateY 로 바꿨다 — 줄어드는 건 화면 요소고,
+      내려앉는 건 물건이다. 이 차이가 게임 느낌의 절반이다. */
 .btn{
   position:relative;display:flex;align-items:center;justify-content:center;gap:8px;
-  width:100%;padding:17px;border-radius:var(--r-m);
+  width:100%;padding:16px 18px;border-radius:var(--pill);
   font-weight:800;font-size:16px;letter-spacing:-.02em;
-  background:var(--surf2);border:1px solid var(--line2);
-  box-shadow:var(--sh1),var(--lift);
-  transition:transform .14s var(--spring),filter .15s,opacity .15s;
+  /* ⚠️ 흰색으로 두면 **흰 카드 안에서 사라진다**(로비의 「참여하기」가 실제로 안 보였다).
+     바탕보다 한 톤 짙게 깔아야 카드 위에서도 바깥에서도 버튼으로 읽힌다. */
+  background:var(--surf3);border:0;color:var(--tx);
+  box-shadow:var(--drop);
+  transition:transform .09s ease-out,box-shadow .09s ease-out,filter .15s,opacity .15s;
 }
-.btn:active{transform:scale(.975)}
-/* 주 버튼 — 색은 하나, 두께는 아래 한 줄로 낸다(번지는 그림자 금지) */
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(58,50,42,.15)}
 .btn.pri{
-  background:var(--hot);color:#FFF6EE;border:0;
-  box-shadow:var(--edge);
-  font-weight:800;
+  background:var(--hot);color:#FFF6EE;
+  box-shadow:0 5px 0 var(--hot-d);
+  font-family:var(--font-d);font-weight:400;font-size:19px;letter-spacing:.01em;
 }
-.btn.pri:active{box-shadow:none;filter:brightness(.95)}
-.btn.gh{background:var(--surf);border:1px solid var(--line2);color:var(--dim);font-weight:700;box-shadow:none}
-.btn.dan{color:var(--rose);border-color:rgba(172,79,98,.3);background:rgba(172,79,98,.06)}
-.btn.sm{padding:12px 15px;font-size:14px;border-radius:var(--r-s);width:auto}
+.btn.pri:active{transform:translateY(4px);box-shadow:0 1px 0 var(--hot-d)}
+.btn.gh{background:var(--surf2);color:var(--dim);font-weight:700;box-shadow:var(--drop-sm)}
+.btn.gh:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(58,50,42,.13)}
+.btn.dan{color:var(--rose);background:#FDF1F3;box-shadow:0 3px 0 rgba(172,79,98,.26)}
+.btn.dan:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(172,79,98,.26)}
+.btn.sm{padding:11px 16px;font-size:14px;width:auto;box-shadow:var(--drop-sm)}
+.btn.sm.pri{font-size:15px}
+.btn.sm:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(58,50,42,.13)}
 .btn[disabled]{opacity:.35;pointer-events:none;filter:grayscale(.5)}
 .row{display:flex;gap:9px}
 .row>*{flex:1}
 .stack{display:flex;flex-direction:column;gap:9px}
 
+/* 입력칸은 **파인 홈**이다 — 버튼이 튀어나온 만큼 반대로 들어가 보여야 짝이 맞는다 */
 .inp{
   width:100%;padding:16px 15px;border-radius:var(--r-m);
-  background:var(--surf);border:1.5px solid var(--line2);
+  background:var(--well);border:0;
+  box-shadow:inset 0 2px 0 rgba(58,50,42,.1);
   color:var(--tx);outline:none;font-weight:600;
-  transition:border-color .18s,box-shadow .18s;
+  transition:box-shadow .18s;
 }
 .inp::placeholder{color:var(--dim2)}
-.inp:focus{border-color:var(--hot);box-shadow:0 0 0 4px rgba(193,87,58,.13)}
+.inp:focus{box-shadow:inset 0 2px 0 rgba(58,50,42,.1),0 0 0 3px rgba(203,94,60,.28)}
 
 .chip{
   display:inline-flex;align-items:center;gap:4px;
@@ -318,41 +354,44 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .title{min-height:calc(100dvh - 2px);display:grid;place-items:center;padding:24px 4px}
 .title-in{width:100%;max-width:420px;text-align:center}
 .t-line{display:flex;justify-content:center;gap:7px;margin-bottom:26px}
-.t-ch{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;
-  font-size:22px;color:#fff;box-shadow:var(--sh1),inset 0 0 0 2px rgba(255,255,255,.5);
-  animation:bob 3.4s ease-in-out infinite}
-@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-.t-nm{font-size:40px;font-weight:800;letter-spacing:-.05em;line-height:1.14;margin:0}
+.t-ch{width:50px;height:50px;border-radius:17px;display:grid;place-items:center;
+  font-size:26px;color:#fff;box-shadow:0 4px 0 rgba(58,50,42,.2),inset 0 0 0 3px rgba(255,255,255,.6);
+  animation:bob 2.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.t-nm{font-family:var(--font-d);font-weight:400;font-size:42px;letter-spacing:-.01em;line-height:1.24;margin:0;
+  text-shadow:0 3px 0 rgba(255,255,255,.85)}
 .t-nm em{font-style:normal;color:var(--hot)}
-.t-sub{margin:14px 0 0;font-size:14px;color:var(--dim);font-weight:700}
+.t-sub{font-family:var(--font-d);margin:12px 0 0;font-size:15.5px;color:var(--dim);font-weight:400}
 .t-go{margin-top:30px;font-size:18px;padding:19px}
 .t-again{margin-top:9px}
 .t-v{margin-top:26px;font-size:11.5px;color:var(--dim2);font-weight:700}
 
 /* ② 입장 — 고른 캐릭터를 크게 되비춘다(고르는 맛) */
 .mebig{display:flex;flex-direction:column;align-items:center;gap:11px;padding:6px 0 18px}
-.mebig-av{width:96px;height:96px;border-radius:26px;display:grid;place-items:center;
-  font-size:50px;color:#fff;box-shadow:var(--sh2),inset 0 0 0 3px rgba(255,255,255,.5);
+.mebig-av{width:104px;height:104px;border-radius:32px;display:grid;place-items:center;
+  font-size:54px;color:#fff;box-shadow:0 6px 0 rgba(58,50,42,.18),inset 0 0 0 4px rgba(255,255,255,.6);
   transition:background .2s}
 .mebig-q{font-size:40px;font-weight:800;color:var(--dim2)}
 .mebig-t{font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--dim)}
 .chgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px}
 .chq{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 4px 9px;
-  border-radius:var(--r-m);background:var(--surf);border:1px solid var(--line);
-  transition:transform .14s var(--spring),border-color .15s,background .15s}
-.chq-e{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:21px;
-  background:var(--chc);color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.45)}
+  border-radius:var(--r-m);background:var(--surf);border:2px solid transparent;
+  box-shadow:var(--drop-sm);
+  transition:transform .09s ease-out,box-shadow .09s ease-out,border-color .15s,background .15s}
+.chq-e{width:42px;height:42px;border-radius:15px;display:grid;place-items:center;font-size:22px;
+  background:var(--chc);color:#fff;
+  box-shadow:0 3px 0 rgba(58,50,42,.16),inset 0 0 0 2.5px rgba(255,255,255,.55)}
 .chq-n{font-size:11.5px;font-weight:800;color:var(--dim2);letter-spacing:-.02em}
-.chq:active{transform:scale(.94)}
-.chq.on{border-color:var(--chc);border-width:2px;padding:10px 3px 8px;background:var(--surf2)}
+.chq:active{transform:translateY(3px)}
+.chq.on{border-color:var(--chc);background:var(--surf2);box-shadow:0 4px 0 var(--chc)}
 .chq.on .chq-n{color:var(--tx)}
 
 /* ③ 로비 — 내가 누구인지 한 줄, 그 아래 방들 */
-.melead{display:flex;align-items:center;gap:12px;width:100%;padding:11px 13px;
-  border-radius:var(--r-l);background:var(--surf);border:1px solid var(--line);
-  box-shadow:var(--sh1);text-align:left;margin-bottom:4px;
-  transition:transform .14s var(--spring)}
-.melead:active{transform:scale(.985)}
+.melead{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;
+  border-radius:var(--r-l);background:var(--surf);border:0;
+  box-shadow:var(--drop-sm);text-align:left;margin-bottom:4px;
+  transition:transform .09s ease-out,box-shadow .09s ease-out}
+.melead:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(58,50,42,.13)}
 .melead-b{flex:1;min-width:0}
 .melead-b b{display:block;font-size:17px;font-weight:800;letter-spacing:-.03em}
 .melead-b span{display:block;font-size:12px;color:var(--dim2);font-weight:700;margin-top:2px}
@@ -362,11 +401,11 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .secbtn[disabled]{opacity:.45}
 .sec:has(.secbtn)::after{margin-right:2px}
 .rooms{display:flex;flex-direction:column;gap:8px}
-.rm{display:flex;align-items:center;gap:11px;width:100%;padding:11px 12px;
-  border-radius:var(--r-m);background:var(--surf);border:1px solid var(--line);
-  box-shadow:var(--sh1);text-align:left;animation:slideIn .38s var(--ease) both;
-  transition:transform .14s var(--spring),border-color .15s}
-.rm:active{transform:scale(.985);border-color:var(--hot)}
+.rm{display:flex;align-items:center;gap:11px;width:100%;padding:12px 13px;
+  border-radius:var(--r-m);background:var(--surf);border:0;
+  box-shadow:var(--drop-sm);text-align:left;animation:slideIn .38s var(--ease) both;
+  transition:transform .09s ease-out,box-shadow .09s ease-out}
+.rm:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(58,50,42,.13)}
 .rm-c{flex:none;padding:7px 9px;border-radius:9px;background:var(--well);border:1px solid var(--line2);
   font-size:16px;font-weight:800;letter-spacing:.1em;color:var(--tx)}
 .rm-b{flex:1;min-width:0}
@@ -415,8 +454,8 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .rc{
   position:relative;
   background:var(--surf);
-  border:1px solid var(--line);border-radius:var(--r-l);
-  padding:18px;margin-bottom:14px;box-shadow:var(--sh1);
+  border:0;border-radius:var(--r-l);
+  padding:18px;margin-bottom:14px;box-shadow:var(--drop-sm);
 }
 .rc-lbl{font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--dim);margin-bottom:8px}
 .rc-v{display:flex;gap:6px}
@@ -466,7 +505,9 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
 .av.lg{width:48px;height:48px;border-radius:var(--r-m);font-size:19px}
 /* 캐릭터를 고른 사람의 말 — 판 위의 「말(馬)」처럼 보이게 테두리를 두른다.
    ⚠️ 얼굴 그림은 자식 <span> 에 둔다. .av 의 글자 그림자가 그림글자에 먹으면 지저분해진다. */
-.av.ch{box-shadow:var(--sh1),inset 0 0 0 2px rgba(255,255,255,.55)}
+/* ★ 캐릭터는 **판 위의 말**이다 — 아래에 턱을 깔아 세워 놓는다 (v0.49.0) */
+.av.ch{box-shadow:var(--drop-sm),inset 0 0 0 2.5px rgba(255,255,255,.6)}
+.av.ch.sm{box-shadow:0 2px 0 rgba(58,50,42,.13),inset 0 0 0 2px rgba(255,255,255,.6)}
 .av.ch>span{font-size:1.25em;line-height:1;filter:drop-shadow(0 1px 1px rgba(58,50,42,.25))}
 .pl-n{flex:1;min-width:0;font-weight:700;font-size:15px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
@@ -527,7 +568,7 @@ main.noanim .pl,main.noanim .g,main.noanim .lb-r,main.noanim .rslot,main.noanim 
   box-shadow:var(--sh2),var(--lift);
 }
 .gh-em{position:absolute;right:-8px;top:-12px;font-size:100px;opacity:.13;transform:rotate(-10deg);pointer-events:none}
-.gh-n{font-size:23px;font-weight:900;letter-spacing:-.04em;line-height:1.2;word-break:keep-all;position:relative;padding-right:60px}
+.gh-n{font-family:var(--font-d);font-weight:400;font-size:23px;font-weight:900;letter-spacing:-.04em;line-height:1.2;word-break:keep-all;position:relative;padding-right:60px}
 .gh-m{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;position:relative}
 
 /* 규칙 */
@@ -846,7 +887,7 @@ details.more .in{padding:0 15px 15px}
 /* 이 기기의 역할 — 「진행자」 줄 */
 /* ✦ 모임 이름 — 이번 모임을 부르는 말. 다 같이 보는 자리에 같은 모양으로 띄운다 */
 .gname{display:flex;align-items:center;justify-content:center;gap:9px;
-  font-size:18px;font-weight:800;letter-spacing:-.01em;line-height:1.3;
+  font-family:var(--font-d);font-size:20px;font-weight:400;letter-spacing:0;line-height:1.3;
   word-break:keep-all;text-align:center;margin-bottom:10px;position:relative;
   color:var(--tx)}
 /* 모임 이름 양쪽의 짧은 선 — 글자를 가운데로 모아 「이름표」로 읽히게 한다
@@ -859,18 +900,19 @@ details.more .in{padding:0 15px 15px}
 /* 🎮 다음 게임 카드 — 대기실의 중심 */
 .nextp{position:relative;padding:16px;border-radius:var(--r-l);margin-bottom:6px;
   background:linear-gradient(var(--gcSoft),var(--gcSoft)),var(--surf);
-  border:1.5px solid var(--gcLine);box-shadow:var(--sh2),var(--lift)}
+  border:0;box-shadow:0 4px 0 var(--gcLine)}
 .nextp.empty{background:var(--surf);border:1.5px dashed var(--line2);box-shadow:var(--sh1)}
 .nextp.live{border-width:2px;border-color:var(--gc)}
 .np-h{display:flex;align-items:center;gap:12px;margin-bottom:8px}
 /* 아직 안 고른 자리 — 비워 두면 뭘 해야 하는지 안 보이고, 그림글자를 넣으면 딴 앱 같다 */
 .np-ic.np-q{font-size:22px;font-weight:800;color:var(--dim2);background:var(--well);box-shadow:none}
-.np-ic{width:54px;height:54px;flex:none;border-radius:var(--r-m);display:grid;place-items:center;
-  font-size:30px;background:var(--surf);border:1px solid var(--line);box-shadow:var(--sh1)}
+.np-ic{width:56px;height:56px;flex:none;border-radius:18px;display:grid;place-items:center;
+  font-size:30px;background:var(--surf);box-shadow:var(--drop-sm)}
 .np-b{flex:1;min-width:0}
 .np-k{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--dim2)}
 .nextp.live .np-k{color:var(--gc)}
-.np-b b{display:block;font-size:22px;font-weight:800;letter-spacing:-.035em;line-height:1.22;word-break:keep-all}
+.np-b b{display:block;font-family:var(--font-d);font-size:24px;font-weight:400;letter-spacing:-.01em;
+  line-height:1.26;word-break:keep-all}
 .np-b .np-meta{margin:5px 0 0}
 .np-rule{flex:none;padding:8px 11px;border-radius:11px;font-size:12.5px;font-weight:800;
   background:var(--surf);border:1px solid var(--line2);color:var(--dim)}
@@ -1335,7 +1377,7 @@ import { getDatabase, ref, get, set, update, onValue, remove }
 /* ══════════════════════════════════════════════
    설정
 ══════════════════════════════════════════════ */
-const APP_VERSION = 'v0.48.0';
+const APP_VERSION = 'v0.49.0';
 const ROOT = 'party';            // aram RTDB 안의 독립 노드
 
 const firebaseConfig = {
@@ -4734,9 +4776,10 @@ function vTitle(){
   const sess = (() => { try{ return JSON.parse(localStorage.getItem(LS) || 'null'); }catch{ return null; } })();
   /* 타이틀의 캐릭터 줄 — 고정 6마리. ⚠️ 매번 랜덤으로 뽑지 말 것:
      render() 는 스냅샷마다 불려서 얼굴이 계속 바뀐다(앱이 불안해 보인다). */
-  const line = ['fox','rabbit','bear','penguin','cat','frog'].map((k,i) => {
+  /* ⚠️ 다섯이다 — 여섯이면 50px×6 + 사이가 360px 폰에서 가장자리에 닿는다 */
+  const line = ['fox','rabbit','bear','penguin','frog'].map((k,i) => {
     const c = CHAR(k);
-    return `<span class="t-ch" style="background:${c.c};animation-delay:${i*140}ms">${c.e}</span>`;
+    return `<span class="t-ch" style="background:${c.c};animation-delay:${i*160}ms">${c.e}</span>`;
   }).join('');
   return `
     <div class="title"><div class="title-in">

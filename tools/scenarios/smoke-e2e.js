@@ -1644,6 +1644,40 @@ if (new URLSearchParams(location.search).has('demo')){
       ck('★★그라데이션 글자가 한 곳도 없다' + (clipped.length ? ' — ' + clipped.join(', ') : ''),
         !/background-clip:\s*text/.test(css) && !clipped.length);
       ck('★주색 그라데이션(--hero) 토큰이 없다', !/--hero\s*:/.test(css));
+
+      /* ── ★★ 게임처럼 보이게 하는 것들 (v0.49.0) ──
+         사장님: "사이트 디자인이 지금 마음에 안 들거든 **최대한 게임 느낌**을 내고 싶은데…
+         지금은 그냥 **일반적인 사이트** 같아"
+         셋이 그 차이를 만든다 — 제목 글꼴 · 부품의 **두께** · 눌리면 **내려앉는** 반응. */
+      ck('★★제목용 글꼴 토큰(--font-d)이 있다', /--font-d\s*:/.test(css) && /Jua/.test(css));
+      {
+        S.view = 'title'; render(true);
+        const fam = getComputedStyle(document.querySelector('.t-nm')).fontFamily;
+        ck('  타이틀 제목이 그 글꼴을 쓴다', /Jua/.test(fam));
+        S.view = 'lobby'; render(true);
+        const pri = document.querySelector('.btn.pri');
+        ck('  주 버튼도 같은 글꼴이다', !!pri && /Jua/.test(getComputedStyle(pri).fontFamily));
+        /* ⚠️ 본문까지 번지면 긴 글이 안 읽힌다 — 본문은 Pretendard 그대로여야 한다 */
+        ck('★본문 글꼴까지 바뀌지는 않았다',
+          !/Jua/.test(getComputedStyle(document.body).fontFamily));
+      }
+      /* 두께 = **흐림 0 의 그림자**. 흐리면 종이가 뜬 것이고, 안 흐리면 물건이다. */
+      ck('★★부품에 두께 토큰(--drop)이 있고 흐림이 0 이다',
+        /--drop\s*:\s*0\s+\d+px\s+0\s/.test(css));
+      ck('  주 버튼 아래에도 두께가 깔린다', /\.btn\.pri\{[^}]*box-shadow:0 \d+px 0 var\(--hot-d\)/.test(css));
+      /* 눌림 = 줄어드는 게 아니라 **내려앉는** 것 */
+      ck('★★누르면 내려앉는다 (줄어들지 않는다)',
+        /\.btn:active\{transform:translateY/.test(css) && !/\.btn:active\{transform:scale/.test(css));
+      /* ⚠️ 기본 버튼을 흰색으로 두면 **흰 카드 안에서 사라진다** — 로비의 「참여하기」가 실제로 안 보였다 */
+      {
+        S.view = 'find'; S.me = S.me || { name:'나', ch:'fox' }; render(true);
+        const b = document.querySelector('.card .btn:not(.pri)');
+        const card = b && b.closest('.card');
+        const bg = b ? getComputedStyle(b).backgroundColor : '';
+        ck('★★★흰 카드 안의 보조 버튼이 카드와 다른 색이다' + (bg ? ' (' + bg + ')' : ''),
+          !!b && !!card && bg !== getComputedStyle(card).backgroundColor);
+        S.view = 'lobby'; render(true);
+      }
       ck('  색 번짐 그림자(--glow) 토큰도 없다', !/--glow\s*:/.test(css));
 
       S.view = 'lobby';
